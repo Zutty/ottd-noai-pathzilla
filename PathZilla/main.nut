@@ -8,13 +8,13 @@
  *	the Free Software Foundation, either version 3 of the License, or
  *	(at your option) any later version.
  *	
- *	Foobar is distributed in the hope that it will be useful,
+ *	PathZilla is distributed in the hope that it will be useful,
  *	but WITHOUT ANY WARRANTY; without even the implied warranty of
  *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *	GNU General Public License for more details.
  *	
  *	You should have received a copy of the GNU General Public License
- *	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ *	along with PathZilla.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * main.nut
  *
@@ -33,6 +33,9 @@ class PathZilla extends AIController {
 	DIR_WEST = 4;
 	TILE_LENGTH_KM = 429;
 	
+	PERSIST_HOME_TOWN = 2;
+	PERSIST_TICKER = 2;
+	
 	// Configurable constants
 	WORK_INTERVAL = 1000;          // Interval between any actions
 	MAINTENANCE_INTERVAL = 5000;   // Interval between updating existing services
@@ -46,6 +49,8 @@ class PathZilla extends AIController {
 	
 	// Member variables
 	stop = false;
+	ticker = 0;
+	companyName = null;
 	homeTown = null;
 	planGraph = null;
 	actualGraph = null;
@@ -75,6 +80,7 @@ class PathZilla extends AIController {
 		require("LandManager.nut");
 		require("RoadManager.nut");
 
+		this.ticker = 0;
 		this.serviceManager = null;		
 	}
 }
@@ -98,7 +104,11 @@ function PathZilla::Start() {
 	AICompany.SetAutoRenewStatus(true);
 
 	// Select a home town from which all construction will be based
-	this.homeTown = this.SelectLargeTown();
+	if(this.homeTown == null) {
+		this.homeTown = this.SelectLargeTown();
+	} else {
+		AILog.Info("Loading hometown");
+	}
 	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
 	
 	// Build the graphs we need to plan routes
@@ -108,7 +118,6 @@ function PathZilla::Start() {
 	this.serviceManager = ServiceManager(this);
 	
 	// Initialise
-	local ticker = 0;
 	local noServices = true;
 
 	// Start the main loop
@@ -121,21 +130,32 @@ function PathZilla::Start() {
 		this.HandleEvents();
 		
 		// Maintain existing services
-		if(ticker % PathZilla.MAINTENANCE_INTERVAL) {
+		if(this.ticker % PathZilla.MAINTENANCE_INTERVAL) {
 			this.serviceManager.MaintainServices();
 		}
 
 		// Wait until we have a fair bit of cash before building a new line
-		if(noServices || (ticker % PathZilla.EXPANSION_INTERVAL
+		if(noServices || (this.ticker % PathZilla.EXPANSION_INTERVAL
 			 && FinanceManager.GetAvailableFunds() >= (AICompany.GetMaxLoanAmount() / 2))) {
 			this.serviceManager.ChooseService();
 			noServices = false;
 		}
 
 		// Advance the ticker
-		ticker += this.WORK_INTERVAL;
+		this.ticker += this.WORK_INTERVAL;
 		this.Sleep(this.WORK_INTERVAL);
 	}
+}
+
+function PathZilla::Save() {
+	local data = {};
+	data[PERSIST_HOME_TOWN] <- this.homeTown;
+	return data;
+}
+
+function PathZilla::Load(data) {
+	this.homeTown = data[PERSIST_HOME_TOWN];
+	this.ticker = data[PERSIST_TICKER];
 }
 
 function PathZilla::ChooseName(idx) {
