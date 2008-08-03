@@ -115,7 +115,7 @@ function Service::GetActualFleetSize() {
 /*
  * Get a string representation of this service.
  */
-function Vertex::_tostring() {
+function Service::_tostring() {
 	return AICargo.GetCargoLabel(this.cargo) + " from " + AITown.GetName(this.fromTown) + " to " + AITown.GetName(this.toTown);
 }
 
