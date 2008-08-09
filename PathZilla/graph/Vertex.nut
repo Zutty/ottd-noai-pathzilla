@@ -40,6 +40,7 @@ class Vertex {
  * Test if this vertex has the same components as another.
  */
 function Vertex::equals(v) {
+	if(v == null) return false;
 	return (this.x == v.x && this.y == v.y);
 }
 
