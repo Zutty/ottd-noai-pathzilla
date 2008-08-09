@@ -59,6 +59,20 @@ function arraycontains(arr, item) {
 }
 
 /*
+ * Get the index of the specified item from the specified array if it exists, 
+ * and -1 otherwise.
+ */
+function arrayfind(arr, item) {
+	foreach(idx, elem in arr) {
+		if(elem <= item && elem >= item) {
+			return idx;
+		}
+	}
+	
+	return -1;
+}
+
+/*
  * Checks if the specified string ends with the specified pattern
  */
 function ends_with(string, pattern) {
