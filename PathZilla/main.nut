@@ -34,9 +34,9 @@ class PathZilla extends AIController {
 	TILE_LENGTH_KM = 429;
 	
 	// Configurable constants
-	WORK_INTERVAL = 1000;          // Interval between any actions
-	MAINTENANCE_INTERVAL = 5000;   // Interval between updating existing services
-	EXPANSION_INTERVAL = 10000;    // Interval between creating new services
+	WORK_INTERVAL = 500;           // Interval between any actions
+	MAINTENANCE_INTERVAL = 2000;   // Interval between updating existing services
+	EXPANSION_INTERVAL = 3000;     // Interval between creating new services
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
 	PATHFINDER_MAX_STEPS = 25000;  // Maximum time the pathfinder can take to find a path 
 	FLOAT = 20000;                 // Minimum amount of money to keep at all times
@@ -52,24 +52,24 @@ class PathZilla extends AIController {
 	serviceManager = null;
 
 	constructor() {
-		require("graph\\Edge.nut")
-		require("graph\\Graph.nut")
-		require("graph\\GraphPathNode.nut")
-		require("graph\\Triangle.nut")
-		require("graph\\Vertex.nut")
-		require("graph\\impl\\MinimumSpanTree.nut")
-		require("graph\\impl\\ShortestPathTree.nut")
-		require("graph\\impl\\Triangulation.nut")
-		require("pathfinding\\BasicCost.nut");
-		require("pathfinding\\PathCost.nut");
-		require("pathfinding\\PathFinder.nut");
-		require("pathfinding\\PathNode.nut");
-		require("pathfinding\\PathNodeFactory.nut");
-		require("service\\Service.nut");
-		require("service\\ServiceDescriptor.nut");
-		require("service\\ServiceManager.nut");
-		require("struct\\BinaryHeap.nut");
-		require("struct\\SortedSet.nut");
+		require("graph/Edge.nut");
+		require("graph/Graph.nut");
+		require("graph/GraphPathNode.nut");
+		require("graph/Triangle.nut");
+		require("graph/Vertex.nut");
+		require("graph/impl/MinimumSpanTree.nut");
+		require("graph/impl/ShortestPathTree.nut");
+		require("graph/impl/Triangulation.nut");
+		require("pathfinding/BasicCost.nut");
+		require("pathfinding/PathCost.nut");
+		require("pathfinding/PathFinder.nut");
+		require("pathfinding/PathNode.nut");
+		require("pathfinding/PathNodeFactory.nut");
+		require("service/Service.nut");
+		require("service/ServiceDescriptor.nut");
+		require("service/ServiceManager.nut");
+		require("struct/BinaryHeap.nut");
+		require("struct/SortedSet.nut");
 		require("common.nut");
 		require("FinanceManager.nut");
 		require("LandManager.nut");
