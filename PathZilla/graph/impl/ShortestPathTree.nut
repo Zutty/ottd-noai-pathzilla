@@ -109,6 +109,9 @@ class ShortestPathTree extends Graph {
 	}
 }
 
+/*
+ * A node in a Dijkstra's algorithm search.
+ */
 class DijkstraNode {
 	tile = null;
 	dist = null;
@@ -119,6 +122,9 @@ class DijkstraNode {
 	}
 }
 
+/*
+ * Compare this node to another. This orders nodes by the shortest distance.
+ */
 function DijkstraNode::_cmp(node) {
 	return (this.dist == node.dist) ? 0 : ((this.dist < node.dist) ? -1 : 1);
 }
