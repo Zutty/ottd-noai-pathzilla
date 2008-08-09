@@ -23,7 +23,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 03/06/2008
- * Version: 1.1
+ * Version: 1.2
  */
 
 class Triangle {
@@ -128,4 +128,21 @@ function Triangle::GetCircumCircle() {
 	local dy = aY - uY;
 
 	this.r = sqrt(dx * dx + dy * dy); // the radius of the circumcircle
+}
+
+/*
+ * Checks if this triangle is entirely to the south of the specified point.
+ */
+function Triangle::IsSouthOf(vertex) {
+	return (vertex.y < this.u.y - (this.r + 2));
+}
+
+/*
+ * Compare this triangle to another. This method sorts the triangles in south
+ * to north order, to enable to sweepline optimisation. 
+ */
+function Triangle::_cmp(tri) {
+	local a = this.u.y - this.r;
+	local b = tri.u.y - tri.r;
+	return ((a < b) ? 1 : -1);
 }
