@@ -130,3 +130,17 @@ function BinaryHeap::Swap(p, q) {
 	data[p] = data[q];
 	data[q] = buffer;
 }
+
+/*
+ * Used to enable to use of foreach on a binary heap.
+ */
+function BinaryHeap::_nexti(idx) {
+	return (this.Len() >= 1) ? "_pop" : null;
+}
+
+/*
+ * Used to enable to use of foreach on a binary heap.
+ */
+function BinaryHeap::_get(idx) {
+	return (idx == "_pop") ? this.Pop() : null;
+}
