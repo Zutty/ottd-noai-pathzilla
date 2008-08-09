@@ -128,8 +128,15 @@ function Graph::AddEdge(edge) {
  * Add all the edges from another graph to this one.
  */
 function Graph::Merge(graph) {
-	foreach(edge in graph.GetEdges().data) {
-		this.AddEdge(edge);
+	this.edges.Merge(graph.edges);
+	this.vertices.Merge(graph.vertices);
+	foreach(v in this.vertices) {
+		if(graph.data.rawin(v.ToTile())) {
+			if(!this.data.rawin(v.ToTile())) {
+				this.data[v.ToTile()] <- SortedSet(); 
+			}
+			this.data[v.ToTile()].Merge(graph.data[v.ToTile()]);
+		}
 	}
 }
 
