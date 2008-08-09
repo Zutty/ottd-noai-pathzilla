@@ -105,8 +105,7 @@ class ShortestPathTree extends Graph {
 			}
 		}
 
-		local date = AIDate.GetCurrentDate();
-		AILog.Info("     Done. ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+		AILog.Info("     Done");
 	}
 }
 
