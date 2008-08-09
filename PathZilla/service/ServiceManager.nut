@@ -93,6 +93,8 @@ function ServiceManager::MaintainServices() {
 function ServiceManager::FindPotentialServices() {
 	local cargo = pz.GetCargo();
 	local services = SortedSet();
+	
+	AILog.Info("  Checking for potential services...");
 
 	foreach(aTown, _ in AITownList()) {
 		if(pz.planGraph.ContainsTown(aTown)) {
@@ -111,6 +113,7 @@ function ServiceManager::FindPotentialServices() {
 					
 					if(path == null) {
 						AILog.Error("  There is no possible path between " + AITown.GetName(aTown) + " and " + AITown.GetName(bTown));
+						continue;
 					}
 					
 					local netDist = path.GetDistance();
