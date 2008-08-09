@@ -18,15 +18,15 @@
  *
  * SortedSet.nut
  * 
- * A sorted set is a unique collection of items that are always stored in 
- * sorted order.
+ * A sorted set is a unique collection of items that are stored in sorted
+ * order.
  *
  * This is just a placeholder implementation, as I really can't be bothered to 
  * work on this for now!
  * 
  * Author:  George Weller (Zutty)
  * Created: 15/06/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class SortedSet {
@@ -53,6 +53,14 @@ function SortedSet::Insert(item) {
 		this.data.append(item);
 		//this.data.sort();
 	}
+}
+
+/*
+ * Adds a new item to the set without checking for duplicates. This is meant to
+ * be used in conjuection with the RemoveDuplicates() method afterwards.
+ */
+function SortedSet::RawInsert(item) {
+	this.data.append(item);
 }
 
 /*
@@ -87,7 +95,6 @@ function SortedSet::Contains(item) {
 	}
 	
 	return false;
-	//return (this.BinarySearch(item, 0, this.data.len() - 1) >= 0);
 }
 
 /*
@@ -123,10 +130,52 @@ function SortedSet::Remove(item) {
 }
 
 /*
+ * Remove the item at the specified index.
+ */
+function SortedSet::Removei(idx) {
+	this.data.remove(idx);
+}
+
+/*
+ * Remove all duplicate items in the set. The items in the set must implement
+ * an equals() method, returning true if two items are equal.
+ */
+function SortedSet::RemoveDuplicates() {
+	// Ensure that duplicates are adjacent
+	this.data.sort();
+
+	// Find duplicates	
+	local toRemove = [];
+	local prev = null;
+	foreach(idx, item in this.data) {
+		if(item.equals(prev)) {
+			toRemove.append(idx);
+		}
+		
+		prev = item;
+	}
+	
+	// Remove the edges that were marked earlier		
+	local offset = 0;
+	foreach(r in toRemove) {
+		this.data.remove(r - offset);
+		offset++;
+	}
+}
+
+/*
+ * Add all the items from another set to this one, removing duplicates.
+ */
+function SortedSet::Merge(set) {
+	this.data.extend(set.data);
+	this.RemoveDuplicates();
+}
+
+/*
  * Make a deep copy of the set.
  */
 function SortedSet::_cloned(original) {
-	local new = SortedSet();
+	local new = ::SortedSet();
 	new.data = clone original.data;
 	return new;
 }
