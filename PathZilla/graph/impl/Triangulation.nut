@@ -24,15 +24,25 @@
  * that no point is inside the circumcircle of any triangle in the graph. This
  * avoids long, thin triangles where possible.
  *
+ * The algorithm uses a sweep-line to improve efficiency. Targets are ordered
+ * from south to north and so triangles are built up in this order. Once the
+ * main loop reaches a target vertex that is north of any triangle, we know
+ * that no further changes will be made to it, and so it is considered 
+ * 'complete'. Complete triangles are removed from the main list and re-added
+ * afterwards, which reduces the number of circumcircle comparisons that we 
+ * need to perform.
+ *
  * This implementation is based on an algorithm by Sjaak Priester. See...
  *   http://www.codeguru.com/cpp/cpp/algorithms/general/article.php/c8901
  * 
  * Author:  George Weller (Zutty)
  * Created: 05/06/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class Triangulation extends Graph {
+	edgeSet = null;
+	
 	constructor(targetList) {
 		Graph.constructor();
 		
@@ -45,12 +55,13 @@ class Triangulation extends Graph {
 			];
 	
 		// Seed the trianglation with two triangles forming a square over the entire map
-		local triangles = [
+		local liveTriangles = [
 				Triangle(superVertices[0], superVertices[1], superVertices[2]),
 				Triangle(superVertices[1], superVertices[2], superVertices[3]) 
 			];
+		local completedTriangles = [];
 		
-		AILog.Info("  Computing delaunay triangulation...");
+		AILog.Info("  Computing triangulation over " + targetList.Count() + " targets...");
 	
 		// Compute the trianglation
 		local steps = 0;
@@ -61,78 +72,119 @@ class Triangulation extends Graph {
 			}
 			
 			local vertex = Vertex.FromTile(tile);
-			local edges = [];
+			this.edgeSet = [];
 			local toRemove = [];
+
+			// Sort the triangles so that we can cut off when we find the
+			// first live triangle.			
+			liveTriangles.sort();
+				
+			// Find triangles that have been completed
+			foreach(i, tri in liveTriangles) {
+				local s = tri.IsSouthOf(vertex);
+				if(s) {
+					completedTriangles.append(tri);
+					toRemove.append(i);
+				} else {
+					break;
+				}
+			}			
 			
-			//AILog.Info("    Checking circumcircles [" + triangles.len() + " triangles]...");
-	
+			// Remove the completed triangles
+			local offset = 0;
+			foreach(r in toRemove) {
+				liveTriangles.remove(r - offset);
+				offset++;
+			}
+
+			// Reset the remove list
+			toRemove = [];
+
 			// Check for non-empty circumcircles
-			foreach(i, tri in triangles) {
+			foreach(i, tri in liveTriangles) {
 				// If the circumcircle is non-empty, mark the triangle for removal 
 				// and add the edges to the edge buffer.
-				if(tri.u.GetDistance(vertex) <= tri.r - 2) {
-					edges.append(Edge(tri.a, tri.b));
-					edges.append(Edge(tri.b, tri.c));
-					edges.append(Edge(tri.c, tri.a));
+				if(tri.u.GetDistance(vertex) <= (tri.r - 2)) {
+					this.HandleEdge(tri.a, tri.b);
+					this.HandleEdge(tri.b, tri.c);
+					this.HandleEdge(tri.c, tri.a);
 	
 					toRemove.append(i);
 				}
 			}
 	
 			// Remove the triangles that were marked earlier		
-			local offset = 0;
-			foreach(r in toRemove) {
-				triangles.remove(r - offset);
-				offset++;
-			}
-			
-			// Find duplicate edges in the edge buffer...
-			edges.sort();
-			local dupes = [];
-			local prevEdge = null;
-			foreach(e in edges) {
-				if(prevEdge != null && prevEdge <= e && prevEdge >= e) {
-					dupes.append(e);
-				}
-				prevEdge = e;
-			}
-			
-			// ...Find which indeces reference those edges...
-			toRemove = [];
-			foreach(idx, e in edges) {
-				if(arraycontains(dupes, e)) {
-					toRemove.append(idx);
-				}
-			}
-			
-			// ...Remove those edges from the buffer
 			offset = 0;
 			foreach(r in toRemove) {
-				edges.remove(r - offset);
+				liveTriangles.remove(r - offset);
 				offset++;
 			}
-			
-			//AILog.Info("    Building triangles [" + edges.len() + " edges]...");
 	
 			// Build new triangles from the remaining edges in the buffer
-			foreach(e in edges) {
-				triangles.append(Triangle(e.a, e.b, vertex));
+			foreach(e in this.edgeSet) {
+				liveTriangles.append(Triangle(e.a, e.b, vertex));
 			}
 		}
-	
-		// Build a graph from the accumulated triangles
+		
+		// Combine the two lists of triangles and sort them
+		local triangles = [];
+		triangles.extend(liveTriangles);
+		triangles.extend(completedTriangles);
+		triangles.sort();
+
+		// Accumulate a list of edges
+		local edgeAcc = SortedSet();
 		foreach(tri in triangles) {
 			local notSuper = !arraycontains(superVertices, tri.a) && !arraycontains(superVertices, tri.b) && !arraycontains(superVertices, tri.c);
 	
 			// If the triangle does not stem from any of the original super-vertices
 			// (i.e. the corners of the map) then add it to the graph.
 			if(notSuper) {
-				this.AddEdge(Edge(tri.a, tri.b));
-				this.AddEdge(Edge(tri.b, tri.c));
-				this.AddEdge(Edge(tri.c, tri.a));
+				edgeAcc.RawInsert(Edge(tri.a, tri.b));
+				edgeAcc.RawInsert(Edge(tri.b, tri.c));
+				edgeAcc.RawInsert(Edge(tri.c, tri.a));
 			}
 		}
+		
+		// Remove duplicate edges
+		edgeAcc.RemoveDuplicates();
 
-		AILog.Info("    Done.");
+		// Build a graph from the accumulated triangles
+		foreach(edge in edgeAcc) {
+			this.edges.RawInsert(edge);
+
+			this.vertices.RawInsert(edge.a);
+			this.vertices.RawInsert(edge.b);
+
+			if(!this.data.rawin(edge.a.ToTile())) {
+				this.data[edge.a.ToTile()] <- SortedSet(); 
+			}
+			this.data[edge.a.ToTile()].RawInsert(edge.b);
+
+			if(!this.data.rawin(edge.b.ToTile())) {
+				this.data[edge.b.ToTile()] <- SortedSet(); 
+			}
+			this.data[edge.b.ToTile()].RawInsert(edge.a);
+		}
+
+		// Remove duplicate vertices
+		this.vertices.RemoveDuplicates();
+
+		AILog.Info("     Done.");
+	}
+}
+
+/*
+ * Process a new edge in mid triangulation. If the edge already exists then
+ * the dupicate is deleted, otherwise it is added to the list.
+ */
+function Triangulation::HandleEdge(a, b) {
+	local edge = Edge(a, b);
+	local idx = arrayfind(this.edgeSet, edge);
+	
+	if(idx > 0) {
+		this.edgeSet.remove(idx);
+	} else {
+		this.edgeSet.append(edge);
 	}
 }
