@@ -30,8 +30,13 @@ class Edge {
 	b = null;
 	
 	constructor(a, b) {
-		this.a = a;
-		this.b = b;
+		if(a < b) {
+			this.a = a;
+			this.b = b;
+		} else {
+			this.a = b;
+			this.b = a;
+		}
 	}
 }
 
@@ -43,6 +48,14 @@ function Edge::GetLength() {
 }
 
 /*
+ * Checks to see if another edge is the same as another.
+ */
+function Edge::equals(edge) {
+	if(edge == null) return false;
+	return ((this.a.equals(edge.a) && this.b.equals(edge.b)) || (this.a.equals(edge.b) && this.b.equals(edge.a)));
+}
+
+/*
  * Compare the edge with another. This returns 0 (i.e. equal) if the edges have
  * the same vertices, and otherwise orders them by length (TBH I can't remember 
  * what this method is doing!!).
@@ -51,15 +64,15 @@ function Edge::_cmp(edge) {
 	if((this.a.equals(edge.a) && this.b.equals(edge.b)) || (this.a.equals(edge.b) && this.b.equals(edge.a))) {
 		return 0;
 	} else {
-		local tA = (this.a.x*this.a.x + this.a.y*this.a.y);
-		local tB = (this.b.x*this.b.x + this.b.y*this.b.y);
-		local eA = (edge.a.x*edge.a.x + edge.a.y*edge.a.y);
-		local eB = (edge.b.x*edge.b.x + edge.b.y*edge.b.y);
-		
-		if(tA + tB > eA + eB) {
-			return -1;
-		} else {
-			return 1;
-		}
+		local maxTY = max(this.a.y, this.b.y);
+		local maxEY = max(edge.a.y, edge.b.y);
+		return (maxTY < maxEY) ? -1 : 1;
 	}
+}
+
+/*
+ * Gets a string representation of this edge.
+ */
+function Edge::_tostring() {
+	return "{" + a + " -> " + b + "}";
 }
