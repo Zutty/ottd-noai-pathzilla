@@ -164,7 +164,7 @@ function Graph::FindPath(aVertex, bVertex) {
 	local vertex = null;
 	local finalPath = null;
 	local steps = 0;
-	local MAX_STEPS = 100;
+	local MAX_STEPS = 1000;
 
 	// Add the root node
 	open.Insert(GraphPathNode(aVertex, null, aVertex.GetDistance(bVertex)));
