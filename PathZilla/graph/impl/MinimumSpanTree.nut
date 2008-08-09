@@ -26,13 +26,14 @@
  * seed node, by adding the shortest edges that connects the graph to a vertex
  * not yet in the graph.
  *
- * This implementation uses a crude adjacency matrix and is not particularly
- * efficient, but since it is only executed once per game I'm not guing to
- * worry about it for now!
+ * This implementation uses a Binary Heap to select the best node, which gives
+ * around O(e log v) time complexity, where e is the number of edges and v is
+ * the nuber of vertices. This is an improvement over the old adjacency matrix
+ * implementation, especially on a large map with many towns.
  * 
  * Author:  George Weller (Zutty)
  * Created: 06/06/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class MinimumSpanTree extends Graph {
@@ -41,32 +42,80 @@ class MinimumSpanTree extends Graph {
 		
 		AILog.Info("  Computing minimum spanning tree...");
 
-		local count = masterGraph.GetVertices().Len();
+		local queue = BinaryHeap();
+		local closed = {};
+		local edgeSet = SortedSet();
 	
 		// Initialise the graph using the home town
-		this.AddVertex(masterGraph.GetVertices().Begin());
-		
+		local r = masterGraph.GetVertices().Begin();
+		queue.Insert(PrimNode(r.ToTile(), null, 0));
+		closed[r.ToTile()] <- false;
+				
 		// Connect each vertex only once 
-		while(this.GetVertices().Len() < count) {
-			local bestEdge = null;
+		foreach(u in queue) {
+			local uTile = u.tile;
 			
-			// Find the best edge from the master graph that connects to the
-			// minimum span graph.
-			foreach(v in this.GetVertices()) {
-				foreach(n in masterGraph.GetNeighbours(v)) {
-					if(!this.GetVertices().Contains(n)) {
-						local e = Edge(v, n);
-						if(bestEdge == null || e.GetLength() < bestEdge.GetLength()) {
-							bestEdge = e;
-						}
-					}
+			if(!closed[uTile]) {
+				closed[uTile] <- true;
+				
+				local uVertex = Vertex.FromTile(uTile);
+				
+				if(uTile != r.ToTile()) {
+					edgeSet.RawInsert(Edge(uVertex, Vertex.FromTile(u.otherTile)));
+				}
+				
+				foreach(v in masterGraph.GetNeighbours(uVertex)) {
+					local vTile = v.ToTile();
+
+					if(!closed.rawin(vTile)) {
+						closed[vTile] <- false;
+					} 
+
+					queue.Insert(PrimNode(vTile, uTile, AIMap.DistanceSquare(uTile, vTile)));
 				}
 			}
-			
-			// Add the edge to the minimum span graph
-			this.AddEdge(bestEdge);
 		}
 		
-		AILog.Info("    Done.");
+		this.vertices = clone masterGraph.GetVertices();
+
+		// Build a graph from the spanning tree edges		
+		foreach(e in edgeSet) {
+			this.edges.RawInsert(e);
+
+			if(!this.data.rawin(e.a.ToTile())) {
+				this.data[e.a.ToTile()] <- SortedSet(); 
+			}
+			this.data[e.a.ToTile()].RawInsert(e.b);
+
+			if(!this.data.rawin(e.b.ToTile())) {
+				this.data[e.b.ToTile()] <- SortedSet(); 
+			}
+			this.data[e.b.ToTile()].RawInsert(e.a);
+		}
+		
+		AILog.Info("     Done.");
 	}
+}
+
+/*
+ * A node for a Prim's algorithm search, that allows a graph to be 
+ * reconstructed.
+ */
+class PrimNode {
+	tile = null;
+	otherTile = null;
+	edgeLen = 0;
+	
+	constructor(u, v, l) {
+		this.tile = u;
+		this.otherTile = v;
+		this.edgeLen = l;
+	}
+}
+
+/*
+ * Compares this node to another. This methods orders nodes by edge length.
+ */
+function PrimNode::_cmp(node) {
+	return (this.edgeLen == node.edgeLen) ? 0 : ((this.edgeLen < node.edgeLen) ? -1 : 1);
 }
