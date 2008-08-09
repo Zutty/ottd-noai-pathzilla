@@ -31,7 +31,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 07/06/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class ShortestPathTree extends Graph {
@@ -43,61 +43,83 @@ class ShortestPathTree extends Graph {
 		local dist = {};
 		local prev = {};
 		local visited = AIList();
-		local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY(); 
+		local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY();
+		infinity = infinity * infinity; // Square it  
 		
 		AILog.Info("  Computing shortest path tree...");
+		
+		local queue = BinaryHeap();
 
 		// Initialise distance and previous node lists
 		foreach(v in masterGraph.GetVertices().data) {
-			dist[v.ToTile()] <- infinity;
-			prev[v.ToTile()] <- null;
+			local tile = v.ToTile();
+			dist[tile] <- (tile == source.ToTile()) ? 0 : infinity;
+			prev[tile] <- null;
+			queue.Insert(DijkstraNode(tile, dist[tile]));
 		}
 
-		// Initialise the distance at the source node to zero		
-		dist[source.ToTile()] = 0;
-	
-		// 
+		// Process each node in best first order
 		local steps = 0;
-		while(visited.Count() < masterGraph.GetVertices().Len()) {
+		foreach(u in queue) {
 			// Only sleep once every PROCESSING_PRIORITY iterations
 			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
 				PathZilla.Sleep(1);
 			}
 						
 			// Find the best cost node
-			local bestCost = infinity + 1;
-			local uTile = null;
-			foreach(tile, cost in dist) {
-				if(cost < bestCost && !visited.HasItem(tile)) {
-					uTile = tile;
-					bestCost = cost;
-				}
-			}
-			
-			local u = Vertex.FromTile(uTile);
-			visited.AddItem(uTile, 0);
-			
-			//AILog.Info("  Selected "+u);
-			
-			foreach(v in masterGraph.GetNeighbours(u).data) {
+			local uTile = u.tile;
+			local uVertex = Vertex.FromTile(uTile);
+
+			// Get the vertices adjacent to the current one and update them
+			foreach(v in masterGraph.GetNeighbours(uVertex)) {
 				local vTile = v.ToTile();
-				if(!visited.HasItem(vTile)) {
-					local alt = dist[uTile] + u.GetDistance(v);
-					if(alt < dist[vTile]) {
-						dist[vTile] = alt;
-						prev[vTile] = u;
-					}
+				local alt = dist[uTile] + AIMap.DistanceSquare(uTile, vTile);
+
+				// If the computed cost is better than the stored one then update
+				if(alt < dist[vTile]) {
+					dist[vTile] = alt;
+					prev[vTile] = uVertex;
+					queue.Insert(DijkstraNode(vTile, dist[vTile]));
 				}
 			}
 		}
 	
+		this.vertices = clone masterGraph.GetVertices();
+
 		// Compile the linked list of prev nodes into a graph
 		foreach(uTile, v in prev) {
 			if(v != null) {
-				this.AddEdge(Edge(Vertex.FromTile(uTile), v));
+				local u = Vertex.FromTile(uTile);
+				local vTile = v.ToTile();
+				this.edges.RawInsert(Edge(u, v));
+	
+				if(!this.data.rawin(uTile)) {
+					this.data[uTile] <- SortedSet(); 
+				}
+				this.data[uTile].RawInsert(v);
+	
+				if(!this.data.rawin(vTile)) {
+					this.data[vTile] <- SortedSet(); 
+				}
+				this.data[vTile].RawInsert(u);
 			}
 		}
 
-		AILog.Info("    Done.");
+		local date = AIDate.GetCurrentDate();
+		AILog.Info("     Done. ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
 	}
+}
+
+class DijkstraNode {
+	tile = null;
+	dist = null;
+	
+	constructor(t, d) {
+		this.tile = t;
+		this.dist = d;
+	}
+}
+
+function DijkstraNode::_cmp(node) {
+	return (this.dist == node.dist) ? 0 : ((this.dist < node.dist) ? -1 : 1);
 }
