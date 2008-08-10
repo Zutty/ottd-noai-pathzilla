@@ -35,25 +35,22 @@
  */
 
 class ShortestPathTree extends Graph {
-	constructor(masterGraph, rootNode) {
+	constructor(masterGraph, sourceTile) {
 		Graph.constructor();
 		
 		// Initialise
-		local source = Vertex.FromTile(rootNode);
+		local queue = BinaryHeap();
 		local dist = {};
 		local prev = {};
-		local visited = AIList();
 		local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY();
 		infinity = infinity * infinity; // Square it  
 		
 		AILog.Info("  Computing shortest path tree...");
-		
-		local queue = BinaryHeap();
 
 		// Initialise distance and previous node lists
-		foreach(v in masterGraph.GetVertices().data) {
+		foreach(v in masterGraph.GetVertices()) {
 			local tile = v.ToTile();
-			dist[tile] <- (tile == source.ToTile()) ? 0 : infinity;
+			dist[tile] <- (tile == sourceTile) ? 0 : infinity;
 			prev[tile] <- null;
 			queue.Insert(DijkstraNode(tile, dist[tile]));
 		}
