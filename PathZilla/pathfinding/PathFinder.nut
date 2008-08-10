@@ -227,7 +227,7 @@ function PathFinder::FindPath(fromTile, toTile) {
 				if(candidates.Count() > 0) {
 					AILog.Info("  Building depot...");
 					local depotTile = candidates.Begin();
-					AIRoad.BuildRoad(tileA, depotTile);
+					RoadManager.SafelyBuildRoad(tileA, depotTile);
 					AIRoad.BuildRoadDepot(depotTile, tileA);
 					builtDepot = true;
 				}
