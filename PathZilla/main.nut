@@ -38,7 +38,8 @@ class PathZilla extends AIController {
 	MAINTENANCE_INTERVAL = 2000;   // Interval between updating existing services
 	EXPANSION_INTERVAL = 3000;     // Interval between creating new services
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
-	PATHFINDER_MAX_STEPS = 25000;  // Maximum time the pathfinder can take to find a path 
+	PATHFINDER_MAX_STEPS = 25000;  // Maximum time the pathfinder can take to find a path
+	MAX_TARGETS = 750;             // Maximum number of targets that can be in a single graph 
 	FLOAT = 20000;                 // Minimum amount of money to keep at all times
 	TARGET_TOWN_COVERAGE = 80;     // Percentage of town houses to fall within combined station coverage area
 	NEW_VEHICLE_SPREAD_DELAY = 20; // The delay in ms between launching new vehicles in a fleet.
@@ -161,8 +162,10 @@ function PathZilla::SelectLargeTown() {
 }
 
 function PathZilla::InitialiseGraphs() {
-	// Prime a list of targets
+	// Prime a list of the closest MAX_TARGETS targets to the home town
 	local allTowns = AITownList();
+	allTowns.Valuate(AITown.GetDistanceManhattanToTile, AITown.GetLocation(this.homeTown));
+	allTowns.KeepTop(PathZilla.MAX_TARGETS);
 	allTowns.Valuate(AITown.GetLocation);
 
 	// Get the master graph for the whole map
