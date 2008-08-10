@@ -104,12 +104,17 @@ function ServiceDescriptor::Create() {
 function ServiceDescriptor::_cmp(desc) {
 	if((fromTown == desc.fromTown && toTown == desc.toTown) || (fromTown == desc.toTown && toTown == desc.fromTown)) return 0;
 
-	local thisTotalPop = AITown.GetPopulation(this.fromTown) + AITown.GetPopulation(this.toTown);
-	local descTotalPop = AITown.GetPopulation(desc.fromTown) + AITown.GetPopulation(desc.toTown);
+	//local thisTotalPop = AITown.GetPopulation(this.fromTown) + AITown.GetPopulation(this.toTown);
+	//local descTotalPop = AITown.GetPopulation(desc.fromTown) + AITown.GetPopulation(desc.toTown);
 	
-	local thisProfitability = ((thisTotalPop * thisTotalPop) / 400) * this.rawIncome;
-	local descProfitability = ((descTotalPop * descTotalPop) / 400) * desc.rawIncome;
+	local thisMaxPop = max(AITown.GetPopulation(this.fromTown), AITown.GetPopulation(this.toTown))
+	local thisMinPop = min(AITown.GetPopulation(this.fromTown), AITown.GetPopulation(this.toTown))
+	local descMaxPop = max(AITown.GetPopulation(desc.fromTown), AITown.GetPopulation(desc.toTown))
+	local descMinPop = min(AITown.GetPopulation(desc.fromTown), AITown.GetPopulation(desc.toTown))
+	
+	local thisProfitability = (thisMaxPop + (thisMinPop * thisMinPop)) * (this.rawIncome / this.distance);
+	local descProfitability = (descMaxPop + (descMinPop * descMinPop)) * (desc.rawIncome / desc.distance);
 
-	if(thisProfitability > descProfitability) return 1;
-	return -1;
+	if(thisProfitability > descProfitability) return -1;
+	return 1;
 }

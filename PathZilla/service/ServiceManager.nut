@@ -143,11 +143,13 @@ function ServiceManager::FindNewServices() {
 				local rawIncome = AICargo.GetCargoIncome(cargo, crowDist, travelTime);
 
 				// Project revenue and costs
-				local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * (364 / travelTime);
-				local annualCost = AIEngine.GetRunningCost(engine);
+				local factor = 100; // Compensate for integer mathematics
+				local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * ((364 * factor) / travelTime);
+				local annualCost = AIEngine.GetRunningCost(engine) * factor;
+				local annualProfit = (annualRevenue - annualCost) / factor;
 				
-				if(annualRevenue > annualCost) {
-					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, engine, netDist[bTile], (annualRevenue - annualCost)));
+				if(annualProfit > (annualCost/factor)) {
+					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, engine, netDist[bTile], annualProfit));
 				}
 			}
 		}
