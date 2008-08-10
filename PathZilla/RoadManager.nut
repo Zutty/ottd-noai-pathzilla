@@ -127,9 +127,26 @@ function RoadManager::BuildStation(town, cargo) {
 	// Get a list of tiles to search in
 	local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
 	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
-	
 	local tileList = AITileList();
 	tileList.AddRectangle(townTile - offset, townTile + offset);
+		
+	// Find a list of tiles that are controlled by competitors
+	local competitorTiles = AITileList();
+	foreach(tile, _ in tileList) {
+		local owner = AITile.GetOwner(tile);
+		local isCompetitors = (owner != AICompany.ResolveCompanyID(AICompany.MY_COMPANY) && owner != AICompany.ResolveCompanyID(AICompany.INVALID_COMPANY));
+		if(isCompetitors) {
+			if(AITile.IsStationTile(tile)) {
+				local offs = AIMap.GetTileIndex(1, 1);
+				competitorTiles.AddRectangle(tile - offs, tile + offs);
+			} else {
+				competitorTiles.AddTile(tile);
+			}
+		}
+	}
+	
+	// Don't try to build on top of the competition
+	tileList.RemoveList(competitorTiles);
 	
 	// Get the coverage radius of the station
 	local radius = AIStation.GetCoverageRadius(AIStation.STATION_BUS_STOP);
