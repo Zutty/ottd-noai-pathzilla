@@ -346,7 +346,7 @@ function ServiceManager::CreateFleet(service) {
 
 	// Estimate how many vehicles will be needed to cover the route
 	local minFleetSize = fromStations.Count() + toStations.Count();
-	local fleetSize = max(minFleetSize, ((minAcceptance) / (capacity * 2)) * ((distance * 2) / speed));
+	local fleetSize = max(minFleetSize, ((minAcceptance) / (capacity * 2)) * ((distance * 3) / speed));
 	
 	local engineName = AIEngine.GetName(service.GetEngine());
 	AILog.Info("  Building a fleet of " + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
