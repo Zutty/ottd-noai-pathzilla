@@ -198,7 +198,7 @@ function RoadManager::BuildStation(town, cargo) {
 	
 	// Check if the tile on the OTHER side is also road
 	local otherSide = LandManager.GetApproachTile(stationTile, roadTile);
-	local useDtrs = AIRoad.IsRoadTile(otherSide);
+	local useDtrs = (AIRoad.IsRoadTile(otherSide) && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	
 	// Ensure we have a bit of cash available
@@ -206,8 +206,9 @@ function RoadManager::BuildStation(town, cargo) {
 	
 	// Connect the site to the road(s)
 	local built = RoadManager.SafelyBuildRoad(roadTile, stationTile);
-	if(useDtrs) {
-		built = built && RoadManager.SafelyBuildRoad(otherSide, stationTile);
+	if(useDtrs && built) {
+		//built = built && RoadManager.SafelyBuildRoad(otherSide, stationTile);
+		useDtrs = RoadManager.SafelyBuildRoad(otherSide, stationTile);
 	}
 
 	if(!built) {
