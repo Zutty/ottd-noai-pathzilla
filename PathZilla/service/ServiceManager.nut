@@ -256,6 +256,7 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo) {
 		if(AIEngine.GetRoadType(engine) != AIRoad.ROADTYPE_ROAD) return -1;
 		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
 		if(AIEngine.GetPrice(engine) > availableFunds) return -1;
+		if(AIEngine.IsArticulated(engine)) return -1; // For now, forbid articulated vehicles
 		return 1;
 	}, cargo, availableFunds);
 	
