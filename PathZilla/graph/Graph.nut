@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 05/06/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class Graph {
@@ -138,6 +138,55 @@ function Graph::Merge(graph) {
 			this.data[v.ToTile()].Merge(graph.data[v.ToTile()]);
 		}
 	}
+}
+
+/*
+ * Get the shortest distances accross the graph from the specified source node
+ * to every other node. This method uses Dijkstra's algorithm.
+ */
+function Graph::GetShortestDistances(source) {
+	// Initialise
+	local queue = BinaryHeap();
+	local dist = {};
+	local prev = {};
+	local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY();
+	infinity = infinity * infinity; // Square it  
+	
+	// Initialise distance and previous node lists
+	foreach(v in this.GetVertices()) {
+		local tile = v.ToTile();
+		dist[tile] <- (tile == source.ToTile()) ? 0 : infinity;
+		prev[tile] <- null;
+		queue.Insert(DijkstraNode(tile, dist[tile]));
+	}
+	
+	// Process each node in best first order
+	local steps = 0;
+	foreach(u in queue) {
+		// Only sleep once every PROCESSING_PRIORITY iterations
+		if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
+			PathZilla.Sleep(1);
+		}
+					
+		// Find the best cost node
+		local uTile = u.tile;
+		local uVertex = Vertex.FromTile(uTile);
+		
+		// Get the vertices adjacent to the current one and update them
+		foreach(v in this.GetNeighbours(uVertex)) {
+			local vTile = v.ToTile();
+			local alt = dist[uTile] + AIMap.DistanceManhattan(uTile, vTile);
+			
+			// If the computed cost is better than the stored one then update
+			if(alt < dist[vTile]) {
+				dist[vTile] = alt;
+				prev[vTile] = uVertex;
+				queue.Insert(DijkstraNode(vTile, dist[vTile]));
+			}
+		}
+	}
+			
+	return dist;
 }
 
 /*
