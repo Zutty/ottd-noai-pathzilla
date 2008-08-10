@@ -188,6 +188,16 @@ function RoadManager::BuildStation(town, cargo) {
 	
 	// Get the best location for the station and the road it joins to
 	local stationTile = tileList.Begin(); 
+	
+	// Check that we're able to build here first
+	local rating = AITown.GetRating(town, AICompany.MY_COMPANY);
+	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
+	if(!allowed) {
+		AILog.Error(AITown.GetName(town) + " local authority refuses construction");
+		return -1;
+	}
+	
+	// Find the road tile that we should connect to
 	local neighbourList = LandManager.GetAdjacentTileList(stationTile);
 	neighbourList.Valuate(function (tile, stationTile) {
 		local otherSide = LandManager.GetApproachTile(stationTile, tile);
