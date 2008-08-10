@@ -95,9 +95,6 @@ function ServiceManager::MaintainServices() {
 function ServiceManager::FindNewServices() {
 	local cargo = pz.GetCargo();
 
-		local date = AIDate.GetCurrentDate();
-		AILog.Info("  Checking ffdsfdsfdsfdsfdsf... ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
-	
 	// Discard the towns that we have already been to, or that can't be reached
 	local towns = AITownList();
 	towns.RemoveList(this.townsConsidered);
@@ -108,8 +105,7 @@ function ServiceManager::FindNewServices() {
 	
 	// Check that there are any towns left that we haven't considered
 	if(towns.Count() > 0) {
-		date = AIDate.GetCurrentDate();
-		AILog.Info("  Looking for potential services... ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+		AILog.Info("  Looking for potential services...");
 
 		// Order the remaining towns by populations, placing the home town first
 		towns.Valuate(function (town, homeTown) {
@@ -119,9 +115,6 @@ function ServiceManager::FindNewServices() {
 		this.townsConsidered.AddItem(aTown, 0);
 		
 		local netDist = pz.planGraph.GetShortestDistances(Vertex.FromTown(aTown));
-
-		date = AIDate.GetCurrentDate();
-		AILog.Info("  sdfdsfdsfssdfsdf... ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
 
 		local steps = 0;
 		foreach(bTown, _ in AITownList()) {
@@ -134,12 +127,12 @@ function ServiceManager::FindNewServices() {
 				local engine = this.SelectEngine(aTown, bTown, cargo);
 				
 				if(engine == null) {
-					AILog.Error("There are no suitable vehicles for this route! [" + AITown.GetName(aTown) + " to " + AITown.GetName(bTown)+ "]");
+					AILog.Error("    There are no suitable vehicles for this route! [" + AITown.GetName(aTown) + " to " + AITown.GetName(bTown)+ "]");
 					continue;
 				}
 				
 				if(netDist[bTile] < 0) {
-					AILog.Error("  There is no possible path between " + AITown.GetName(aTown) + " and " + AITown.GetName(bTown));
+					AILog.Error("    There is no possible path between " + AITown.GetName(aTown) + " and " + AITown.GetName(bTown));
 					continue;
 				}
 				
@@ -159,8 +152,7 @@ function ServiceManager::FindNewServices() {
 			}
 		}
 
-		date = AIDate.GetCurrentDate();
-		AILog.Info("  Done. ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+		AILog.Info("    Done.");
 	}
 }
 
