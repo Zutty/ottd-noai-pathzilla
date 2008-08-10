@@ -46,6 +46,25 @@ function PathFinder::FindPath(fromTile, toTile) {
 	local node = null;
 	local tile = null;
 	local steps = 0;
+	local goalTile = toTile;
+	
+	if(!(AITile.IsBuildable(goalTile) || AIRoad.IsRoadTile(goalTile))) {
+		local offset = AIMap.GetTileIndex(10, 10);
+		local tileList = AITileList();
+		tileList.AddRectangle(goalTile - offset, goalTile + offset);
+		tileList.Valuate(function (tile) {
+			return (AITile.IsBuildable(tile) || AIRoad.IsRoadTile(tile)) ? 1 : 0;
+		});
+		tileList.RemoveValue(0);
+		
+		if(tileList.Count() > 0) {
+			tileList.Valuate(AITile.GetDistanceManhattanToTile, goalTile);
+			goalTile = tileList.Begin();
+		} else {
+			AILog.Error("Goal cannot be reached");
+			return -1;
+		}
+	}
 
 	// Add the root node
 	open.Insert(factory.GetStartNode());
@@ -72,7 +91,7 @@ function PathFinder::FindPath(fromTile, toTile) {
 		closed.AddItem(tile, 0);
 		
 		// Check if we have reached our goal
-		if(tile == toTile) {
+		if(tile == goalTile) {
 			finalPath = node;
 			break;
 		}
