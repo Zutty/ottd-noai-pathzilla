@@ -28,9 +28,9 @@
 class PathZilla extends AIInfo {
 	function GetAuthor()      { return "Zutty"; }
 	function GetName()        { return "PathZilla"; }
-	function GetDescription() { return "A very basic road building AI"; }
-	function GetVersion()     { return 1; }
-	function GetDate()        { return "2008-07-27"; }
+	function GetDescription() { return "A road networking AI"; }
+	function GetVersion()     { return 2; }
+	function GetDate()        { return "2008-08-11"; }
 	function CreateInstance() { return "PathZilla"; }
 }
 

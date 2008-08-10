@@ -18,11 +18,11 @@
  * 
  * main.nut
  *
- * PathZilla - A road networking AI.
+ * PathZilla - A road networking AI. See readme.txt for details.
  * 
  * Author:  George Weller (Zutty)
  * Created: 16/05/2008
- * Version: 0.1
+ * Version: 1.2
  */
 
 class PathZilla extends AIController {
