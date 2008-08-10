@@ -30,17 +30,15 @@ class Service {
 	toTown = null;
 	cargo = 0;
 	engine = null;
-	path = null;
 	profitability = 0;
 	vehicles = null;
 	group = null;
 	
-	constructor(fromTown, toTown, cargo, engine, path) {
+	constructor(fromTown, toTown, cargo, engine) {
 		this.fromTown = fromTown;
 		this.toTown = toTown;
 		this.cargo = cargo;
 		this.engine = engine;
-		this.path = path;
 
 		this.vehicles = AIList();
 		this.group = AIGroup.CreateGroup(AIVehicle.VEHICLE_ROAD);
@@ -74,13 +72,6 @@ function Service::GetCargo() {
  */
 function Service::GetEngine() {
 	return this.engine;
-}
-
-/*
- * Get the graph path this this service follows.
- */
-function Service::GetPath() {
-	return this.path;
 }
 
 /*

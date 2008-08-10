@@ -28,6 +28,7 @@
 class ServiceManager {
 	pz = null;
 	potentialServices = null;
+	townsConsidered = null;
 	serviceList = null;
 	townsUpdated = null;
 	
@@ -36,7 +37,8 @@ class ServiceManager {
 		this.serviceList = SortedSet();
 		this.townsUpdated = AIList();
 		
-		this.potentialServices = this.FindPotentialServices();
+		this.potentialServices = BinaryHeap();
+		this.townsConsidered = AIList();
 	}
 }
 
@@ -90,52 +92,86 @@ function ServiceManager::MaintainServices() {
  * searchs through a matrix of all towns in the map, checks which would turn a
  * profit, and ranks them by their profitability.
  */
-function ServiceManager::FindPotentialServices() {
+function ServiceManager::FindNewServices() {
 	local cargo = pz.GetCargo();
-	local services = SortedSet();
-	
-	AILog.Info("  Checking for potential services...");
 
-	foreach(aTown, _ in AITownList()) {
-		if(pz.planGraph.ContainsTown(aTown)) {
-			foreach(bTown, _ in AITownList()) {
+		local date = AIDate.GetCurrentDate();
+		AILog.Info("  Checking ffdsfdsfdsfdsfdsf... ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+	
+	// Discard the towns that we have already been to, or that can't be reached
+	local towns = AITownList();
+	towns.RemoveList(this.townsConsidered);
+	towns.Valuate(function (town, planGraph) {
+		return (planGraph.ContainsTown(town)) ? 1 : 0;
+	}, pz.planGraph);
+	towns.RemoveValue(0);
+	
+	// Check that there are any towns left that we haven't considered
+	if(towns.Count() > 0) {
+		date = AIDate.GetCurrentDate();
+		AILog.Info("  Looking for potential services... ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+
+		// Order the remaining towns by populations, placing the home town first
+		towns.Valuate(function (town, homeTown) {
+			return (town == homeTown) ? 1000000 : AITown.GetPopulation(town);
+		}, pz.homeTown);
+		local aTown = towns.Begin();
+		this.townsConsidered.AddItem(aTown, 0);
+		
+		local netDist = pz.planGraph.GetShortestDistances(Vertex.FromTown(aTown));
+
+		date = AIDate.GetCurrentDate();
+		AILog.Info("  sdfdsfdsfssdfsdf... ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+
+		local steps = 0;
+		foreach(bTown, _ in AITownList()) {
+			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
 				PathZilla.Sleep(1);
-	
-				if(bTown != aTown && pz.planGraph.ContainsTown(bTown)) {
-					local engine = this.SelectEngine(aTown, bTown, cargo);
-					
-					if(engine == null) {
-						AILog.Error("There are no suitable vehicles for this route!");
-						continue;
-					}
-					
-					local path = pz.planGraph.FindPath(Vertex.FromTown(aTown), Vertex.FromTown(bTown));
-					
-					if(path == null) {
-						AILog.Error("  There is no possible path between " + AITown.GetName(aTown) + " and " + AITown.GetName(bTown));
-						continue;
-					}
-					
-					local netDist = path.GetDistance();
-					local crowDist = AITown.GetDistanceManhattanToTile(aTown, AITown.GetLocation(bTown));
-					local travelTime = (179 * netDist) / (10 * AIEngine.GetMaxSpeed(engine)); // in days
-	
-					// Get the base income for one trip				
-					local rawIncome = AICargo.GetCargoIncome(cargo, crowDist, travelTime);
-	
-					// Project revenue and costs
-					local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * (364 / travelTime);
-					local annualCost = AIEngine.GetRunningCost(engine);
-					
-					if(annualRevenue > annualCost) {
-						services.Insert(ServiceDescriptor(aTown, bTown, cargo, engine, path, (annualRevenue - annualCost)));
-					}
+			}
+
+			if(bTown != aTown && pz.planGraph.ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo)) {
+				local bTile = AITown.GetLocation(bTown);
+				local engine = this.SelectEngine(aTown, bTown, cargo);
+				
+				if(engine == null) {
+					AILog.Error("There are no suitable vehicles for this route! [" + AITown.GetName(aTown) + " to " + AITown.GetName(bTown)+ "]");
+					continue;
+				}
+				
+				if(netDist[bTile] < 0) {
+					AILog.Error("  There is no possible path between " + AITown.GetName(aTown) + " and " + AITown.GetName(bTown));
+					continue;
+				}
+				
+				local crowDist = AITown.GetDistanceManhattanToTile(aTown, AITown.GetLocation(bTown));
+				local travelTime = (179 * netDist[bTile]) / (10 * AIEngine.GetMaxSpeed(engine)); // in days
+
+				// Get the base income for one trip				
+				local rawIncome = AICargo.GetCargoIncome(cargo, crowDist, travelTime);
+
+				// Project revenue and costs
+				local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * (364 / travelTime);
+				local annualCost = AIEngine.GetRunningCost(engine);
+				
+				if(annualRevenue > annualCost) {
+					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, engine, netDist[bTile], (annualRevenue - annualCost)));
 				}
 			}
 		}
+
+		date = AIDate.GetCurrentDate();
+		AILog.Info("  Done. ("+AIDate.GetDayOfMonth(date)+"/"+AIDate.GetMonth(date)+"/"+AIDate.GetYear(date)+")");
+	}
+}
+
+function ServiceManager::ProvidesService(a, b, cargo) {
+	foreach(service in this.serviceList) {
+		if(service.GetCargo() == cargo && service.GoesTo(a) && service.GoesTo(b)) {
+			return true;
+		}
 	}
 	
-	return services;
+	return false;
 }
 	
 /*
@@ -145,8 +181,7 @@ function ServiceManager::FindPotentialServices() {
  * builds preliminary stations at the town, and then creates the vehciles that
  * will operate the service.
  */
-function ServiceManager::ChooseService() {
-	this.potentialServices.Sort();
+function ServiceManager::ImplementService() {
 	local bestService = this.potentialServices.Pop();
 	
 	if(bestService != null) {
@@ -169,8 +204,10 @@ function ServiceManager::ChooseService() {
 		//AISign.BuildSign(AITown.GetLocation(service.GetToTown()) + AIMap.GetTileIndex(1, 1), "ST "+toTotal);
 		
 		AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
+		
+		local path = pz.planGraph.FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
 	
-		for(local walk = service.GetPath(); walk.GetParent() != null; walk = walk.GetParent()) {
+		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
 			local a = walk.GetVertex();
 			local b = walk.GetParent().GetVertex();
 			local edge = Edge(a, b);
@@ -209,8 +246,8 @@ function ServiceManager::ChooseService() {
 			this.townsUpdated.AddItem(service.GetToTown(), 0);
 		}
 
-		// Implement the service itself
-		this.CreateService(service);
+		// Create a fleet of vehicles to operate this service
+		this.CreateFleet(service);
 	}
 }
 
@@ -254,13 +291,13 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo) {
 }
 
 /*
- * Implement the specified service. This method assumes that the towns that the
- * service run between are already on the network and have stations built. The
- * function finds the nearest depot, then estimates a suitable fleet size, then
- * builds the vehicles with randomly distributed orders between the stations in
- * both towns.
+ * Create a fleet of vehicles for the specified service. This method assumes 
+ * that the towns that the service run between are already on the network and  
+ * have stations built. The function finds the nearest depot, then estimates a 
+ * suitable fleet size, then builds the vehicles with randomly distributed 
+ * orders between the stations in both towns.
  */
-function ServiceManager::CreateService(service) {
+function ServiceManager::CreateFleet(service) {
 	// Initialise
 	local fromTown = service.fromTown;
 	local toTown = service.toTown;

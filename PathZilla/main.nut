@@ -124,11 +124,14 @@ function PathZilla::Start() {
 		if(ticker % PathZilla.MAINTENANCE_INTERVAL) {
 			this.serviceManager.MaintainServices();
 		}
+		
+		// Look for some new services that we can implement
+		this.serviceManager.FindNewServices();
 
 		// Wait until we have a fair bit of cash before building a new line
 		if(noServices || (ticker % PathZilla.EXPANSION_INTERVAL
 			 && FinanceManager.GetAvailableFunds() >= (AICompany.GetMaxLoanAmount() / 2))) {
-			this.serviceManager.ChooseService();
+			this.serviceManager.ImplementService();
 			noServices = false;
 		}
 
