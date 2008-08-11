@@ -158,6 +158,10 @@ function ServiceManager::FindNewServices() {
 	}
 }
 
+/*
+ * Checks to see if the company provides a service from a to b for the
+ * specified cargo.
+ */
 function ServiceManager::ProvidesService(a, b, cargo) {
 	foreach(service in this.serviceList) {
 		if(service.GetCargo() == cargo && service.GoesTo(a) && service.GoesTo(b)) {
