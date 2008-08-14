@@ -200,69 +200,75 @@ function ServiceManager::ProvidesService(a, b, cargo) {
  * will operate the service.
  */
 function ServiceManager::ImplementService() {
-	// Implement the service at the top of the list
-	local bestService = this.potentialServices.Peek();
-
-	// Check that we don't already provide this service
-	while(bestService != null && this.ProvidesService(bestService.GetFromTown(), bestService.GetToTown(), bestService.GetCargo())) {
-		// If we already provide it then move on to the next one
-		this.potentialServices.Pop();
-		bestService = this.potentialServices.Peek();
-	}
+	// Check whether or not we can build any more vehicles
+	local proceed = (AIVehicleList().Count() < AIGameSettings.GetValue("vehicle.max_roadveh"));
 	
-	// Only proceed if there are any services left to implement
-	if(bestService != null) {
-		local service = bestService.Create();
+	// Only proceed if we are even able to implement any further services
+	if(proceed) {
+		// Implement the service at the top of the list
+		local bestService = this.potentialServices.Peek();
+	
+		// Check that we don't already provide this service
+		while(bestService != null && this.ProvidesService(bestService.GetFromTown(), bestService.GetToTown(), bestService.GetCargo())) {
+			// If we already provide it then move on to the next one
+			this.potentialServices.Pop();
+			bestService = this.potentialServices.Peek();
+		}
 		
-		AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
+		// Only proceed if there are any services left to implement
+		if(bestService != null) {
+			local service = bestService.Create();
+			
+			AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
+			
+			local path = pz.planGraph.FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
 		
-		local path = pz.planGraph.FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
-	
-		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
-			local a = walk.GetVertex();
-			local b = walk.GetParent().GetVertex();
-			local edge = Edge(a, b);
-	
-			if(!pz.actualGraph.GetEdges().Contains(edge)) {
-				// Get the towns on this edges
-				local townA = GetTown(a.ToTile());
-				local townB = GetTown(b.ToTile());
-	
-				// Ensure we can afford to do some construction				
-				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
-	
-				// Build a link between the towns
-				AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-				local success = PathFinder.FindPath(a.ToTile(), b.ToTile());
-				
-				// If we were able to build the link, add the edge to the actual graph
-				if(success > 0) {
-					pz.actualGraph.AddEdge(edge);
+			for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
+				local a = walk.GetVertex();
+				local b = walk.GetParent().GetVertex();
+				local edge = Edge(a, b);
+		
+				if(!pz.actualGraph.GetEdges().Contains(edge)) {
+					// Get the towns on this edges
+					local townA = GetTown(a.ToTile());
+					local townB = GetTown(b.ToTile());
+		
+					// Ensure we can afford to do some construction				
+					FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
+		
+					// Build a link between the towns
+					AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
+					local success = PathFinder.FindPath(a.ToTile(), b.ToTile());
+					
+					// If we were able to build the link, add the edge to the actual graph
+					if(success > 0) {
+						pz.actualGraph.AddEdge(edge);
+					}
 				}
 			}
+			
+			// Ensure that the source town has bus stops
+			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo());
+			if(added > 0) {
+				this.townsUpdated.AddItem(service.GetFromTown(), 0);
+			}
+			
+			// Ensure that the destination town has bus stops
+			added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo());
+			if(added > 0) {
+				this.townsUpdated.AddItem(service.GetToTown(), 0);
+			}
+	
+			// Create a fleet of vehicles to operate this service
+			this.CreateFleet(service);
+	
+			// Finally, add the service to the list	
+			this.serviceList.Insert(service);
 		}
-		
-		// Ensure that the source town has bus stops
-		local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo());
-		if(added > 0) {
-			this.townsUpdated.AddItem(service.GetFromTown(), 0);
-		}
-		
-		// Ensure that the destination town has bus stops
-		added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo());
-		if(added > 0) {
-			this.townsUpdated.AddItem(service.GetToTown(), 0);
-		}
-
-		// Create a fleet of vehicles to operate this service
-		this.CreateFleet(service);
-
-		// Finally, add the service to the list	
-		this.serviceList.Insert(service);
+	
+		// Don't remove it until we are finished
+		this.potentialServices.Pop();
 	}
-
-	// Don't remove it until we are finished
-	this.potentialServices.Pop();
 }
 
 /*

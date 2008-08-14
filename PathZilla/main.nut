@@ -122,6 +122,8 @@ function PathZilla::GetActualGraph() {
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
+	//local dtrsOnTownRoads = AIGameSettings.GetValue("construction.road_stop_on_town_road");
+	
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
 
