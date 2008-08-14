@@ -26,7 +26,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 29/05/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 /*

@@ -26,22 +26,16 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 15/06/2008
- * Version: 1.1
+ * Version: 1.2
  */
 
-class SortedSet {
-	data = null;
-	
+class SortedSet extends Collection {
+	// Serialization constants
+	CLASS_NAME = "SortedSet";
+
 	constructor() {
-		this.data = [];
+		::Collection.constructor();
 	}
-}
-
-/*
- * Get the number of items in the set.
- */
-function SortedSet::Len() {
-	return this.data.len();
 }
 
 /*

@@ -26,6 +26,14 @@
  */
 
 class Service {
+	// Serialization constants
+	CLASS_NAME = "Service";
+	SRLZ_FROM_TOWN = 0;
+	SRLZ_TO_TOWN = 1;
+	SRLZ_CARGO = 2;
+	SRLZ_ENGINE = 3;
+	SRLZ_GROUP = 4;
+	
 	fromTown = null;
 	toTown = null;
 	cargo = 0;
@@ -108,6 +116,30 @@ function Service::GetActualFleetSize() {
  */
 function Service::_tostring() {
 	return AICargo.GetCargoLabel(this.cargo) + " from " + AITown.GetName(this.fromTown) + " to " + AITown.GetName(this.toTown);
+}
+
+/*
+ * Saves data to a table.
+ */
+function Service::Serialize() {
+	local data = {};
+	data[SRLZ_FROM_TOWN] <- this.fromTown;
+	data[SRLZ_TO_TOWN] <- this.toTown;
+	data[SRLZ_CARGO] <- this.cargo;
+	data[SRLZ_ENGINE] <- this.engine;
+	data[SRLZ_GROUP] <- this.group;
+	return data;
+}
+
+/*
+ * Loads data from a table.
+ */
+function Service::Unserialize(data) {
+	this.fromTown = data[SRLZ_FROM_TOWN];
+	this.toTown = data[SRLZ_TO_TOWN];
+	this.cargo = data[SRLZ_CARGO];
+	this.engine = data[SRLZ_ENGINE];
+	this.group = data[SRLZ_GROUP];
 }
 
 /*

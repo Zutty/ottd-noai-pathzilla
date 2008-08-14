@@ -30,6 +30,16 @@
  */
 
 class ServiceDescriptor {
+	// Serialization constants
+	CLASS_NAME = "ServiceDescriptor";
+	SRLZ_FROM_TOWN = 0;
+	SRLZ_TO_TOWN = 1;
+	SRLZ_CARGO = 2;
+	SRLZ_ENGINE = 3;
+	SRLZ_DISTANCE = 4;
+	SRLZ_INCOME = 5;
+	
+	// Member variables
 	fromTown = null;
 	toTown = null;
 	cargo = 0;
@@ -94,6 +104,32 @@ function ServiceDescriptor::GetRawIncome() {
  */
 function ServiceDescriptor::Create() {
 	return Service(this.fromTown, this.toTown, this.cargo, this.engine);
+}
+
+/*
+ * Saves data to a table.
+ */
+function ServiceDescriptor::Serialize() {
+	local data = {};
+	data[SRLZ_FROM_TOWN] <- this.fromTown;
+	data[SRLZ_TO_TOWN] <- this.toTown;
+	data[SRLZ_CARGO] <- this.cargo;
+	data[SRLZ_ENGINE] <- this.engine;
+	data[SRLZ_DISTANCE] <- this.distance;
+	data[SRLZ_INCOME] <- this.rawIncome;
+	return data;
+}
+
+/*
+ * Loads data from a table.
+ */
+function ServiceDescriptor::Unserialize(data) {
+	this.fromTown = data[SRLZ_FROM_TOWN];
+	this.toTown = data[SRLZ_TO_TOWN];
+	this.cargo = data[SRLZ_CARGO];
+	this.engine = data[SRLZ_ENGINE];
+	this.distance = data[SRLZ_DISTANCE];
+	this.rawIncome = data[SRLZ_INCOME];
 }
 
 /*

@@ -32,7 +32,20 @@ class PathZilla extends AIController {
 	DIR_EAST = 3;
 	DIR_WEST = 4;
 	TILE_LENGTH_KM = 429;
+
+	// Info constants	
+	PZ_IDENT = "PATHZILLA!"
+	PZ_VERSION = 2;
 	
+	// Serialisation constants
+	SRLZ_IDENT = 0;
+	SRLZ_VERSION = 1;
+	SRLZ_COMPANY_NAME = 6;
+	SRLZ_HOME_TOWN = 2;
+	SRLZ_PLAN_GRAPH = 3;
+	SRLZ_ACTUAL_GRAPH = 4;
+	SRLZ_SRVC_MANAGER = 5;
+			
 	// Configurable constants
 	WORK_INTERVAL = 500;           // Interval between any actions
 	MAINTENANCE_INTERVAL = 2000;   // Interval between updating existing services
@@ -47,6 +60,8 @@ class PathZilla extends AIController {
 	
 	// Member variables
 	stop = false;
+	loaded = false;
+	companyName = null;
 	homeTown = null;
 	planGraph = null;
 	actualGraph = null;
@@ -69,6 +84,7 @@ class PathZilla extends AIController {
 		require("service/Service.nut");
 		require("service/ServiceDescriptor.nut");
 		require("service/ServiceManager.nut");
+		require("struct/Collection.nut");
 		require("struct/BinaryHeap.nut");
 		require("struct/SortedSet.nut");
 		require("common.nut");
@@ -76,7 +92,9 @@ class PathZilla extends AIController {
 		require("LandManager.nut");
 		require("RoadManager.nut");
 
-		this.serviceManager = null;		
+		this.loaded = false;
+		this.companyName = null;
+		this.serviceManager = ServiceManager(this);
 	}
 }
 
@@ -91,27 +109,36 @@ function PathZilla::GetActualGraph() {
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
-	// Pick a company name
-    local i = 1;
-    while(!AICompany.SetCompanyName(this.ChooseName(i++)));
-
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
 
+	// Choose a company name if we have not loaded one
+	if(!this.loaded) {
+		this.companyName = this.ChooseName();
+	}
+	
+	// Set the name
+	AICompany.SetCompanyName(this.companyName);
+
 	// Select a home town from which all construction will be based
-	this.homeTown = this.SelectLargeTown();
+	if(!this.loaded) {
+		this.homeTown = this.SelectLargeTown();
+	}
 	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
-	
-	// Build the graphs we need to plan routes
-	this.InitialiseGraphs();
-	
-	// Create the service manager
-	this.serviceManager = ServiceManager(this);
+
+	// Initialse other data, based on load status
+	if(!this.loaded) {
+		// Build the graphs we need to plan routes
+		this.InitialiseGraphs();
+	} else {
+		// Load the vehicles into their groups
+		this.serviceManager.PostLoad();
+	}
 	
 	// Initialise
 	local ticker = 0;
 	local noServices = true;
-
+	
 	// Start the main loop
 	while(!this.stop) {
 		// Try to keep the amount of funds available around FLOAT, by borrowing
@@ -142,8 +169,91 @@ function PathZilla::Start() {
 	}
 }
 
-function PathZilla::ChooseName(idx) {
-	return "PathZilla #" + idx;
+/*
+ * Load state and data structures from a table. This method checks a signature
+ * and version number before loading, to ensure that the data being loaded is
+ * compatible with this AI. The method also relies on the classes that are used
+ * as data structures implementing the Unserialize method.
+ */
+function PathZilla::Load(data) {
+	local dataValid = false;
+	
+	// First check that the data is for this AI, and this verion
+	if(data.rawin(PathZilla.SRLZ_IDENT)) {
+		if(typeof data[PathZilla.SRLZ_IDENT] == typeof PathZilla.PZ_IDENT) {
+			dataValid = (data[PathZilla.SRLZ_IDENT] == PathZilla.PZ_IDENT)
+					     && (data[PathZilla.SRLZ_VERSION] == PathZilla.PZ_VERSION);
+		}
+	}
+	
+	// If we have found the right data, start loading it
+	if(dataValid) { 
+		this.companyName = data[PathZilla.SRLZ_COMPANY_NAME];
+		this.homeTown = data[PathZilla.SRLZ_HOME_TOWN];
+		
+		if(data[PathZilla.SRLZ_PLAN_GRAPH] != null) {
+			this.planGraph = Graph();
+			this.planGraph.Unserialize(data[PathZilla.SRLZ_PLAN_GRAPH]);
+		} 
+		
+		if(data[PathZilla.SRLZ_ACTUAL_GRAPH] != null) {
+			this.actualGraph = Graph();
+			this.actualGraph.Unserialize(data[PathZilla.SRLZ_ACTUAL_GRAPH]);
+		}
+		
+		if(data.rawin(PathZilla.SRLZ_SRVC_MANAGER)) {
+			this.serviceManager.Unserialize(data[PathZilla.SRLZ_SRVC_MANAGER]);
+		}
+		
+		this.loaded = true;
+	} else {
+		AILog.Error("Got invalid save data");
+	}
+}
+
+/*
+ * Save state and data structures to a table for the game to persist. This 
+ * method relies on the classes that are used as data structures implementing
+ * the Serialize method.
+ */
+function PathZilla::Save() {
+	local data = {};
+	
+	// Store the ident and version number
+	data[PathZilla.SRLZ_IDENT] <- PathZilla.PZ_IDENT;
+	data[PathZilla.SRLZ_VERSION] <- PathZilla.PZ_VERSION
+
+	// Store the actual data
+	data[PathZilla.SRLZ_COMPANY_NAME] <- this.companyName;
+	data[PathZilla.SRLZ_HOME_TOWN] <- this.homeTown;
+	
+	if(this.planGraph != null) {
+		data[PathZilla.SRLZ_PLAN_GRAPH] <- this.planGraph.Serialize();
+	} 
+	
+	if(this.actualGraph != null) {
+		data[PathZilla.SRLZ_ACTUAL_GRAPH] <- this.actualGraph.Serialize();
+	} 
+
+	if(this.serviceManager != null) {
+		data[PathZilla.SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
+	}
+
+	return data;
+}
+
+function PathZilla::ChooseName() {
+	{
+		local _ = AITestMode();
+		local i = 1;
+		local name = "";
+		
+		do {
+			name = "PathZilla #" + i;
+		} while(!AICompany.SetCompanyName(name));
+		
+		return name;
+	}
 }
 
 function PathZilla::SelectLargeTown() {

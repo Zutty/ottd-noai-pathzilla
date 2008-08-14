@@ -26,6 +26,14 @@
  */
 
 class ServiceManager {
+	// Serialization constants
+	CLASS_NAME = "ServiceManager";
+	SRLZ_SERVICE_LIST = 0;
+	SRLZ_TOWNS_UPDATED = 1;
+	SRLZ_POTENTIAL_SERVICES = 2;
+	SRLZ_TOWNS_CONSIDERED = 3;
+	
+	// Member variables
 	pz = null;
 	potentialServices = null;
 	townsConsidered = null;
@@ -34,11 +42,12 @@ class ServiceManager {
 	
 	constructor(pathzilla) {
 		this.pz = pathzilla;
-		this.serviceList = SortedSet();
-		this.townsUpdated = AIList();
 		
-		this.potentialServices = BinaryHeap();
+		this.townsUpdated = AIList();
 		this.townsConsidered = AIList();
+		
+		this.serviceList = SortedSet();		
+		this.potentialServices = BinaryHeap();
 	}
 }
 
@@ -114,6 +123,8 @@ function ServiceManager::FindNewServices() {
 		local aTown = towns.Begin();
 		this.townsConsidered.AddItem(aTown, 0);
 		
+		AILog.Info("  Starting from "+AITown.GetName(aTown)+"...");
+
 		local netDist = pz.planGraph.GetShortestDistances(Vertex.FromTown(aTown));
 
 		local steps = 0;
@@ -180,12 +191,19 @@ function ServiceManager::ProvidesService(a, b, cargo) {
  * will operate the service.
  */
 function ServiceManager::ImplementService() {
-	local bestService = this.potentialServices.Pop();
+	// Implement the service at the top of the list
+	local bestService = this.potentialServices.Peek();
+
+	// Check that we don't already provide this service
+	while(bestService != null && this.ProvidesService(bestService.GetFromTown(), bestService.GetToTown(), bestService.GetCargo())) {
+		// If we already provide it then move on to the next one
+		this.potentialServices.Pop();
+		bestService = this.potentialServices.Peek();
+	}
 	
+	// Only proceed if there are any services left to implement
 	if(bestService != null) {
 		local service = bestService.Create();
-		
-		this.serviceList.Insert(service);
 		
 		local distTerm = AITown.GetDistanceManhattanToTile(service.GetFromTown(), AITown.GetLocation(service.GetToTown()));
 		local fromTotal = 0;
@@ -246,7 +264,13 @@ function ServiceManager::ImplementService() {
 
 		// Create a fleet of vehicles to operate this service
 		this.CreateFleet(service);
+
+		// Finally, add the service to the list	
+		this.serviceList.Insert(service);
 	}
+
+	// Don't remove it until we are finished
+	this.potentialServices.Pop();
 }
 
 /*
@@ -454,5 +478,46 @@ function ServiceManager::UpdateOrders(service) {
 		
 		// Ensure the vehicle is still heading to the same town it was before
 		AIVehicle.SkipToVehicleOrder(v, currentOrder);
+	}
+}
+
+/*
+ * Saves data to a table.
+ */
+function ServiceManager::Serialize() {
+	local data = {};
+	
+	data[SRLZ_TOWNS_UPDATED] <- ListToArray(this.townsUpdated); 
+	data[SRLZ_POTENTIAL_SERVICES] <- this.potentialServices.Serialize();
+	data[SRLZ_TOWNS_CONSIDERED] <- ListToArray(this.townsConsidered); 
+	data[SRLZ_SERVICE_LIST] <- this.serviceList.Serialize();
+	
+	return data;
+}
+
+/*
+ * Loads data from a table.
+ */
+function ServiceManager::Unserialize(data) {
+	this.townsUpdated = ArrayToList(data[SRLZ_TOWNS_UPDATED]); 
+	this.townsConsidered = ArrayToList(data[SRLZ_TOWNS_CONSIDERED]); 
+	
+	this.potentialServices = BinaryHeap();
+	this.potentialServices.Unserialize(data[SRLZ_POTENTIAL_SERVICES]);
+
+	this.serviceList = SortedSet();
+	this.serviceList.Unserialize(data[SRLZ_SERVICE_LIST]);
+}
+
+/*
+ * This call should be made after data has been loaded and the game has 
+ * started, to load vehicles into the service list.
+ */
+function ServiceManager::PostLoad() {
+	foreach(service in this.serviceList) {
+		local allVehicles = AIVehicleList();
+		allVehicles.Valuate(AIVehicle.GetGroupID);
+		allVehicles.KeepValue(service.group);
+		service.vehicles = allVehicles;
 	}
 }

@@ -26,6 +26,10 @@
  */
 
 class Graph {
+	// Serialization constants
+	CLASS_NAME = "Graph";
+	
+	// Member variables
 	data = null;
 	vertices = null;
 	edges = null;
@@ -265,6 +269,57 @@ function Graph::FindPath(aVertex, bVertex) {
 	this.bestPaths[aTile][bTile] <- finalPath;
 	
 	return finalPath; 
+}
+
+/*
+ * Saves data to a table.
+ */
+function Graph::Serialize() {
+	local saveData = [];
+	
+	// Serialise a list of edges from the graph
+	foreach(e in this.edges) {
+		saveData.append(e.a.ToTile());
+		saveData.append(e.b.ToTile());
+	}
+	
+	return saveData;
+}
+
+/*
+ * Loads data from a table.
+ */
+function Graph::Unserialize(saveData) {
+	// Build a graph from a serialised list of edges		
+	for(local i = 0; i < saveData.len(); i += 2) {
+		// Get the raw data
+		local aTile = saveData[i];
+		local bTile = saveData[i + 1];
+
+		// Build vertices and an edge
+		local a = Vertex.FromTile(aTile);
+		local b = Vertex.FromTile(bTile);
+		local e = Edge(a, b);
+		
+		// Store them
+		this.vertices.RawInsert(a);
+		this.vertices.RawInsert(b);
+		this.edges.RawInsert(e);
+
+		// Build neightbour lists
+		if(!this.data.rawin(aTile)) {
+			this.data[aTile] <- SortedSet(); 
+		}
+		this.data[aTile].RawInsert(b);
+
+		if(!this.data.rawin(bTile)) {
+			this.data[bTile] <- SortedSet(); 
+		}
+		this.data[bTile].RawInsert(a);
+	}
+	
+	// Remove duplicate vertices
+	this.vertices.RemoveDuplicates();
 }
 
 /*
