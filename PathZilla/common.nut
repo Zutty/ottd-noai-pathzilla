@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 24/05/2008
- * Version: 1.1
+ * Version: 1.2
  */
  
 /*
@@ -78,8 +78,6 @@ function arrayfind(arr, item) {
 function ends_with(string, pattern) {
 	return (string.slice(string.len() - pattern.len()) == pattern);
 }
-
-// ---- Less Generic Functions -----
 
 /*
  * Get the town at the specified tile, or null if there isn't one.
@@ -178,4 +176,30 @@ function RandomItemByWeight(list, sum) {
 	}
 
 	return item;
+}
+
+/*
+ * Convert an AIList to an array of integers. Values will be lost.
+ */
+function ListToArray(list) {
+	local array = [];
+	
+	foreach(item, _ in list) {
+		array.append(item);
+	}
+	
+	return array;
+}
+
+/*
+ * Convert an array of integers to an AIList with no values.
+ */
+function ArrayToList(array) {
+	local list = AIList();
+	
+	foreach(item in array) {
+		list.AddItem(item, 0);
+	}
+	
+	return list;
 }
