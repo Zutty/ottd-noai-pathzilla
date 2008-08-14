@@ -98,14 +98,26 @@ class PathZilla extends AIController {
 	}
 }
 
+/*
+ * Get a graph showing which roads we plan to build.
+ */
 function PathZilla::GetPlanGraph() {
 	return this.planGraph;
 }
 
+/*
+ * Get a graph showing which roads we have already built.
+ */
 function PathZilla::GetActualGraph() {
 	return this.actualGraph;
 }
 
+/*
+ * Start running. Most of the planning, including calculating the plan graph is
+ * done before we start looping, though services are selected on the fly. The 
+ * main loop manages the loan and events, maintains existing services, attempts
+ * to find new services, and then finally builds one.   
+ */
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
@@ -242,6 +254,10 @@ function PathZilla::Save() {
 	return data;
 }
 
+/*
+ * Chooses a company name that does not already exist and returns it. The name
+ * must be applied in exec mode separately.
+ */
 function PathZilla::ChooseName() {
 	{
 		local _ = AITestMode();
@@ -249,13 +265,16 @@ function PathZilla::ChooseName() {
 		local name = "";
 		
 		do {
-			name = "PathZilla #" + i;
+			name = "PathZilla #" + i++;
 		} while(!AICompany.SetCompanyName(name));
 		
 		return name;
 	}
 }
 
+/*
+ * Randomly choose a large town from the top 10 percentile by popuation.
+ */
 function PathZilla::SelectLargeTown() {
 	// Get a list of towns by population
 	local towns = AITownList();
@@ -271,6 +290,10 @@ function PathZilla::SelectLargeTown() {
 	return towns.Begin();
 }
 
+/*
+ * Create the plan and actual graphs based on a triangulation of all targets 
+ * (up to a maximum of MAX_TARGETS) on the map.
+ */
 function PathZilla::InitialiseGraphs() {
 	// Prime a list of the closest MAX_TARGETS targets to the home town
 	local allTowns = AITownList();
@@ -290,6 +313,9 @@ function PathZilla::InitialiseGraphs() {
 	this.actualGraph = Graph();
 }
 
+/*
+ * Handle any waiting events. This is a place-holder implementation for now!
+ */
 function PathZilla::HandleEvents() {
 	while(AIEventController.IsEventWaiting()) {
 		local event = AIEventController.GetNextEvent();
