@@ -57,6 +57,7 @@ class PathZilla extends AIController {
 	TARGET_TOWN_COVERAGE = 80;     // Percentage of town houses to fall within combined station coverage area
 	NEW_VEHICLE_SPREAD_DELAY = 20; // The delay in ms between launching new vehicles in a fleet.
 	MAX_BRIDGE_LENGTH = 64;        // The maximum allowable bridge length - to prevent ridiculous bridges
+	MAX_POTENTIAL_SERVICES = 200;  // The maximum allowable number of potential service descriptors  
 	
 	// Member variables
 	stop = false;

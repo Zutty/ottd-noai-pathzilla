@@ -137,6 +137,12 @@ function BinaryHeap::Swap(p, q) {
 	data[q] = buffer;
 }
 
+function BinaryHeap::Prune(n) {
+	if(this.data.len() > n) {
+		this.data = this.data.slice(0, n);
+	}
+}
+
 /*
  * Used to enable to use of foreach on a binary heap.
  */

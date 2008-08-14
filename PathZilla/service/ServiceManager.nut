@@ -170,6 +170,10 @@ function ServiceManager::FindNewServices() {
 			}
 		}
 
+		// To prevent an exponential buildup of descriptors, keep only the top 
+		// MAX_POTENTIAL_SERVICES most profitable ones
+		this.potentialServices.Prune(PathZilla.MAX_POTENTIAL_SERVICES);
+
 		AILog.Info("    Done.");
 	}
 }
