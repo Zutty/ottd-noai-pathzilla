@@ -114,25 +114,29 @@ function ServiceManager::FindNewServices() {
 	
 	// Check that there are any towns left that we haven't considered
 	if(towns.Count() > 0) {
-		AILog.Info("  Looking for potential services...");
-
 		// Order the remaining towns by populations, placing the home town first
 		towns.Valuate(function (town, homeTown) {
 			return (town == homeTown) ? 1000000 : AITown.GetPopulation(town);
 		}, pz.homeTown);
+		
+		// Choose the first town and save it 
 		local aTown = towns.Begin();
 		this.townsConsidered.AddItem(aTown, 0);
 		
-		AILog.Info("  Starting from "+AITown.GetName(aTown)+"...");
+		AILog.Info("  Looking for potential services from "+AITown.GetName(aTown)+"...");
 
+		// Get the shortest distances accross the network
 		local netDist = pz.planGraph.GetShortestDistances(Vertex.FromTown(aTown));
 
+		// Iterate over each town to test each possible connection
 		local steps = 0;
 		foreach(bTown, _ in AITownList()) {
 			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
 				PathZilla.Sleep(1);
 			}
 
+			// Ensure that its possible to connect to the town, and that we 
+			// don't already provide this service
 			if(bTown != aTown && pz.planGraph.ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo)) {
 				local bTile = AITown.GetLocation(bTown);
 				local engine = this.SelectEngine(aTown, bTown, cargo);
@@ -159,6 +163,7 @@ function ServiceManager::FindNewServices() {
 				local annualCost = AIEngine.GetRunningCost(engine) * factor;
 				local annualProfit = (annualRevenue - annualCost) / factor;
 				
+				// Only consider the service if it is more profitable than it is costly
 				if(annualProfit > (annualCost/factor)) {
 					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, engine, netDist[bTile], annualProfit));
 				}
@@ -205,20 +210,6 @@ function ServiceManager::ImplementService() {
 	if(bestService != null) {
 		local service = bestService.Create();
 		
-		local distTerm = AITown.GetDistanceManhattanToTile(service.GetFromTown(), AITown.GetLocation(service.GetToTown()));
-		local fromTotal = 0;
-		local toTotal = 0;
-		foreach(svc in this.serviceList) {
-			if(svc.GoesTo(service.GetFromTown())) {
-				fromTotal += (svc.GetActualFleetSize() * 1000 ) / distTerm;
-			}
-			if(svc.GoesTo(service.GetToTown())) {
-				toTotal += (svc.GetActualFleetSize() * 1000 ) / distTerm;
-			}
-		}
-		//AISign.BuildSign(AITown.GetLocation(service.GetFromTown()) + AIMap.GetTileIndex(1, 1), "SF "+fromTotal);
-		//AISign.BuildSign(AITown.GetLocation(service.GetToTown()) + AIMap.GetTileIndex(1, 1), "ST "+toTotal);
-		
 		AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
 		
 		local path = pz.planGraph.FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
@@ -238,10 +229,7 @@ function ServiceManager::ImplementService() {
 	
 				// Build a link between the towns
 				AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-				AILog.Info("================================================");
 				local success = PathFinder.FindPath(a.ToTile(), b.ToTile());
-				AILog.Info("================================================");
-				AILog.Info("");
 				
 				// If we were able to build the link, add the edge to the actual graph
 				if(success > 0) {
