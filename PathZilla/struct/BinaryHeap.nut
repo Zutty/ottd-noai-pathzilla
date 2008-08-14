@@ -32,19 +32,13 @@
 /*
  * Constructs a new empty heap.
  */
-class BinaryHeap {
-	data = null;
+class BinaryHeap extends Collection {
+	// Serialization constants
+	CLASS_NAME = "BinaryHeap";
 	
 	constructor() {
-		data = [];
+		::Collection.constructor();
 	}
-}
-
-/*
- * Get the number of items in the heap.
- */
-function BinaryHeap::Len() {
-	return this.data.len();
 }
 
 /*
@@ -79,6 +73,18 @@ function BinaryHeap::Pop() {
 	this.BubbleDown(0);
 	
 	return topItem;
+}
+
+/*
+ * Return the item at the root of the heap without removing it.
+ */
+function BinaryHeap::Peek() {
+	if(this.data.len() == 0) {
+		return null;
+	}
+	
+	// Return the top item
+	return this.data[0];
 }
 
 /*
