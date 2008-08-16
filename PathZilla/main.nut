@@ -47,9 +47,6 @@ class PathZilla extends AIController {
 	SRLZ_SRVC_MANAGER = 5;
 			
 	// Configurable constants
-	WORK_INTERVAL = 500;           // Interval between any actions
-	MAINTENANCE_INTERVAL = 2000;   // Interval between updating existing services
-	EXPANSION_INTERVAL = 3000;     // Interval between creating new services
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
 	PATHFINDER_MAX_STEPS = 25000;  // Maximum time the pathfinder can take to find a path
 	MAX_TARGETS = 750;             // Maximum number of targets that can be in a single graph 
@@ -154,6 +151,12 @@ function PathZilla::Start() {
 	local ticker = 0;
 	local noServices = true;
 	
+	// Load settings for loop latency
+	local latency = this.GetSetting("latency");
+	local workInterval = max(100, latency * 200);
+	local maintenanceInterval = max(100, workInterval * latency * 2);
+	local expansionInterval = max(100, workInterval * latency * 3);
+	
 	// Start the main loop
 	while(!this.stop) {
 		// Try to keep the amount of funds available around FLOAT, by borrowing
@@ -164,23 +167,23 @@ function PathZilla::Start() {
 		this.HandleEvents();
 		
 		// Maintain existing services
-		if(ticker % PathZilla.MAINTENANCE_INTERVAL) {
+		if(ticker % maintenanceInterval == 0) {
 			this.serviceManager.MaintainServices();
 		}
 		
 		// Look for some new services that we can implement
 		this.serviceManager.FindNewServices();
-
+		
 		// Wait until we have a fair bit of cash before building a new line
-		if(noServices || (ticker % PathZilla.EXPANSION_INTERVAL
+		if(noServices || (ticker % expansionInterval == 0
 			 && FinanceManager.GetAvailableFunds() >= (AICompany.GetMaxLoanAmount() / 2))) {
 			this.serviceManager.ImplementService();
 			noServices = false;
 		}
 
 		// Advance the ticker
-		ticker += this.WORK_INTERVAL;
-		this.Sleep(this.WORK_INTERVAL);
+		ticker += workInterval;
+		this.Sleep(workInterval);
 	}
 }
 

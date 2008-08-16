@@ -32,6 +32,9 @@ class PathZilla extends AIInfo {
 	function GetVersion()     { return 2; }
 	function GetDate()        { return "2008-08-11"; }
 	function CreateInstance() { return "PathZilla"; }
+	function GetSettings() {
+		SetSetting({name = "latency", description = "Latency", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});
+	}
 }
 
 RegisterAI(PathZilla());
