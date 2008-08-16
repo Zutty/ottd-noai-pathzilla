@@ -140,15 +140,6 @@ function RoadManager::BuildStations(town, cargo) {
 		}
 	}
 	
-	local radius = AIStation.GetCoverageRadius(AIStation.STATION_BUS_STOP);
-	local acceptance = 0;
-
-	foreach(station in stationList) {
-		local tile = AIStation.GetLocation(station);
-		acceptance += AITile.GetCargoAcceptance(tile, PathZilla.GetCargo(), 1, 1, radius);
-	}
-	//AISign.BuildSign(AITown.GetLocation(town), "T "+acceptance);
-	
 	return numStationsBuilt;
 }
 
