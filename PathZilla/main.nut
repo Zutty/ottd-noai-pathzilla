@@ -342,3 +342,10 @@ function PathZilla::GetCargo() {
 	cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
 	return cargoList.Begin();
 }
+
+/*
+ * Get whether or not the AI should play aggressively.
+ */
+function PathZilla::IsAggressive() {
+	return (PathZilla.GetSetting("aggressive") == 1);
+}
