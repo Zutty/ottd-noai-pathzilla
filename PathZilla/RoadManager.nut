@@ -280,7 +280,7 @@ function RoadManager::BuildStation(town, cargo) {
 	AILog.Info("  Building a " + ((useDtrs)? "drive through " : "") + "station...");
 
 	// Build the station
-	local success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, useDtrs, true);
+	local success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, useDtrs, false);
 	
 	if(!success) {
 		AILog.Error("BUS STOP WAS NOT BUILT - " + AIError.GetLastErrorString());
