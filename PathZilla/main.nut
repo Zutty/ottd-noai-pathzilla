@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 16/05/2008
- * Version: 1.2
+ * Version: 1.3
  */
 
 class PathZilla extends AIController {
@@ -35,7 +35,7 @@ class PathZilla extends AIController {
 
 	// Info constants	
 	PZ_IDENT = "PATHZILLA!"
-	PZ_VERSION = 2;
+	PZ_VERSION = 3;
 	
 	// Serialisation constants
 	SRLZ_IDENT = 0;
@@ -119,10 +119,15 @@ function PathZilla::GetActualGraph() {
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
-	//local dtrsOnTownRoads = AIGameSettings.GetValue("construction.road_stop_on_town_road");
-	
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
+
+	// Select a home town from which all construction will be based
+	if(!this.loaded) {
+		this.homeTown = this.SelectLargeTown();
+	}
+	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
+
 
 	// Choose a company name if we have not loaded one
 	if(!this.loaded) {
@@ -131,12 +136,6 @@ function PathZilla::Start() {
 	
 	// Set the name
 	AICompany.SetCompanyName(this.companyName);
-
-	// Select a home town from which all construction will be based
-	if(!this.loaded) {
-		this.homeTown = this.SelectLargeTown();
-	}
-	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
 
 	// Initialse other data, based on load status
 	if(!this.loaded) {
@@ -200,7 +199,7 @@ function PathZilla::Load(data) {
 	if(data.rawin(PathZilla.SRLZ_IDENT)) {
 		if(typeof data[PathZilla.SRLZ_IDENT] == typeof PathZilla.PZ_IDENT) {
 			dataValid = (data[PathZilla.SRLZ_IDENT] == PathZilla.PZ_IDENT)
-					     && (data[PathZilla.SRLZ_VERSION] == PathZilla.PZ_VERSION);
+					     && (data[PathZilla.SRLZ_VERSION] <= PathZilla.PZ_VERSION);
 		}
 	}
 	
