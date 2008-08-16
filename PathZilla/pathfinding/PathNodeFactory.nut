@@ -288,10 +288,14 @@ function PathNodeFactory::IsTileTraversable(tile) {
  * Estimates the cost (money) of any proposed construction.
  */
 function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
-	// Switch to test mode and reset costs
+	// Borrow some money so that we can see how much expensive bridges and tunnels will cost
 	FinanceManager.EnsureFundsAvailable(100000);
+
+	// Reset costs
 	local costs = 0;
 	
+	// If the area is not clear then the best we can do is get the cost of demolition
+	// TODO - MOve this further down
 	if(!AITile.IsBuildable(aTile)) {
 		{
 			local testMode = AITestMode();
