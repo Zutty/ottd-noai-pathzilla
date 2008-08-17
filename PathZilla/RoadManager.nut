@@ -123,9 +123,13 @@ function RoadManager::GetTownCoverage(town, cargo) {
  */
 function RoadManager::BuildStations(town, cargo) {
 	local numStationsBuilt = 0;
-	
+
+	// Get the type of station that is needed	
+	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
+	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
+
 	// Get the stations already built in the town
-	local stationList = AIStationList(AIStation.STATION_BUS_STOP);
+	local stationList = AIStationList(stationType);
 	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
 	stationList.RemoveValue(0);
 		
@@ -154,13 +158,17 @@ function RoadManager::BuildStations(town, cargo) {
 function RoadManager::BuildStation(town, cargo) {
 	local townTile = AITown.GetLocation(town);
 	
-	// Get a list of existing stations	
-	local stationList = AIStationList(AIStation.STATION_BUS_STOP);
+	// Get the type of station we should build	
+	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
+	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
+	
+	// Get a list of existing stations
+	local stationList = AIStationList(stationType);
 	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
 	stationList.RemoveValue(0);
 	
 	// Initialise some presets
-	local radius = AIStation.GetCoverageRadius(AIStation.STATION_BUS_STOP);
+	local radius = AIStation.GetCoverageRadius(stationType);
 	local stationSpacing = (radius * 3) / 2;
 	local comptSpacing = (PathZilla.IsAggressive() || stationList.Count() == 0) ? 1 : stationSpacing;
 
@@ -259,7 +267,6 @@ function RoadManager::BuildStation(town, cargo) {
 	// Check if the tile on the OTHER side is also road
 	local otherSide = LandManager.GetApproachTile(stationTile, roadTile);
 	local useDtrs = (AIRoad.IsRoadTile(otherSide) && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
-	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	
 	// Ensure we have a bit of cash available
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
