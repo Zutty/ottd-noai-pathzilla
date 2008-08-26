@@ -35,9 +35,9 @@ class PathFinder {
  * a road will be built to connect them. Finally, a depot will be added if 
  * there are none nearby. 
  */ 
-function PathFinder::FindPath(fromTile, toTile) {
+function PathFinder::FindPath(fromTile, toTile, ...) {
 	AILog.Info("  Searching for a path between [" + fromTile + "] and [" + toTile + "]...");
-
+	
 	// Initialise	
 	local factory = PathNodeFactory(fromTile, toTile);
 	local open = BinaryHeap();
@@ -47,8 +47,23 @@ function PathFinder::FindPath(fromTile, toTile) {
 	local tile = null;
 	local steps = 0;
 	local goalTile = toTile;
+	local buildDepot = true;
+
+	// Get a list of forbidden tiles, if suppiled
+	if(vargc > 0 && typeof vargv[0] == "array") {
+		foreach(forbiddenTile in vargv[0]) {
+			closed.AddItem(forbiddenTile, 0);
+		} 
+	}
 	
+	// Check if we should build a depot or not
+	if(vargc > 1 && typeof vargv[1] == "bool") {
+		buildDepot = vargv[1];
+	}
+	
+	// Checn that the specified goal tile is reachable
 	if(!(AITile.IsBuildable(goalTile) || AIRoad.IsRoadTile(goalTile))) {
+		// If not, look for a new one.
 		local offset = AIMap.GetTileIndex(10, 10);
 		local tileList = AITileList();
 		tileList.AddRectangle(goalTile - offset, goalTile + offset);
@@ -65,6 +80,9 @@ function PathFinder::FindPath(fromTile, toTile) {
 			return -1;
 		}
 	}
+	
+	// Ensure that the goal tile is not already closed
+	closed.RemoveItem(goalTile);
 
 	// Add the root node
 	open.Insert(factory.GetStartNode());
@@ -127,7 +145,7 @@ function PathFinder::FindPath(fromTile, toTile) {
 
 	// We want a depot near the half way point
 	local halfWayPoint = finalPath.GetCost().GetStepsTaken() / 2;
-	local builtDepot = false;
+	local builtDepot = !buildDepot;
 
 	// Walk the final path to build the road
 	local counter = 0;
@@ -247,6 +265,7 @@ function PathFinder::FindPath(fromTile, toTile) {
 					AILog.Info("  Building depot...");
 					local depotTile = candidates.Begin();
 					RoadManager.SafelyBuildRoad(tileA, depotTile);
+					AITile.DemolishTile(depotTile);
 					AIRoad.BuildRoadDepot(depotTile, tileA);
 					builtDepot = true;
 				}
