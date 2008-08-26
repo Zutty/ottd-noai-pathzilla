@@ -95,9 +95,18 @@ function PathNodeFactory::ComputeCost(tile, parentNode, type) {
 
 	// The cost of climbing or descending a hill	
 	local hillCost = (LandManager.IsLevel(tile) && type == PathNode.TYPE_ROAD) ? 0 : 1;
+	
+	// The cost of running parallel to existing roads
+	local nRoads = LandManager.GetAdjacentTileList(tile);
+	nRoads.Valuate(function (_tile) {
+		return AIRoad.IsRoadTile(_tile) || AIRoad.IsDriveThroughRoadStationTile(_tile);
+	});
+	nRoads.KeepValue(1);
+	local parllCost = (normConstCost > 0) ? (max(0, nRoads.Count() - 1) * 8) : 0;
+	if(parllCost > 0 && this.startTile == 13445) AISign.BuildSign(tile, "_"+parllCost+"_");
 
 	// j term is sum of all the non-distance based metrics - more to come here!!
-	local j = cornerCost + normConstCost + hillCost;
+	local j = cornerCost + normConstCost + hillCost + parllCost;
 	
 	// Return a cost object
 	return PathCost((parentNode != null) ? parentNode.GetCost() : null, h, len, constructionCost, j);
@@ -107,7 +116,7 @@ function PathNodeFactory::ComputeCost(tile, parentNode, type) {
  * Get the neighbouring nodes for the specified node. This function has one 
  * pass for each node type. The first checks existing roads and only allows
  * construction for adjacent road tiles that are not connected. The second 
- * pass checks for roads that CAN be built. The thrid and fourth passes check
+ * pass checks for roads that CAN be built. The third and fourth passes check
  * for tunnels and bridges.
  *
  * At present bridges will only be built across water.
@@ -171,7 +180,7 @@ function PathNodeFactory::GetNeighbours(node) {
 	// Check all the adjacent tiles
 	foreach(i, bTile in LandManager.GetAdjacentTiles(aTile)) {
 		local dir = i + 1;
-	
+		
 		// Ensure the tile is traversable
 		if(this.IsTileTraversable(bTile) && (bTile != zTile) && !AITile.IsSteepSlope(AITile.GetSlope(bTile))) {
 			local addNeighbour = RoadManager.CanRoadTilesBeConnected(zTile, aTile, bTile, dir);
