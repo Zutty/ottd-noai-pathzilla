@@ -394,10 +394,7 @@ function RoadManager::SafelyBuildRoad(tileA, tileB) {
 function RoadManager::CanRoadTilesBeConnected(zTile, aTile, bTile, ...) {
 	local origTile = zTile;
 	if(origTile == null) {
-		local tiles = AITileList();
-		local offset = AIMap.GetTileIndex(1, 1);
-		tiles.AddRectangle(aTile - offset, aTile + offset);
-		tiles.RemoveTile(aTile);
+		local tiles = LandManager.GetAdjacentTileList(aTile);
 		tiles.RemoveTile(bTile);
 		tiles.Valuate(AIRoad.IsRoadTile);
 		tiles.KeepValue(1);
