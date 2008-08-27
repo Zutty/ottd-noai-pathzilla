@@ -63,7 +63,7 @@ function RoadManager::GetTownCoverage(town, cargo) {
 	
 	// Get a list of tiles that fall within the coverage area of those stations
 	local coveredTiles = AITileList();
-	foreach(station in stationList) {
+	foreach(station, _ in stationList) {
 		local tile = AIStation.GetLocation(station);
 		coveredTiles.AddRectangle(tile - offset, tile + offset);
 	}
