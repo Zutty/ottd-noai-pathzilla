@@ -119,6 +119,9 @@ function PathZilla::GetActualGraph() {
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
+	// Set the correct road type	
+	AIRoad.SetCurrentRoadType(this.GetRoadType());
+	
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
 
@@ -304,6 +307,12 @@ function PathZilla::InitialiseGraphs() {
 	local allTowns = AITownList();
 	allTowns.Valuate(AITown.GetDistanceManhattanToTile, AITown.GetLocation(this.homeTown));
 	allTowns.KeepTop(PathZilla.MAX_TARGETS);
+	
+	if(this.GetRoadType() == AIRoad.ROADTYPE_TRAM) {
+		allTowns.Valuate(AITown.GetPopulation);
+		allTowns.RemoveBelowValue(1000);
+	}
+	
 	allTowns.Valuate(AITown.GetLocation);
 
 	// Get the master graph for the whole map
@@ -340,6 +349,11 @@ function PathZilla::GetCargo() {
 	local cargoList = AICargoList();
 	cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
 	return cargoList.Begin();
+}
+
+function PathZilla::GetRoadType() {
+	return AIRoad.ROADTYPE_ROAD;
+	//return AIRoad.ROADTYPE_TRAM;
 }
 
 /*
