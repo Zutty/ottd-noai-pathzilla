@@ -103,7 +103,6 @@ function PathNodeFactory::ComputeCost(tile, parentNode, type) {
 	});
 	nRoads.KeepValue(1);
 	local parllCost = (normConstCost > 0) ? (max(0, nRoads.Count() - 1) * 8) : 0;
-	if(parllCost > 0 && this.startTile == 13445) AISign.BuildSign(tile, "_"+parllCost+"_");
 
 	// j term is sum of all the non-distance based metrics - more to come here!!
 	local j = cornerCost + normConstCost + hillCost + parllCost;
