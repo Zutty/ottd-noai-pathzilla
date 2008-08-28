@@ -55,6 +55,7 @@ class PathZilla extends AIController {
 	NEW_VEHICLE_SPREAD_DELAY = 20; // The delay in ms between launching new vehicles in a fleet.
 	MAX_BRIDGE_LENGTH = 64;        // The maximum allowable bridge length - to prevent ridiculous bridges
 	MAX_POTENTIAL_SERVICES = 200;  // The maximum allowable number of potential service descriptors  
+	ARV_ACC_THRESHOLD = 50;        // Minimum percentage of acceptance via DTRSs before ARVs can be built
 	
 	// Member variables
 	stop = false;

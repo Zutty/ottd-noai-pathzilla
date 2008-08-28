@@ -139,7 +139,7 @@ function ServiceManager::FindNewServices() {
 			// don't already provide this service
 			if(bTown != aTown && pz.planGraph.ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo)) {
 				local bTile = AITown.GetLocation(bTown);
-				local engine = this.SelectEngine(aTown, bTown, cargo);
+				local engine = this.SelectEngine(aTown, bTown, cargo, false);
 				
 				if(engine == null) {
 					AILog.Error("    There are no suitable vehicles for this route! [" + AITown.GetName(aTown) + " to " + AITown.GetName(bTown)+ "]");
@@ -276,17 +276,62 @@ function ServiceManager::ImplementService() {
  * cargo. This method is compatible with NewGRF sets that require vehciles to 
  * be refitted.
  */
-function ServiceManager::SelectEngine(fromTown, toTown, cargo) {
+function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 	local availableFunds = FinanceManager.GetAvailableFunds();
+	local forbidArv = false;
 	
+	if(checkStations) {
+		// Get the coverage radius of the appropriate station type	
+		local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
+		local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
+		local radius = AIStation.GetCoverageRadius(stationType);
+	
+		local fromStations = RoadManager.GetStations(fromTown, cargo);
+		fromStations.Valuate(AIStation.GetLocation);
+		local toStations = RoadManager.GetStations(toTown, cargo);
+		toStations.Valuate(AIStation.GetLocation);
+		
+		local fromAcc = 0;
+		local fromArvAcc = 0;
+		local toAcc = 0;
+		local toArvAcc = 0;
+		
+		foreach(stationTile in fromStations) {
+			local acceptance = AITile.GetCargoAcceptance(stationTile, cargo, 1, 1, radius);
+			
+			fromAcc += acceptance;
+			if(AIRoad.IsDriveThroughRoadStationTile(stationTile)) {
+				fromArvAcc += acceptance;
+			}
+		}
+				
+		foreach(stationTile in toStations) {
+			local acceptance = AITile.GetCargoAcceptance(stationTile, cargo, 1, 1, radius);
+			
+			toAcc += acceptance;
+			if(AIRoad.IsDriveThroughRoadStationTile(stationTile)) {
+				toArvAcc += acceptance;
+			}
+		}
+		
+		local fromArvAccR = (fromArvAcc * 100) / max(1, fromAcc);
+		local toArvAccR = (toArvAcc * 100) / max(1, toAcc);
+	
+		forbidArv = (fromArvAccR < PathZilla.ARV_ACC_THRESHOLD) || (toArvAccR < PathZilla.ARV_ACC_THRESHOLD);
+		
+		if(forbidArv) AILog.Warning("Cannot build ARVs for this service");
+	}
+	
+	local roadType = this.pz.GetRoadType();
+
 	local engineList = AIEngineList(AIVehicle.VEHICLE_ROAD);
-	engineList.Valuate(function (engine, cargo, availableFunds) {
-		if(AIEngine.GetRoadType(engine) != AIRoad.ROADTYPE_ROAD) return -1;
+	engineList.Valuate(function (engine, cargo, availableFunds, forbidArv, roadType) {
+		if(AIEngine.GetRoadType(engine) != roadType) return -1;
 		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
 		if(AIEngine.GetPrice(engine) > availableFunds) return -1;
-		if(AIEngine.IsArticulated(engine)) return -1; // For now, forbid articulated vehicles
+		if(forbidArv && AIEngine.IsArticulated(engine)) return -1;
 		return 1;
-	}, cargo, availableFunds);
+	}, cargo, availableFunds, forbidArv, roadType);
 	
 	// Discount vehciles that are invalid or that can't be built
 	engineList.RemoveValue(-1);
@@ -301,9 +346,12 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo) {
 	
 	// Rank the remaining engines based on suitability
 	engineList.Valuate(function (engine, cargo, distance) {
-		local travelTime = (179 * distance) / (10 * AIEngine.GetMaxSpeed(engine));
+		local travelTime = (179 * distance) / (10 * AIEngine.GetMaxSpeed(engine)); // AIEngine.GetReliability(engine) / 100
 		local unitIncome = AICargo.GetCargoIncome(cargo, distance, travelTime);
-		local profit = (unitIncome * AIEngine.GetCapacity(engine)) - ((AIEngine.GetRunningCost(engine) * travelTime) / 364);
+		local period = 5; // years
+		local tco = AIEngine.GetPrice(engine) + (AIEngine.GetRunningCost(engine) * period);
+		local income = unitIncome * AIEngine.GetCapacity(engine) * ((364 * period) / travelTime); 
+		local profit = income - tco;
 		return profit * (AIEngine.GetReliability(engine) / 2);
 	}, cargo, distance);
 	
@@ -324,9 +372,25 @@ function ServiceManager::CreateFleet(service) {
 	local toTown = service.toTown;
 	local cargo = service.GetCargo();
 	
+	// Select an engine type
+	local engine = this.SelectEngine(service.GetFromTown(), service.GetToTown(), service.GetCargo(), true);
+	service.SetEngine(engine);
+	
 	// Get the stations
 	local fromStations = RoadManager.GetStations(fromTown, cargo);
 	local toStations = RoadManager.GetStations(toTown, cargo);
+	
+	// If the engine type is articulated, forbid the vehicle from visiting regular stations
+	if(AIEngine.IsArticulated(engine)) {
+		local callback = function (station) {
+			return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
+		};
+		
+		fromStations.Valuate(callback);
+		fromStations.RemoveValue(0);
+		toStations.Valuate(callback);
+		toStations.RemoveValue(0);
+	}
 	
 	// Get the locations of the target towns
 	local fromTile = AITown.GetLocation(fromTown);
@@ -344,7 +408,7 @@ function ServiceManager::CreateFleet(service) {
 	depots.KeepBottom(1);
 	local toDepot = depots.Begin();
 
-	// Get type of station the vechiesl will stop at
+	// Get type of station the vechies will stop at
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
 	local radius = AIStation.GetCoverageRadius(stationType);
@@ -353,8 +417,8 @@ function ServiceManager::CreateFleet(service) {
 	// influence our decision on fleet size.
 	local townSize = max(AITown.GetPopulation(fromTown), AITown.GetPopulation(toTown));
 	local distance = AITile.GetDistanceManhattanToTile(fromTile, toTile);
-	local capacity = AIEngine.GetCapacity(service.GetEngine());
-	local speed = AIEngine.GetMaxSpeed(service.GetEngine());
+	local capacity = AIEngine.GetCapacity(engine);
+	local speed = AIEngine.GetMaxSpeed(engine);
 
 	// Create a lambda function to rank stations based on acceptance
 	local accValuator = function(station, cargo, radius) {
@@ -376,14 +440,14 @@ function ServiceManager::CreateFleet(service) {
 	local minFleetSize = fromStations.Count() + toStations.Count();
 	local fleetSize = max(minFleetSize, ((minAcceptance) / (capacity * 2)) * ((distance * 3) / speed));
 	
-	local engineName = AIEngine.GetName(service.GetEngine());
+	local engineName = AIEngine.GetName(engine);
 	AILog.Info("  Building a fleet of " + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
 	
 	// Borrow enough to buy whole fleet of vehicles
-	FinanceManager.EnsureFundsAvailable(AIEngine.GetPrice(service.GetEngine()) * (fleetSize + 1));
+	FinanceManager.EnsureFundsAvailable(AIEngine.GetPrice(engine) * (fleetSize + 1));
 	
 	// Check if the vehicles will need to be refitted
-	local needRefit = (AIEngine.GetCargoType(service.GetEngine()) != service.GetCargo());
+	local needRefit = (AIEngine.GetCargoType(engine) != service.GetCargo());
 	
 	// Clone a fleet from the prototype vehicle
 	local first = true;
@@ -406,7 +470,7 @@ function ServiceManager::CreateFleet(service) {
 		local depot = (alt == 0) ? fromDepot : toDepot;
 		
 		// Build a new vehicle at that depot
-		local v = AIVehicle.BuildVehicle(depot, service.GetEngine());
+		local v = AIVehicle.BuildVehicle(depot, engine);
 		
 		// Refit the vehicle if necessary
 		if(needRefit) {
@@ -437,7 +501,22 @@ function ServiceManager::UpdateOrders(service) {
 	local fromStations = RoadManager.GetStations(service.GetFromTown(), service.GetCargo());
 	local toStations = RoadManager.GetStations(service.GetToTown(), service.GetCargo());
 
-	local radius = AIStation.GetCoverageRadius(AIStation.STATION_BUS_STOP);
+	// If the engine type is articulated, forbid the vehicle from visiting regular stations
+	if(AIEngine.IsArticulated(service.GetEngine())) {
+		local callback = function (station) {
+			return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
+		};
+		
+		fromStations.Valuate(callback);
+		fromStations.RemoveValue(0);
+		toStations.Valuate(callback);
+		toStations.RemoveValue(0);
+	}
+
+	// Get the coverage radius of the stations	
+	local truckStation = !AICargo.HasCargoClass(service.GetCargo(), AICargo.CC_PASSENGERS);
+	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
+	local radius = AIStation.GetCoverageRadius(stationType);
 
 	// Prime the lists
 	local accValuator = function(station, cargo, radius) {

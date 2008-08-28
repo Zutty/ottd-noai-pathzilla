@@ -83,6 +83,13 @@ function Service::GetEngine() {
 }
 
 /*
+ * Set the engine that this service uses
+ */
+function Service::SetEngine(e) {
+	return this.engine = e;
+}
+
+/*
  * Check if the service visits a town
  */
 function Service::GoesTo(town) {
