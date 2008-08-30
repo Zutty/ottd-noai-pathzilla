@@ -233,6 +233,9 @@ function ServiceManager::ImplementService() {
 			AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
 			
 			local path = schema.GetPlanGraph().FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
+			
+			// Set the correcy road type before starting
+			AIRoad.SetCurrentRoadType(schema.GetRoadType());
 		
 			for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
 				local a = walk.GetVertex();

@@ -124,6 +124,9 @@ function RoadManager::GetTownCoverage(town, cargo) {
 function RoadManager::BuildStations(town, cargo, roadType) {
 	local numStationsBuilt = 0;
 
+	// Set the correcy road type before starting
+	AIRoad.SetCurrentRoadType(roadType);
+
 	// Get the type of station that is needed	
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
@@ -216,7 +219,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		// Find suitable roads adjacent to the tile
 		local adjRoads = LandManager.GetAdjacentTileList(tile);
 		adjRoads.Valuate(function (_tile, roadType) {
-			return (AITile.HasTransportType(_tile, AITile.TRANSPORT_ROAD) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
+			//return (AITile.HasTransportType(_tile, AITile.TRANSPORT_ROAD) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
+			return (AITile.HasTransportType(_tile, AITile.TRANSPORT_ROAD)) ? 1 : 0;
 		}, roadType);
 		adjRoads.KeepValue(1);
 		
@@ -312,9 +316,15 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		sideRoads.RemoveTile(roadTile);
 		sideRoads.RemoveTile(otherSide);
 		foreach(side, _ in sideRoads) {
+			AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_ROAD);
+			AIRoad.RemoveRoad(stationTile, side);
+			AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_TRAM);
 			AIRoad.RemoveRoad(stationTile, side);
 		}
-	} 
+
+		// Reset the original road type
+		AIRoad.SetCurrentRoadType(roadType); 
+	}
 
 	// Build the station
 	local success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, useDtrs, false);

@@ -61,6 +61,9 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 		buildDepot = vargv[1];
 	}
 	
+	// Set the correcy road type before starting
+	AIRoad.SetCurrentRoadType(roadType);
+
 	// Checn that the specified goal tile is reachable
 	if(!(AITile.IsBuildable(goalTile) || AIRoad.IsRoadTile(goalTile))) {
 		// If not, look for a new one.
@@ -150,9 +153,6 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 	// Walk the final path to build the road
 	local counter = 0;
 	local MAXIMUM_ATTEMPTS = 100;
-	
-	// Set the correcy road type before starting
-	AIRoad.SetCurrentRoadType(roadType);
 
 	for(local walk = finalPath; walk.GetParent() != null; walk = walk.GetParent()) {
 		local tileA = walk.GetTile();
