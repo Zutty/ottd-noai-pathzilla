@@ -159,13 +159,6 @@ function PathNodeFactory::GetNeighbours(node) {
 					type = PathNode.TYPE_FOLLOW_WORMHOLE;
 				}
 				
-				if(!alreadyConnected && aTile == 28284) {
-					//AISign.BuildSign(zTile, "Z");
-					//AISign.BuildSign(aTile, "A");
-					//AISign.BuildSign(bTile, "B");
-					AISign.BuildSign(aTile + AIMap.GetTileIndex(1,1), ""+AIRoad.CanBuildConnectedRoadPartsHere(aTile, zTile, bTile));
-				}
-				
 				if(validApproach) {
 					neighbours.append(PathNode(cTile, node, this.ComputeCost(cTile, node, type), type));
 				}
@@ -204,7 +197,6 @@ function PathNodeFactory::GetNeighbours(node) {
 			// Get the other end of the tunnel
 			tunnelTile = AITunnel.GetOtherTunnelEnd(aTile);
 			exitTile = LandManager.GetTunnelExitTile(aTile);
-			//AISign.BuildSign(aTile, "A_"+aTile);
 
 			local validApproach = LandManager.GetTrueHeight(aTile) > LandManager.GetTrueHeight(zTile);
 			local validExit = AIMap.IsValidTile(tunnelTile) && LandManager.IsSmooth(tunnelTile) && AITile.IsBuildable(tunnelTile) && AITile.IsBuildable(exitTile);
@@ -243,9 +235,6 @@ function PathNodeFactory::GetNeighbours(node) {
 		}		
 		
 		if(addNeighbour) {
-			//AILog.Info("  Adding a tunnel...");
-			//AISign.BuildSign(aTile, "A");
-			//AISign.BuildSign(tunnelTile, "B");
 			neighbours.append(PathNode(exitTile, node, this.ComputeCost(exitTile, node, bType), bType));
 		}
 	}
@@ -254,7 +243,6 @@ function PathNodeFactory::GetNeighbours(node) {
 	bType = PathNode.TYPE_BRIDGE;
 	
 	if(AITile.IsCoastTile(aTile) && LandManager.IsSmooth(aTile)) {
-		//AISign.BuildSign(aTile, "BRIDGEABLE");
 		local addNeighbour = false;
 		
 		foreach(otherEnd in LandManager.FindBridgeOtherEnds(aTile)) {
@@ -269,15 +257,11 @@ function PathNodeFactory::GetNeighbours(node) {
 			}
 		
 			if(addNeighbour) {
-				//AILog.Info("  Adding a brige...");
-				//AISign.BuildSign(aTile, "A");
-				//AISign.BuildSign(otherEnd, "B");
 				neighbours.append(PathNode(exitTile, node, this.ComputeCost(exitTile, node, bType), bType));
 			}
 		}
 	}
 
-	//AILog.Info("Returning "+neighbours.len()+" neighbors");
 	return neighbours;
 }
 
