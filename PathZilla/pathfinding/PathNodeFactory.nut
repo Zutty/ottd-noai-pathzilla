@@ -289,7 +289,7 @@ function PathNodeFactory::IsTileTraversable(tile) {
 		return false;
 	}
 
-	return (AITile.IsBuildable(tile) || AITile.IsCoastTile(tile)) && !AIRoad.IsRoadStationTile(tile) && !AIRoad.IsRoadDepotTile(tile);
+	return (AITile.IsBuildable(tile) || AIRoad.IsRoadTile(tile) || AITile.IsCoastTile(tile)) && !AIRoad.IsRoadStationTile(tile) && !AIRoad.IsRoadDepotTile(tile);
 }
 
 /*
