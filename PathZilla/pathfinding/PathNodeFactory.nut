@@ -105,7 +105,7 @@ function PathNodeFactory::ComputeCost(tile, parentNode, type) {
 	local parllCost = (normConstCost > 0) ? (max(0, nRoads.Count() - 1) * 8) : 0;
 
 	// j term is sum of all the non-distance based metrics - more to come here!!
-	local j = cornerCost + normConstCost + hillCost + parllCost;
+	local j = cornerCost + normConstCost + hillCost;// + parllCost;
 	
 	// Return a cost object
 	return PathCost((parentNode != null) ? parentNode.GetCost() : null, h, len, constructionCost, j);
