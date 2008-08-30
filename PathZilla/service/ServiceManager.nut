@@ -220,7 +220,7 @@ function ServiceManager::ImplementService() {
 		local bestService = this.potentialServices.Peek();
 	
 		// Check that we don't already provide this service
-		while(bestService != null && this.ProvidesService(bestService.GetFromTown(), bestService.GetToTown(), bestService.GetCargo(), bestService.GetRoadType())) {
+		while(bestService != null && this.ProvidesThisService(bestService)) {
 			// If we already provide it then move on to the next one
 			this.potentialServices.Pop();
 			bestService = this.potentialServices.Peek();
