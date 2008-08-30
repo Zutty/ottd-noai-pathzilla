@@ -43,14 +43,16 @@ class ServiceDescriptor {
 	fromTown = null;
 	toTown = null;
 	cargo = 0;
+	roadType = null;
 	engine = null;
 	distance = 0;
 	rawIncome = 0;
 	
-	constructor(fromTown, toTown, cargo, engine, distance, rawIncome) {
+	constructor(fromTown, toTown, cargo, roadType, engine, distance, rawIncome) {
 		this.fromTown = fromTown;
 		this.toTown = toTown;
 		this.cargo = cargo;
+		this.roadType = roadType;
 		this.engine = engine;
 		this.distance = distance;
 		this.rawIncome = rawIncome;
@@ -79,6 +81,13 @@ function ServiceDescriptor::GetCargo() {
 }
 
 /*
+ * Get the cargo this service carries.
+ */
+function ServiceDescriptor::GetRoadType() {
+	return this.roadType;
+}
+
+/*
  * Get the engine that would operate this service
  */
 function Service::GetEngine() {
@@ -103,7 +112,7 @@ function ServiceDescriptor::GetRawIncome() {
  * Implement a real service based on this descriptor.
  */
 function ServiceDescriptor::Create() {
-	return Service(this.fromTown, this.toTown, this.cargo, this.engine);
+	return Service(this.fromTown, this.toTown, this.cargo, this.roadType, this.engine);
 }
 
 /*

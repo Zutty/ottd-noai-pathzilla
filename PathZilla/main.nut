@@ -62,8 +62,7 @@ class PathZilla extends AIController {
 	loaded = false;
 	companyName = null;
 	homeTown = null;
-	planGraph = null;
-	actualGraph = null;
+	schema = null;
 	serviceManager = null;
 
 	constructor() {
@@ -80,6 +79,7 @@ class PathZilla extends AIController {
 		require("pathfinding/PathFinder.nut");
 		require("pathfinding/PathNode.nut");
 		require("pathfinding/PathNodeFactory.nut");
+		require("schema/Schema.nut");
 		require("service/Service.nut");
 		require("service/ServiceDescriptor.nut");
 		require("service/ServiceManager.nut");
@@ -94,21 +94,8 @@ class PathZilla extends AIController {
 		this.loaded = false;
 		this.companyName = null;
 		this.serviceManager = ServiceManager(this);
+		this.schema = null;
 	}
-}
-
-/*
- * Get a graph showing which roads we plan to build.
- */
-function PathZilla::GetPlanGraph() {
-	return this.planGraph;
-}
-
-/*
- * Get a graph showing which roads we have already built.
- */
-function PathZilla::GetActualGraph() {
-	return this.actualGraph;
 }
 
 /*
@@ -119,9 +106,6 @@ function PathZilla::GetActualGraph() {
  */
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
-	
-	// Set the correct road type	
-	AIRoad.SetCurrentRoadType(this.GetRoadType());
 	
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
@@ -144,7 +128,11 @@ function PathZilla::Start() {
 	// Initialse other data, based on load status
 	if(!this.loaded) {
 		// Build the graphs we need to plan routes
-		this.InitialiseGraphs();
+		//this.InitialiseGraphs();
+		local cargoList = AICargoList();
+		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
+		
+		this.schema = Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD);
 	} else {
 		// Load the vehicles into their groups
 		this.serviceManager.PostLoad();
@@ -213,13 +201,13 @@ function PathZilla::Load(data) {
 		this.homeTown = data[PathZilla.SRLZ_HOME_TOWN];
 		
 		if(data[PathZilla.SRLZ_PLAN_GRAPH] != null) {
-			this.planGraph = Graph();
-			this.planGraph.Unserialize(data[PathZilla.SRLZ_PLAN_GRAPH]);
+			this.schema.planGraph = Graph();
+			this.schema.planGraph.Unserialize(data[PathZilla.SRLZ_PLAN_GRAPH]);
 		} 
 		
 		if(data[PathZilla.SRLZ_ACTUAL_GRAPH] != null) {
-			this.actualGraph = Graph();
-			this.actualGraph.Unserialize(data[PathZilla.SRLZ_ACTUAL_GRAPH]);
+			this.schema.actualGraph = Graph();
+			this.schema.actualGraph.Unserialize(data[PathZilla.SRLZ_ACTUAL_GRAPH]);
 		}
 		
 		if(data.rawin(PathZilla.SRLZ_SRVC_MANAGER)) {
@@ -248,12 +236,12 @@ function PathZilla::Save() {
 	data[PathZilla.SRLZ_COMPANY_NAME] <- this.companyName;
 	data[PathZilla.SRLZ_HOME_TOWN] <- this.homeTown;
 	
-	if(this.planGraph != null) {
-		data[PathZilla.SRLZ_PLAN_GRAPH] <- this.planGraph.Serialize();
+	if(this.schema.planGraph != null) {
+		data[PathZilla.SRLZ_PLAN_GRAPH] <- this.schema.planGraph.Serialize();
 	} 
 	
-	if(this.actualGraph != null) {
-		data[PathZilla.SRLZ_ACTUAL_GRAPH] <- this.actualGraph.Serialize();
+	if(this.schema.actualGraph != null) {
+		data[PathZilla.SRLZ_ACTUAL_GRAPH] <- this.schema.actualGraph.Serialize();
 	} 
 
 	if(this.serviceManager != null) {
@@ -300,35 +288,6 @@ function PathZilla::SelectLargeTown() {
 }
 
 /*
- * Create the plan and actual graphs based on a triangulation of all targets 
- * (up to a maximum of MAX_TARGETS) on the map.
- */
-function PathZilla::InitialiseGraphs() {
-	// Prime a list of the closest MAX_TARGETS targets to the home town
-	local allTowns = AITownList();
-	allTowns.Valuate(AITown.GetDistanceManhattanToTile, AITown.GetLocation(this.homeTown));
-	allTowns.KeepTop(PathZilla.MAX_TARGETS);
-	
-	if(this.GetRoadType() == AIRoad.ROADTYPE_TRAM) {
-		allTowns.Valuate(AITown.GetPopulation);
-		allTowns.RemoveBelowValue(1000);
-	}
-	
-	allTowns.Valuate(AITown.GetLocation);
-
-	// Get the master graph for the whole map
-	local masterGraph = Triangulation(allTowns);
-	
-	// For the plan graph use a combination of the shortest path from the home 
-	// town and the minimum spanning tree.
-	this.planGraph = ShortestPathTree(masterGraph, AITown.GetLocation(this.homeTown));
-	this.planGraph.Merge(MinimumSpanTree(masterGraph));
-	
-	// Create a blank graph to represent what has actually been built
-	this.actualGraph = Graph();
-}
-
-/*
  * Handle any waiting events. This is a place-holder implementation for now!
  */
 function PathZilla::HandleEvents() {
@@ -344,17 +303,10 @@ function PathZilla::HandleEvents() {
 }
 
 /*
- * Get the first basic passenger cargo ID.
+ * Get the main network schema.
  */
-function PathZilla::GetCargo() {
-	local cargoList = AICargoList();
-	cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
-	return cargoList.Begin();
-}
-
-function PathZilla::GetRoadType() {
-	return AIRoad.ROADTYPE_ROAD;
-	//return AIRoad.ROADTYPE_TRAM;
+function PathZilla::GetSchema() {
+	return this.schema;
 }
 
 /*

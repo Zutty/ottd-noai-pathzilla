@@ -71,7 +71,7 @@ function ServiceManager::MaintainServices() {
 
 		if(!townsTried.HasItem(service.GetFromTown())) {
 			townsTried.AddItem(service.GetFromTown(), 0);
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo());
+			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
 			
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetFromTown(), 0);
@@ -80,7 +80,7 @@ function ServiceManager::MaintainServices() {
 
 		if(!townsTried.HasItem(service.GetToTown())) {
 			townsTried.AddItem(service.GetToTown(), 0);
-			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo());
+			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
 			
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetToTown(), 0);
@@ -102,14 +102,16 @@ function ServiceManager::MaintainServices() {
  * profit, and ranks them by their profitability.
  */
 function ServiceManager::FindNewServices() {
-	local cargo = pz.GetCargo();
+	local schema = pz.GetSchema();
+	local cargo = schema.GetCargo();
+	local roadType = schema.GetRoadType();
 
 	// Discard the towns that we have already been to, or that can't be reached
 	local towns = AITownList();
 	towns.RemoveList(this.townsConsidered);
 	towns.Valuate(function (town, planGraph) {
 		return (planGraph.ContainsTown(town)) ? 1 : 0;
-	}, pz.planGraph);
+	}, schema.GetPlanGraph());
 	towns.RemoveValue(0);
 	
 	// Check that there are any towns left that we haven't considered
@@ -126,7 +128,7 @@ function ServiceManager::FindNewServices() {
 		AILog.Info("  Looking for potential services from "+AITown.GetName(aTown)+"...");
 
 		// Get the shortest distances accross the network
-		local netDist = pz.planGraph.GetShortestDistances(Vertex.FromTown(aTown));
+		local netDist = pz.GetSchema().GetPlanGraph().GetShortestDistances(Vertex.FromTown(aTown));
 
 		// Iterate over each town to test each possible connection
 		local steps = 0;
@@ -137,7 +139,7 @@ function ServiceManager::FindNewServices() {
 
 			// Ensure that its possible to connect to the town, and that we 
 			// don't already provide this service
-			if(bTown != aTown && pz.planGraph.ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo)) {
+			if(bTown != aTown && pz.GetSchema().GetPlanGraph().ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo, roadType)) {
 				local bTile = AITown.GetLocation(bTown);
 				local engine = this.SelectEngine(aTown, bTown, cargo, false);
 				
@@ -165,7 +167,7 @@ function ServiceManager::FindNewServices() {
 				
 				// Only consider the service if it is more profitable than it is costly
 				if(annualProfit > (annualCost/factor)) {
-					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, engine, netDist[bTile], annualProfit));
+					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, roadType, engine, netDist[bTile], annualProfit));
 				}
 			}
 		}
@@ -180,18 +182,25 @@ function ServiceManager::FindNewServices() {
 
 /*
  * Checks to see if the company provides a service from a to b for the
- * specified cargo.
+ * specified cargo and road type.
  */
-function ServiceManager::ProvidesService(a, b, cargo) {
+function ServiceManager::ProvidesService(a, b, cargo, roadType) {
 	foreach(service in this.serviceList) {
-		if(service.GetCargo() == cargo && service.GoesTo(a) && service.GoesTo(b)) {
+		if(service.GetCargo() == cargo && service.GoesTo(a) && service.GoesTo(b) && service.GetRoadType() == roadType) {
 			return true;
 		}
 	}
 	
 	return false;
 }
-	
+
+/*
+ * Checks to see if the company already provides the specified service.
+ */
+function ServiceManager::ProvidesThisService(svc) {
+	return this.ProvidesService(svc.GetFromTown(), svc.GetToTown(), svc.GetCargo(), svc.GetRoadType());
+}
+
 /*
  * Choose the next best service descriptor from pententialServices to be 
  * implemented in the game world. This function ensures that roads are built to
@@ -200,6 +209,8 @@ function ServiceManager::ProvidesService(a, b, cargo) {
  * will operate the service.
  */
 function ServiceManager::ImplementService() {
+	local schema = pz.GetSchema();
+	
 	// Check whether or not we can build any more vehicles
 	local proceed = (AIVehicleList().Count() < AIGameSettings.GetValue("vehicle.max_roadveh"));
 	
@@ -209,7 +220,7 @@ function ServiceManager::ImplementService() {
 		local bestService = this.potentialServices.Peek();
 	
 		// Check that we don't already provide this service
-		while(bestService != null && this.ProvidesService(bestService.GetFromTown(), bestService.GetToTown(), bestService.GetCargo())) {
+		while(bestService != null && this.ProvidesService(bestService.GetFromTown(), bestService.GetToTown(), bestService.GetCargo(), bestService.GetRoadType())) {
 			// If we already provide it then move on to the next one
 			this.potentialServices.Pop();
 			bestService = this.potentialServices.Peek();
@@ -221,14 +232,14 @@ function ServiceManager::ImplementService() {
 			
 			AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
 			
-			local path = pz.planGraph.FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
+			local path = schema.GetPlanGraph().FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
 		
 			for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
 				local a = walk.GetVertex();
 				local b = walk.GetParent().GetVertex();
 				local edge = Edge(a, b);
 		
-				if(!pz.actualGraph.GetEdges().Contains(edge)) {
+				if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
 					// Get the towns on this edges
 					local townA = GetTown(a.ToTile());
 					local townB = GetTown(b.ToTile());
@@ -238,23 +249,23 @@ function ServiceManager::ImplementService() {
 		
 					// Build a link between the towns
 					AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-					local success = PathFinder.FindPath(a.ToTile(), b.ToTile());
+					local success = PathFinder.FindPath(a.ToTile(), b.ToTile(), schema.GetRoadType());
 					
 					// If we were able to build the link, add the edge to the actual graph
 					if(success > 0) {
-						pz.actualGraph.AddEdge(edge);
+						pz.GetSchema().GetActualGraph().AddEdge(edge);
 					}
 				}
 			}
 			
 			// Ensure that the source town has bus stops
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo());
+			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetFromTown(), 0);
 			}
 			
 			// Ensure that the destination town has bus stops
-			added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo());
+			added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetToTown(), 0);
 			}
@@ -322,7 +333,7 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 		if(forbidArv) AILog.Warning("Cannot build ARVs for this service");
 	}
 	
-	local roadType = this.pz.GetRoadType();
+	local roadType = this.pz.GetSchema().GetRoadType();
 
 	local engineList = AIEngineList(AIVehicle.VEHICLE_ROAD);
 	engineList.Valuate(function (engine, cargo, availableFunds, forbidArv, roadType) {

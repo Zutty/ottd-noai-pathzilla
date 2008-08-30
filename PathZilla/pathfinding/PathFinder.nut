@@ -35,7 +35,7 @@ class PathFinder {
  * a road will be built to connect them. Finally, a depot will be added if 
  * there are none nearby. 
  */ 
-function PathFinder::FindPath(fromTile, toTile, ...) {
+function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 	AILog.Info("  Searching for a path between [" + fromTile + "] and [" + toTile + "]...");
 	
 	// Initialise	
@@ -150,6 +150,9 @@ function PathFinder::FindPath(fromTile, toTile, ...) {
 	// Walk the final path to build the road
 	local counter = 0;
 	local MAXIMUM_ATTEMPTS = 100;
+	
+	// Set the correcy road type before starting
+	AIRoad.SetCurrentRoadType(roadType);
 
 	for(local walk = finalPath; walk.GetParent() != null; walk = walk.GetParent()) {
 		local tileA = walk.GetTile();

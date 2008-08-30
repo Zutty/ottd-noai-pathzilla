@@ -37,15 +37,17 @@ class Service {
 	fromTown = null;
 	toTown = null;
 	cargo = 0;
+	roadType = null;
 	engine = null;
 	profitability = 0;
 	vehicles = null;
 	group = null;
 	
-	constructor(fromTown, toTown, cargo, engine) {
+	constructor(fromTown, toTown, cargo, roadType, engine) {
 		this.fromTown = fromTown;
 		this.toTown = toTown;
 		this.cargo = cargo;
+		this.roadType = roadType;
 		this.engine = engine;
 
 		this.vehicles = AIList();
@@ -73,6 +75,13 @@ function Service::GetToTown() {
  */
 function Service::GetCargo() {
 	return this.cargo;
+}
+
+/*
+ * Get the cargo this service carries.
+ */
+function Service::GetRoadType() {
+	return this.roadType;
 }
 
 /*

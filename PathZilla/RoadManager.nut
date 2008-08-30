@@ -121,7 +121,7 @@ function RoadManager::GetTownCoverage(town, cargo) {
  * 
  * The function returns the number of stations that were added.
  */
-function RoadManager::BuildStations(town, cargo) {
+function RoadManager::BuildStations(town, cargo, roadType) {
 	local numStationsBuilt = 0;
 
 	// Get the type of station that is needed	
@@ -138,7 +138,7 @@ function RoadManager::BuildStations(town, cargo) {
 	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo) <= PathZilla.TARGET_TOWN_COVERAGE) && stationID >= 0) {
 		PathZilla.Sleep(1);
 
-		stationID = RoadManager.BuildStation(town, cargo);
+		stationID = RoadManager.BuildStation(town, cargo, roadType);
 		if(stationID >= 0) {
 			numStationsBuilt++;
 		}
@@ -155,7 +155,7 @@ function RoadManager::BuildStations(town, cargo) {
  * The function will attempt to build a DTRS if the selected position has road
  * either side of it.
  */
-function RoadManager::BuildStation(town, cargo) {
+function RoadManager::BuildStation(town, cargo, roadType) {
 	local townTile = AITown.GetLocation(town);
 	
 	// Get the type of station we should build	
@@ -207,7 +207,6 @@ function RoadManager::BuildStation(town, cargo) {
 	
 	// Check if the game allows us to build DTRSes on town roads and get the road type
 	local dtrsOnTownRoads = (AIGameSettings.GetValue("construction.road_stop_on_town_road") == 1);
-	local roadType = PathZilla.GetRoadType();
 
 	// Rank those tiles by their suitability for a station
 	tileList.Valuate(function (tile, town, cargo, radius, dtrsOnTownRoads, roadType) {
@@ -333,7 +332,7 @@ function RoadManager::BuildStation(town, cargo) {
 		local sideRoads = LandManager.GetAdjacentTileList(stationTile);
 		sideRoads.RemoveTile(roadTile);
 		sideRoads.RemoveTile(otherSide);
-		PathFinder.FindPath(otherSide, loopTile, [stationTile], false)
+		PathFinder.FindPath(otherSide, loopTile, roadType, [stationTile], false)
 	}
 	
 	return AIStation.GetStationID(stationTile);
