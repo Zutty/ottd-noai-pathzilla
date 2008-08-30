@@ -492,8 +492,8 @@ function ServiceManager::CreateFleet(service) {
 		}
 		
 		// Add orders to the vehicle
-		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NONE);// AIOrder.AIOF_FULL_LOAD);
-		AIOrder.AppendOrder(v, toTile, AIOrder.AIOF_NONE);// AIOrder.AIOF_FULL_LOAD);
+		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);// AIOrder.AIOF_FULL_LOAD);
+		AIOrder.AppendOrder(v, toTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);// AIOrder.AIOF_FULL_LOAD);
 
 		// Send the vehicle to the destination nearest the depot we built it at
 		AIVehicle.SkipToVehicleOrder(v, alt);
@@ -564,8 +564,8 @@ function ServiceManager::UpdateOrders(service) {
 		AIOrder.RemoveOrder(v, 1);
 		
 		// Set the new orders
-		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NONE);
-		AIOrder.AppendOrder(v, toTile, AIOrder.AIOF_NONE);
+		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);
+		AIOrder.AppendOrder(v, toTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);
 		
 		// Ensure the vehicle is still heading to the same town it was before
 		AIVehicle.SkipToVehicleOrder(v, currentOrder);
