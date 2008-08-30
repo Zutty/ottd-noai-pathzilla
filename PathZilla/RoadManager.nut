@@ -321,7 +321,9 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	
 	if(!success) {
 		AILog.Error("BUS STOP WAS NOT BUILT");
-		AISign.BuildSign(stationTile, ""+AIError.GetLastErrorString().slice(0, 30));
+		local err = AIError.GetLastErrorString();
+		if(err.len() > 30) err = err.slice(0, 30);
+		AISign.BuildSign(stationTile, ""+err);
 		return -1;
 	}
 	
