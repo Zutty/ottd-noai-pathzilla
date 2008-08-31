@@ -303,7 +303,7 @@ function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
 	local built = true;
 	local tryAgain = true;
 	local waited = 0;
-	local MAX_WAIT = 100;
+	local MAX_WAIT = 15;
 	
 	while(tryAgain && waited++ < MAX_WAIT) {
 		{
@@ -342,9 +342,16 @@ function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
 				    tryAgain = FinanceManager.Borrow(10000);
 					break;
 				case AIError.ERR_VEHICLE_IN_THE_WAY:
-					// Wait a bit and then try again
-					PathZilla.Sleep(100);
-					tryAgain = true;
+					// Check what the vechile is in the way of
+					if(type == PathNode.TYPE_ROAD) {
+						// If its just for a bit of road then dont bother 
+						// waiting as it could take ages. Just make something up!
+						costs += 250;
+					} else {
+						// Otherwise just wait a bit and try again
+						PathZilla.Sleep(10);
+						tryAgain = true;
+					}
 					break;
 			  }
 	  	}
