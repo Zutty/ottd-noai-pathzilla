@@ -56,6 +56,7 @@ class PathZilla extends AIController {
 	MAX_BRIDGE_LENGTH = 64;        // The maximum allowable bridge length - to prevent ridiculous bridges
 	MAX_POTENTIAL_SERVICES = 200;  // The maximum allowable number of potential service descriptors  
 	ARV_ACC_THRESHOLD = 50;        // Minimum percentage of acceptance via DTRSs before ARVs can be built
+	ENGINE_SCORE_THRESHOLD = 80;   // The minimum score for an engine to be randomly selected
 	
 	// Member variables
 	stop = false;

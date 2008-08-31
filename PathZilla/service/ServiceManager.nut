@@ -357,19 +357,76 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 	
 	local distance = AITown.GetDistanceManhattanToTile(fromTown, AITown.GetLocation(toTown));
 	//local totalPopulation = (AITown.GetPopulation(fromTown) + AITown.GetPopulation(toTown));
-	
-	// Rank the remaining engines based on suitability
-	engineList.Valuate(function (engine, cargo, distance) {
+		
+	// Build a function to compute the profit making potential of each vehicle
+	local profitValuator = function (engine, cargo, distance) {
 		local travelTime = (179 * distance) / (10 * AIEngine.GetMaxSpeed(engine)); // AIEngine.GetReliability(engine) / 100
 		local unitIncome = AICargo.GetCargoIncome(cargo, distance, travelTime);
 		local period = 5; // years
 		local tco = AIEngine.GetPrice(engine) + (AIEngine.GetRunningCost(engine) * period);
 		local income = unitIncome * AIEngine.GetCapacity(engine) * ((364 * period) / travelTime); 
 		local profit = income - tco;
-		return profit * (AIEngine.GetReliability(engine) / 2);
-	}, cargo, distance);
+		return profit;
+	}
 	
-	// Return the best one
+	// Find the highest profit level
+	engineList.Valuate(profitValuator, cargo, distance);
+	local maxProfit = engineList.GetValue(engineList.Begin());
+	
+	// Findthe highest capacity
+	engineList.Valuate(AIEngine.GetCapacity);
+	local maxCapactiy = engineList.GetValue(engineList.Begin());
+	
+	// Get the minimum acceptance for the service
+	local minAcceptance = -1;
+	
+	if(checkStations) { 
+		// Get coverage radius of stations the vechies will stop at
+		local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
+		local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
+		local radius = AIStation.GetCoverageRadius(stationType);
+
+		// Get the stations
+		local fromStations = RoadManager.GetStations(fromTown, cargo);
+		local toStations = RoadManager.GetStations(toTown, cargo);
+			
+		// Create a lambda function to rank stations based on acceptance
+		local accValuator = function(station, cargo, radius) {
+			return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
+		}
+		
+		// Prime the lists with acceptance values
+		fromStations.Valuate(accValuator, cargo, radius);
+		toStations.Valuate(accValuator, cargo, radius);
+	
+		// Get the total acceptance for both towns
+		local fromSum = ListSum(fromStations);
+		local toSum = ListSum(toStations);
+		
+		AISign.BuildSign(AITown.GetLocation(fromTown), ""+fromSum);
+		AISign.BuildSign(AITown.GetLocation(toTown), ""+toSum);
+		
+		// Get the lesser of the two
+		minAcceptance = min(fromSum, toSum);
+	}
+	
+	// Rank the remaining engines by their score
+	engineList.Valuate(function (engine, profitValuator, cargo, distance, maxProfit, maxCapactiy, minAcceptance) {
+		local profitTerm = (max(0, profitValuator(engine, cargo, distance)) * 100) / maxProfit;
+		local reliabilityTerm = AIEngine.GetReliability(engine);
+		local normCapacity = (AIEngine.GetCapacity(engine) * 100) / maxCapactiy;
+		local accUpper = 250;
+		local overkillTerm = 100 - abs(normCapacity - (min(minAcceptance, accUpper) * 100 / accUpper));
+		return (profitTerm + reliabilityTerm + overkillTerm) / 3;
+	}, profitValuator, cargo, distance, maxProfit, maxCapactiy, minAcceptance);
+	
+	// If the engines are good enough then choose randomly from the best ones 
+	if(engineList.GetValue(engineList.Begin()) >= PathZilla.ENGINE_SCORE_THRESHOLD) {
+		engineList.RemoveBelowValue(PathZilla.ENGINE_SCORE_THRESHOLD);
+		engineList.Valuate(AIBase.RandItem);
+	}
+	
+	// Return the selected engine
 	return engineList.Begin();
 }
 
