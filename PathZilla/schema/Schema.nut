@@ -29,7 +29,17 @@
  */
 
 class Schema {
-
+	// Serialization constants
+	CLASS_NAME = "Schema";
+	SRLZ_SCHEMA_ID = 0;
+	SRLZ_SOURCE_NODE = 1;
+	SRLZ_CARGO = 2;
+	SRLZ_ROAD_TYPE = 3;
+	SRLZ_PLAN_GRAPH = 4;
+	SRLZ_ACTUAL_GRAPH = 5;
+	
+	// Member variables
+	id = 0;
 	sourceNode = null;
 	cargo = null;
 	roadType = null;
@@ -37,6 +47,7 @@ class Schema {
 	actualGraph = null;
 
 	constructor(sourceNode, cargo, roadType) {
+		this.id = 0;
 		this.sourceNode = sourceNode;
 		this.cargo = cargo;
 		this.roadType = roadType;
@@ -45,6 +56,20 @@ class Schema {
 		
 		this.InitialiseGraphs();
 	}
+}
+
+/*
+ * Gets the schema id.
+ */
+function Schema::GetId() {
+	return this.id;
+}
+
+/*
+ * Sets the schema id.
+ */
+function Schema::SetId(schemaId) {
+	this.id = schemaId;
 }
 
 /*
@@ -102,4 +127,36 @@ function Schema::InitialiseGraphs() {
 	
 	// Create a blank graph to represent what has actually been built
 	this.actualGraph = Graph();
+}
+
+/*
+ * Saves data to a table.
+ */
+function Schema::Serialize() {
+	local data = {};
+
+	data[SRLZ_SCHEMA_ID] <- this.id;
+	data[SRLZ_SOURCE_NODE] <- this.sourceNode;
+	data[SRLZ_CARGO] <- this.cargo;
+	data[SRLZ_ROAD_TYPE] <- this.roadType;
+	data[SRLZ_PLAN_GRAPH] <- this.planGraph.Serialize();
+	data[SRLZ_ACTUAL_GRAPH] <- this.actualGraph.Serialize();
+	
+	return data;
+}
+
+/*
+ * Loads data from a table.
+ */
+function Schema::Unserialize(data) {
+	this.id = data[SRLZ_SCHEMA_ID];
+	this.sourceNode = data[SRLZ_SOURCE_NODE];
+	this.cargo = data[SRLZ_CARGO];
+	this.roadType = data[SRLZ_ROAD_TYPE];
+	
+	this.planGraph = Graph();
+	this.planGraph.Unserialize(data[SRLZ_PLAN_GRAPH]);
+	
+	this.actualGraph = Graph();
+	this.actualGraph.Unserialize(data[SRLZ_ACTUAL_GRAPH]);
 }

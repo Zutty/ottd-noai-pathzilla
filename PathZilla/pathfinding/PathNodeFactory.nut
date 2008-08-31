@@ -28,10 +28,12 @@
 class PathNodeFactory {
 	startTile = null;
 	goalTile = null;
+	roadType = 0;
 	
-	constructor(startTile, goalTile) {
+	constructor(startTile, goalTile, roadType) {
 		this.startTile = startTile;
 		this.goalTile = goalTile;
+		this.roadType = roadType;
 	}
 }
 
@@ -134,7 +136,7 @@ function PathNodeFactory::GetNeighbours(node) {
 		local dir = i + 1;
 	
 		// Check if the tile has a road on it
-		if(AITile.HasTransportType(bTile, AITile.TRANSPORT_ROAD) && !AIRoad.IsRoadDepotTile(bTile) && (!AIRoad.IsRoadStationTile(bTile) || AIRoad.IsDriveThroughRoadStationTile(bTile))) {
+		if(AITile.HasTransportType(bTile, AITile.TRANSPORT_ROAD) && AIRoad.HasRoadType(bTile, this.roadType) && !AIRoad.IsRoadDepotTile(bTile) && (!AIRoad.IsRoadStationTile(bTile) || AIRoad.IsDriveThroughRoadStationTile(bTile))) {
 			local alreadyConnected = AIRoad.AreRoadTilesConnected(aTile, bTile);
 			local type = (alreadyConnected) ? bType : PathNode.TYPE_ROAD;
 			local cTile = bTile; // The next tile in the path *might* not be this tile...

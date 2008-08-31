@@ -35,7 +35,7 @@ class PathZilla extends AIController {
 
 	// Info constants	
 	PZ_IDENT = "PATHZILLA!"
-	PZ_VERSION = 3;
+	PZ_VERSION = 4;
 	
 	// Serialisation constants
 	SRLZ_IDENT = 0;
@@ -45,6 +45,7 @@ class PathZilla extends AIController {
 	SRLZ_PLAN_GRAPH = 3;
 	SRLZ_ACTUAL_GRAPH = 4;
 	SRLZ_SRVC_MANAGER = 5;
+	SRLZ_SCHEMAS = 7;
 			
 	// Configurable constants
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
@@ -63,7 +64,8 @@ class PathZilla extends AIController {
 	loaded = false;
 	companyName = null;
 	homeTown = null;
-	schema = null;
+	schemaIndex = 0;
+	schemas = null;
 	serviceManager = null;
 
 	constructor() {
@@ -95,7 +97,8 @@ class PathZilla extends AIController {
 		this.loaded = false;
 		this.companyName = null;
 		this.serviceManager = ServiceManager(this);
-		this.schema = null;
+		this.schemaIndex = -1;
+		this.schemas = {};
 	}
 }
 
@@ -117,7 +120,6 @@ function PathZilla::Start() {
 	}
 	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
 
-
 	// Choose a company name if we have not loaded one
 	if(!this.loaded) {
 		this.companyName = this.ChooseName();
@@ -131,9 +133,13 @@ function PathZilla::Start() {
 		// Build the graphs we need to plan routes
 		//this.InitialiseGraphs();
 		local cargoList = AICargoList();
+
 		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
-		
-		this.schema = Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD);
+		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD));
+		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_TRAM));
+
+		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_MAIL);
+		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD));
 	} else {
 		// Load the vehicles into their groups
 		this.serviceManager.PostLoad();
@@ -201,14 +207,9 @@ function PathZilla::Load(data) {
 		this.companyName = data[PathZilla.SRLZ_COMPANY_NAME];
 		this.homeTown = data[PathZilla.SRLZ_HOME_TOWN];
 		
-		if(data[PathZilla.SRLZ_PLAN_GRAPH] != null) {
-			this.schema.planGraph = Graph();
-			this.schema.planGraph.Unserialize(data[PathZilla.SRLZ_PLAN_GRAPH]);
-		} 
-		
-		if(data[PathZilla.SRLZ_ACTUAL_GRAPH] != null) {
-			this.schema.actualGraph = Graph();
-			this.schema.actualGraph.Unserialize(data[PathZilla.SRLZ_ACTUAL_GRAPH]);
+		foreach(idx, schemaData in data[PathZilla.SRLZ_SCHEMAS]) {
+			this.schemas[idx] <- Schema.instance();
+			this.schemas[idx].Unserialize(schemaData);
 		}
 		
 		if(data.rawin(PathZilla.SRLZ_SRVC_MANAGER)) {
@@ -233,17 +234,15 @@ function PathZilla::Save() {
 	data[PathZilla.SRLZ_IDENT] <- PathZilla.PZ_IDENT;
 	data[PathZilla.SRLZ_VERSION] <- PathZilla.PZ_VERSION
 
-	// Store the actual data
+	// Store the basic data
 	data[PathZilla.SRLZ_COMPANY_NAME] <- this.companyName;
 	data[PathZilla.SRLZ_HOME_TOWN] <- this.homeTown;
 	
-	if(this.schema.planGraph != null) {
-		data[PathZilla.SRLZ_PLAN_GRAPH] <- this.schema.planGraph.Serialize();
-	} 
-	
-	if(this.schema.actualGraph != null) {
-		data[PathZilla.SRLZ_ACTUAL_GRAPH] <- this.schema.actualGraph.Serialize();
-	} 
+	// Store the schemas
+	data[PathZilla.SRLZ_SCHEMAS] <- {};
+	foreach(idx, schema in this.schemas) {
+		data[PathZilla.SRLZ_SCHEMAS][idx] <- schema.Serialize();
+	}
 
 	if(this.serviceManager != null) {
 		data[PathZilla.SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
@@ -304,11 +303,31 @@ function PathZilla::HandleEvents() {
 }
 
 /*
- * Get the main network schema.
+ * Get the netwrok schema with the specified id.
  */
-function PathZilla::GetSchema() {
-	return this.schema;
+function PathZilla::GetSchema(schemaId) {
+	return this.schemas[schemaId];
 }
+
+/*
+ * Increment the internal schema counter and return the schema with that
+ * index. This is used to cycle through schemas in a stateless fashion.
+ */
+function PathZilla::GetNextSchema() {
+	if(++this.schemaIndex >= this.schemas.len()) this.schemaIndex = 0; 
+	return this.schemas[this.schemaIndex];
+}
+
+/*
+ * Add a new network schema to them main table and give it an id.
+ */
+function PathZilla::AddSchema(schema) {
+	local schemaId = this.schemas.len();
+	schema.SetId(schemaId);
+	return this.schemas[schemaId] <- schema;
+	return schemaId;
+}
+
 
 /*
  * Get whether or not the AI should play aggressively.

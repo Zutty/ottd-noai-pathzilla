@@ -31,6 +31,7 @@ class Service {
 	SRLZ_FROM_TOWN = 0;
 	SRLZ_TO_TOWN = 1;
 	SRLZ_CARGO = 2;
+	SRLZ_ROAD_TYPE = 5;
 	SRLZ_ENGINE = 3;
 	SRLZ_GROUP = 4;
 	
@@ -142,6 +143,7 @@ function Service::Serialize() {
 	data[SRLZ_FROM_TOWN] <- this.fromTown;
 	data[SRLZ_TO_TOWN] <- this.toTown;
 	data[SRLZ_CARGO] <- this.cargo;
+	data[SRLZ_ROAD_TYPE] <- this.roadType;
 	data[SRLZ_ENGINE] <- this.engine;
 	data[SRLZ_GROUP] <- this.group;
 	return data;
@@ -154,6 +156,7 @@ function Service::Unserialize(data) {
 	this.fromTown = data[SRLZ_FROM_TOWN];
 	this.toTown = data[SRLZ_TO_TOWN];
 	this.cargo = data[SRLZ_CARGO];
+	this.roadType = data[SRLZ_ROAD_TYPE];
 	this.engine = data[SRLZ_ENGINE];
 	this.group = data[SRLZ_GROUP];
 }

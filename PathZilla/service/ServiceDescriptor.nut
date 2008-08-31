@@ -35,11 +35,13 @@ class ServiceDescriptor {
 	SRLZ_FROM_TOWN = 0;
 	SRLZ_TO_TOWN = 1;
 	SRLZ_CARGO = 2;
+	SRLZ_ROAD_TYPE = 6;
 	SRLZ_ENGINE = 3;
 	SRLZ_DISTANCE = 4;
 	SRLZ_INCOME = 5;
 	
 	// Member variables
+	schemaId = 0;
 	fromTown = null;
 	toTown = null;
 	cargo = 0;
@@ -48,7 +50,8 @@ class ServiceDescriptor {
 	distance = 0;
 	rawIncome = 0;
 	
-	constructor(fromTown, toTown, cargo, roadType, engine, distance, rawIncome) {
+	constructor(schemaId, fromTown, toTown, cargo, roadType, engine, distance, rawIncome) {
+		this.schemaId = schemaId;
 		this.fromTown = fromTown;
 		this.toTown = toTown;
 		this.cargo = cargo;
@@ -57,6 +60,13 @@ class ServiceDescriptor {
 		this.distance = distance;
 		this.rawIncome = rawIncome;
 	}
+}
+
+/*
+ * Get the schema id
+ */
+function ServiceDescriptor::GetSchemaId() {
+	return this.schemaId;
 }
 
 /*
@@ -123,6 +133,7 @@ function ServiceDescriptor::Serialize() {
 	data[SRLZ_FROM_TOWN] <- this.fromTown;
 	data[SRLZ_TO_TOWN] <- this.toTown;
 	data[SRLZ_CARGO] <- this.cargo;
+	data[SRLZ_ROAD_TYPE] <- this.roadType;
 	data[SRLZ_ENGINE] <- this.engine;
 	data[SRLZ_DISTANCE] <- this.distance;
 	data[SRLZ_INCOME] <- this.rawIncome;
@@ -136,6 +147,7 @@ function ServiceDescriptor::Unserialize(data) {
 	this.fromTown = data[SRLZ_FROM_TOWN];
 	this.toTown = data[SRLZ_TO_TOWN];
 	this.cargo = data[SRLZ_CARGO];
+	this.roadType = data[SRLZ_ROAD_TYPE];
 	this.engine = data[SRLZ_ENGINE];
 	this.distance = data[SRLZ_DISTANCE];
 	this.rawIncome = data[SRLZ_INCOME];

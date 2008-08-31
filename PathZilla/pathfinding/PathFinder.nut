@@ -39,7 +39,7 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 	AILog.Info("  Searching for a path between [" + fromTile + "] and [" + toTile + "]...");
 	
 	// Initialise	
-	local factory = PathNodeFactory(fromTile, toTile);
+	local factory = PathNodeFactory(fromTile, toTile, roadType);
 	local open = BinaryHeap();
 	local closed = AIList();
 	local finalPath = null;
@@ -283,6 +283,8 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 		// TODO - Force-build a depot if we failed earlier 
 	}
 	
+	AILog.Info("  Finished.")
+	
 	return 1;
 }
 
@@ -346,7 +348,7 @@ function PathFinder::AreRoadsConnected(tileA, tileB) {
 
 		// Prevent the pathfinder hanging for a long time for paths that are intractable
 		if(steps++ >= MAX_STEPS) {
-			AILog.Error("    Path is taking too long to find.");
+			AILog.Error("    Path is taking too long to follow.");
 			break;
 		}
 	}

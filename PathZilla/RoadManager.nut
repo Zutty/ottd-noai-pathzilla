@@ -33,13 +33,21 @@ class RoadManager {
 /*
  * Get a list of all the road stations in a town for a specified cargo
  */
-function RoadManager::GetStations(town, cargo) {
+function RoadManager::GetStations(town, cargo, roadType) {
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
 	
+	// Ensure we get the right type of station
 	local stationList = AIStationList(stationType);
 	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
 	stationList.RemoveValue(0);
+	
+	// Ensure the stations have the correct road type
+	stationList.Valuate(function (station, roadType) {
+		return (AIRoad.HasRoadType(AIStation.GetLocation(station), roadType)) ? 1 : 0;
+	}, roadType);
+	stationList.RemoveValue(0);
+	
 	return stationList;
 }
 
@@ -49,7 +57,7 @@ function RoadManager::GetStations(town, cargo) {
  * many stations can be placed in a town. If the AI is set not to be agressive
  * it will count competitor's stations in the total coverage.
  */
-function RoadManager::GetTownCoverage(town, cargo) {
+function RoadManager::GetTownCoverage(town, cargo, roadType) {
 	// Initialise a few details
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
@@ -60,6 +68,13 @@ function RoadManager::GetTownCoverage(town, cargo) {
 	local stationList = AIStationList(stationType);
 	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
 	stationList.RemoveValue(0);
+	
+	// Ensure the stations have the correct road type
+	stationList.Valuate(function (station, roadType) {
+		return (AIRoad.HasRoadType(AIStation.GetLocation(station), roadType)) ? 1 : 0;
+	}, roadType);
+	stationList.RemoveValue(0);
+	
 	
 	// Get a list of tiles that fall within the coverage area of those stations
 	local coveredTiles = AITileList();
@@ -138,7 +153,7 @@ function RoadManager::BuildStations(town, cargo, roadType) {
 		
 	// Build new stations until the coverage exceeds the target percentage
 	local stationID = 0;
-	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo) <= PathZilla.TARGET_TOWN_COVERAGE) && stationID >= 0) {
+	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= PathZilla.TARGET_TOWN_COVERAGE) && stationID >= 0) {
 		PathZilla.Sleep(1);
 
 		stationID = RoadManager.BuildStation(town, cargo, roadType);
@@ -182,22 +197,17 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	tileList.AddRectangle(townTile - offset, townTile + offset);
 		
 	// Find a list of tiles that are controlled by competitors
-	local competitorTiles = AITileList();
 	foreach(tile, _ in tileList) {
 		local owner = AITile.GetOwner(tile);
 		local isCompetitors = (owner != AICompany.ResolveCompanyID(AICompany.MY_COMPANY) && owner != AICompany.ResolveCompanyID(AICompany.INVALID_COMPANY));
-		if(isCompetitors) {
-			if(AITile.IsStationTile(tile)) {
-				local offs = AIMap.GetTileIndex(comptSpacing, comptSpacing);
-				competitorTiles.AddRectangle(tile - offs, tile + offs);
-			} else {
-				competitorTiles.AddTile(tile);
-			}
+
+		if(AITile.IsStationTile(tile) && isCompetitors) {
+			local offs = AIMap.GetTileIndex(comptSpacing, comptSpacing);
+			tileList.RemoveRectangle(tile - offs, tile + offs);
+		} else if(AITile.IsStationTile(tile) || isCompetitors) {
+			tileList.RemoveTile(tile);
 		}
 	}
-	
-	// Don't try to build on top of the competition
-	tileList.RemoveList(competitorTiles);
 	
 	// Get the spacing offset for our stations
 	offset = AIMap.GetTileIndex(stationSpacing, stationSpacing);

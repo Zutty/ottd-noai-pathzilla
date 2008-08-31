@@ -102,7 +102,7 @@ function ServiceManager::MaintainServices() {
  * profit, and ranks them by their profitability.
  */
 function ServiceManager::FindNewServices() {
-	local schema = pz.GetSchema();
+	local schema = pz.GetNextSchema();
 	local cargo = schema.GetCargo();
 	local roadType = schema.GetRoadType();
 
@@ -128,7 +128,7 @@ function ServiceManager::FindNewServices() {
 		AILog.Info("  Looking for potential services from "+AITown.GetName(aTown)+"...");
 
 		// Get the shortest distances accross the network
-		local netDist = pz.GetSchema().GetPlanGraph().GetShortestDistances(Vertex.FromTown(aTown));
+		local netDist = schema.GetPlanGraph().GetShortestDistances(Vertex.FromTown(aTown));
 
 		// Iterate over each town to test each possible connection
 		local steps = 0;
@@ -139,9 +139,9 @@ function ServiceManager::FindNewServices() {
 
 			// Ensure that its possible to connect to the town, and that we 
 			// don't already provide this service
-			if(bTown != aTown && pz.GetSchema().GetPlanGraph().ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo, roadType)) {
+			if(bTown != aTown && schema.GetPlanGraph().ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo, roadType)) {
 				local bTile = AITown.GetLocation(bTown);
-				local engine = this.SelectEngine(aTown, bTown, cargo, false);
+				local engine = this.SelectEngine(aTown, bTown, cargo, roadType, false);
 				
 				if(engine == null) {
 					AILog.Error("    There are no suitable vehicles for this route! [" + AITown.GetName(aTown) + " to " + AITown.GetName(bTown)+ "]");
@@ -167,7 +167,7 @@ function ServiceManager::FindNewServices() {
 				
 				// Only consider the service if it is more profitable than it is costly
 				if(annualProfit > (annualCost/factor)) {
-					this.potentialServices.Insert(ServiceDescriptor(aTown, bTown, cargo, roadType, engine, netDist[bTile], annualProfit));
+					this.potentialServices.Insert(ServiceDescriptor(schema.GetId(), aTown, bTown, cargo, roadType, engine, netDist[bTile], annualProfit));
 				}
 			}
 		}
@@ -209,8 +209,6 @@ function ServiceManager::ProvidesThisService(svc) {
  * will operate the service.
  */
 function ServiceManager::ImplementService() {
-	local schema = pz.GetSchema();
-	
 	// Check whether or not we can build any more vehicles
 	local proceed = (AIVehicleList().Count() < AIGameSettings.GetValue("vehicle.max_roadveh"));
 	
@@ -228,9 +226,11 @@ function ServiceManager::ImplementService() {
 		
 		// Only proceed if there are any services left to implement
 		if(bestService != null) {
+			local schema = pz.GetSchema(bestService.GetSchemaId());
 			local service = bestService.Create();
 			
-			AILog.Info("Best service goes from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
+			local strType = (service.GetRoadType() == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
+			AILog.Info("Best service takes " + AICargo.GetCargoLabel(service.GetCargo()) + " from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()) + " by " + strType);
 			
 			local path = schema.GetPlanGraph().FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
 			
@@ -252,11 +252,11 @@ function ServiceManager::ImplementService() {
 		
 					// Build a link between the towns
 					AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-					local success = PathFinder.FindPath(a.ToTile(), b.ToTile(), schema.GetRoadType());
+					local success = PathFinder.FindPath(a.ToTile(), b.ToTile(), service.GetRoadType());
 					
 					// If we were able to build the link, add the edge to the actual graph
 					if(success > 0) {
-						pz.GetSchema().GetActualGraph().AddEdge(edge);
+						schema.GetActualGraph().AddEdge(edge);
 					}
 				}
 			}
@@ -290,7 +290,7 @@ function ServiceManager::ImplementService() {
  * cargo. This method is compatible with NewGRF sets that require vehciles to 
  * be refitted.
  */
-function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
+function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkStations) {
 	local availableFunds = FinanceManager.GetAvailableFunds();
 	local forbidArv = false;
 	
@@ -300,9 +300,9 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 		local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
 		local radius = AIStation.GetCoverageRadius(stationType);
 	
-		local fromStations = RoadManager.GetStations(fromTown, cargo);
+		local fromStations = RoadManager.GetStations(fromTown, cargo, roadType);
 		fromStations.Valuate(AIStation.GetLocation);
-		local toStations = RoadManager.GetStations(toTown, cargo);
+		local toStations = RoadManager.GetStations(toTown, cargo, roadType);
 		toStations.Valuate(AIStation.GetLocation);
 		
 		local fromAcc = 0;
@@ -336,8 +336,6 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 		if(forbidArv) AILog.Warning("Cannot build ARVs for this service");
 	}
 	
-	local roadType = this.pz.GetSchema().GetRoadType();
-
 	local engineList = AIEngineList(AIVehicle.VEHICLE_ROAD);
 	engineList.Valuate(function (engine, cargo, availableFunds, forbidArv, roadType) {
 		if(AIEngine.GetRoadType(engine) != roadType) return -1;
@@ -387,8 +385,8 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 		local radius = AIStation.GetCoverageRadius(stationType);
 
 		// Get the stations
-		local fromStations = RoadManager.GetStations(fromTown, cargo);
-		local toStations = RoadManager.GetStations(toTown, cargo);
+		local fromStations = RoadManager.GetStations(fromTown, cargo, roadType);
+		local toStations = RoadManager.GetStations(toTown, cargo, roadType);
 			
 		// Create a lambda function to rank stations based on acceptance
 		local accValuator = function(station, cargo, radius) {
@@ -441,12 +439,12 @@ function ServiceManager::CreateFleet(service) {
 	local cargo = service.GetCargo();
 	
 	// Select an engine type
-	local engine = this.SelectEngine(service.GetFromTown(), service.GetToTown(), service.GetCargo(), true);
+	local engine = this.SelectEngine(service.GetFromTown(), service.GetToTown(), service.GetCargo(), service.GetRoadType(), true);
 	service.SetEngine(engine);
 	
 	// Get the stations
-	local fromStations = RoadManager.GetStations(fromTown, cargo);
-	local toStations = RoadManager.GetStations(toTown, cargo);
+	local fromStations = RoadManager.GetStations(fromTown, cargo, service.GetRoadType());
+	local toStations = RoadManager.GetStations(toTown, cargo, service.GetRoadType());
 	
 	// If the engine type is articulated, forbid the vehicle from visiting regular stations
 	if(AIEngine.IsArticulated(engine)) {
@@ -466,12 +464,16 @@ function ServiceManager::CreateFleet(service) {
 	
 	// Find the closest depots to the starting town
 	local depots = AIDepotList(AITile.TRANSPORT_ROAD);
+	depots.Valuate(AIRoad.HasRoadType, service.GetRoadType());
+	depots.KeepValue(1);
 	depots.Valuate(AITile.GetDistanceManhattanToTile, fromTile);
 	depots.KeepBottom(1);
 	local fromDepot = depots.Begin();
 	
 	// Find the closest depots to the destination town
 	depots = AIDepotList(AITile.TRANSPORT_ROAD);
+	depots.Valuate(AIRoad.HasRoadType, service.GetRoadType());
+	depots.KeepValue(1);
 	depots.Valuate(AITile.GetDistanceManhattanToTile, toTile);
 	depots.KeepBottom(1);
 	local toDepot = depots.Begin();
@@ -566,8 +568,8 @@ function ServiceManager::CreateFleet(service) {
  */
 function ServiceManager::UpdateOrders(service) {
 	// Get the stations
-	local fromStations = RoadManager.GetStations(service.GetFromTown(), service.GetCargo());
-	local toStations = RoadManager.GetStations(service.GetToTown(), service.GetCargo());
+	local fromStations = RoadManager.GetStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
+	local toStations = RoadManager.GetStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
 
 	// If the engine type is articulated, forbid the vehicle from visiting regular stations
 	if(AIEngine.IsArticulated(service.GetEngine())) {
