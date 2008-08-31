@@ -403,9 +403,6 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, checkStations) {
 		local fromSum = ListSum(fromStations);
 		local toSum = ListSum(toStations);
 		
-		AISign.BuildSign(AITown.GetLocation(fromTown), ""+fromSum);
-		AISign.BuildSign(AITown.GetLocation(toTown), ""+toSum);
-		
 		// Get the lesser of the two
 		minAcceptance = min(fromSum, toSum);
 	}
