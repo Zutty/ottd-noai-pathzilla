@@ -432,55 +432,25 @@ function RoadManager::CanRoadTilesBeConnected(zTile, aTile, bTile, ...) {
 		origTile = LandManager.InferOtherEndTile(zTile, aTile);
 	}
 	
-	return AIRoad.CanBuildConnectedRoadPartsHere(aTile, origTile, bTile) > 0;
-	/*
-	local connectable = false;
-	local dir = (vargc > 0) ? vargv[0] : LandManager.GetDirection(aTile, bTile);
-				
-	local aSl = AITile.GetSlope(aTile);
-	local bSl = AITile.GetSlope(bTile);
-				
-	local aLevel = LandManager.IsLevel(aTile)
-	local bLevel = LandManager.IsLevel(bTile)
-				
-	local aIncline = LandManager.IsIncline(aTile);
-	local bIncline = LandManager.IsIncline(bTile);
+	local connectable = AIRoad.CanBuildConnectedRoadPartsHere(aTile, origTile, bTile) > 0;
 	
-	local goingNS = (dir == PathZilla.DIR_NORTH || dir == PathZilla.DIR_SOUTH); 
-	local goingEW = (dir == PathZilla.DIR_EAST || dir == PathZilla.DIR_WEST);
-				
-	local alignNS = (zTile != null) ? (AIMap.GetTileY(zTile) == AIMap.GetTileY(bTile)) : false;
-	local alignEW = (zTile != null) ? (AIMap.GetTileX(zTile) == AIMap.GetTileX(bTile)) : false;
-	local align = (alignNS || alignEW);
-	
-	local aSlopingBoth = (aSl == AITile.SLOPE_W || aSl == AITile.SLOPE_S || aSl == AITile.SLOPE_E || aSl == AITile.SLOPE_N);
-	local aSlopingNS = (aSl == AITile.SLOPE_NE || aSl == AITile.SLOPE_SW);
-	local aSlopingEW = (aSl == AITile.SLOPE_NW || aSl == AITile.SLOPE_SE);
-	
-	local bSlopingBoth = (bSl == AITile.SLOPE_W || bSl == AITile.SLOPE_S || bSl == AITile.SLOPE_E || bSl == AITile.SLOPE_N);
-	local bSlopingNS = (bSl == AITile.SLOPE_NE || bSl == AITile.SLOPE_SW);
-	local bSlopingEW = (bSl == AITile.SLOPE_NW || bSl == AITile.SLOPE_SE);
+	if(AIRoad.IsDriveThroughRoadStationTile(aTile)) {
+		connectable = connectable && (AIRoad.GetRoadStationFrontTile(aTile) == bTile || AIRoad.GetDriveThroughBackTile(aTile) == bTile);
+	}
 
-	// Can go to or from a flat tile with no problems
-	connectable = (aLevel && bLevel);
-
-	if(aLevel && (bIncline || bSlopingBoth)) {
-		// Can only go from slope to flat in the direction of the slope
-		connectable = connectable || (bSlopingBoth && align) || ((goingNS && bSlopingNS) || (goingEW && bSlopingEW));
-	} else if((aIncline || aSlopingBoth) && bLevel) {
-		// Can only go from slope to flat in the direction of the slope
-		connectable = connectable || (aSlopingBoth && align) || ((goingNS && aSlopingNS) || (goingEW && aSlopingEW));
-	} else if(aIncline && bIncline) {
-		// Can only go from slope to slope in the direction of both slopes
-		if((goingNS && aSlopingNS && bSlopingNS) || (goingEW && aSlopingEW && bSlopingEW)) {
-			//AILog.Info("    Building on a slope....")
-			//AISign.BuildSign(aTile, "A ["+((goingNS)?"NS":"EW")+"]");
-			//AISign.BuildSign(bTile, "B");
-
-			connectable = true;					
-		} 
+	if(AIRoad.IsDriveThroughRoadStationTile(bTile)) {
+		connectable = connectable && (AIRoad.GetRoadStationFrontTile(bTile) == aTile || AIRoad.GetDriveThroughBackTile(bTile) == aTile);
+	} else if(AIRoad.IsRoadTile(bTile)) {
+		local nRoads = LandManager.GetAdjacentTileList(bTile);
+		nRoads.Valuate(function (tile, bTile) {
+			return (AIRoad.IsRoadTile(tile) && AIRoad.AreRoadTilesConnected(tile, bTile)) ? 1 : 0;
+		}, bTile);
+		nRoads.KeepValue(1);
+		
+		foreach(roadTile, _ in nRoads) {
+			connectable = connectable && (AIRoad.CanBuildConnectedRoadPartsHere(bTile, aTile, roadTile) != 0);
+		}
 	}
 	
 	return connectable;
-	*/
 }
