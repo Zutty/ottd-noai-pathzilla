@@ -230,7 +230,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		local adjRoads = LandManager.GetAdjacentTileList(tile);
 		adjRoads.Valuate(function (_tile, roadType) {
 			//return (AITile.HasTransportType(_tile, AITile.TRANSPORT_ROAD) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
-			return (AITile.HasTransportType(_tile, AITile.TRANSPORT_ROAD)) ? 1 : 0;
+			return (AIRoad.IsRoadTile(_tile)) ? 1 : 0;
 		}, roadType);
 		adjRoads.KeepValue(1);
 		
@@ -298,10 +298,10 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	
 	// Check if the tile on the OTHER side is also road
 	local otherSide = LandManager.GetApproachTile(stationTile, roadTile);
-	if(dtrsOnTownRoads && LandManager.IsClearable(otherSide) && !(AIRoad.IsRoadTile(otherSide) || AITile.IsBuildable(otherSide))) {
+	if(dtrsOnTownRoads && LandManager.IsClearable(otherSide) && !(AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide))) {
 		AITile.DemolishTile(otherSide);
 	}
-	local useDtrs = ((AIRoad.IsRoadTile(otherSide) || AITile.IsBuildable(otherSide)) && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
+	local useDtrs = ((AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide)) && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
 	
 	// Ensure we have a bit of cash available
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
@@ -309,7 +309,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// Connect the site to the road(s)
 	local built = RoadManager.SafelyBuildRoad(roadTile, stationTile);
 	if(useDtrs && built) {
-		useDtrs = RoadManager.SafelyBuildRoad(otherSide, stationTile);
+		built = RoadManager.SafelyBuildRoad(otherSide, stationTile);
 	}
 
 	if(!built) {
