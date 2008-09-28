@@ -32,6 +32,7 @@
 class ServiceDescriptor {
 	// Serialization constants
 	CLASS_NAME = "ServiceDescriptor";
+	SRLZ_SCHEMA_ID = 7;
 	SRLZ_FROM_TOWN = 0;
 	SRLZ_TO_TOWN = 1;
 	SRLZ_CARGO = 2;
@@ -130,6 +131,7 @@ function ServiceDescriptor::Create() {
  */
 function ServiceDescriptor::Serialize() {
 	local data = {};
+	data[SRLZ_SCHEMA_ID] <- this.schemaId;
 	data[SRLZ_FROM_TOWN] <- this.fromTown;
 	data[SRLZ_TO_TOWN] <- this.toTown;
 	data[SRLZ_CARGO] <- this.cargo;
@@ -144,6 +146,7 @@ function ServiceDescriptor::Serialize() {
  * Loads data from a table.
  */
 function ServiceDescriptor::Unserialize(data) {
+	this.schemaId = data[SRLZ_SCHEMA_ID];
 	this.fromTown = data[SRLZ_FROM_TOWN];
 	this.toTown = data[SRLZ_TO_TOWN];
 	this.cargo = data[SRLZ_CARGO];
