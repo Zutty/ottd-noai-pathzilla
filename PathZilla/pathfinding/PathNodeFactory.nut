@@ -282,11 +282,12 @@ function PathNodeFactory::IsTileTraversable(tile) {
  * Estimates the cost (money) of any proposed construction.
  */
 function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
-	// Borrow some money so that we can see how much expensive bridges and tunnels will cost
-	FinanceManager.EnsureFundsAvailable(100000);
+	// Borrow some money so that we can see how much bridges and tunnels will cost
+	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 
 	// Reset costs
 	local costs = 0;
+	local borrowed = false;
 	
 	// If the area is not clear then the best we can do is get the cost of demolition
 	// TODO - MOve this further down
@@ -340,6 +341,7 @@ function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
 					// how much something costs if you cant already afford it. To find out we will
 					// have to keep upping our loan and testing again until we succeed.
 				    tryAgain = FinanceManager.Borrow(10000);
+				    borrowed = true;
 					break;
 				case AIError.ERR_VEHICLE_IN_THE_WAY:
 					// Check what the vechile is in the way of
@@ -356,6 +358,9 @@ function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
 			  }
 	  	}
 	}
+	
+	// Repay the money we borrowed, if any
+	if(borrowed) FinanceManager.RepayLoan(PathZilla.FLOAT);
 
 	// Return the real cost
 	return costs;
