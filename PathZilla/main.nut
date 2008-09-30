@@ -130,14 +130,15 @@ function PathZilla::Start() {
 
 	// Initialse other data, based on load status
 	if(!this.loaded) {
-		// Build the graphs we need to plan routes
-		//this.InitialiseGraphs();
+		// Add passenger schemas by road and tram
 		local cargoList = AICargoList();
-
 		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
 		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD));
-		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_TRAM));
+		
+		// Check that trams are supported before adding the schema
+		if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_TRAM));
 
+		// Add a mail schema by road
 		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_MAIL);
 		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD));
 	} else {
