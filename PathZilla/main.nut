@@ -199,7 +199,7 @@ function PathZilla::Load(data) {
 	if(data.rawin(PathZilla.SRLZ_IDENT)) {
 		if(typeof data[PathZilla.SRLZ_IDENT] == typeof PathZilla.PZ_IDENT) {
 			dataValid = (data[PathZilla.SRLZ_IDENT] == PathZilla.PZ_IDENT)
-					     && (data[PathZilla.SRLZ_VERSION] <= PathZilla.PZ_VERSION);
+					     && (data[PathZilla.SRLZ_VERSION] == PathZilla.PZ_VERSION);
 		}
 	}
 	
