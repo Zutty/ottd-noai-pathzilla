@@ -526,7 +526,18 @@ function ServiceManager::CreateFleet(service) {
 
 	// Estimate how many vehicles will be needed to cover the route
 	local minFleetSize = fromStations.Count() + toStations.Count();
-	local fleetSize = max(minFleetSize, ((minAcceptance) / (capacity * 2)) * ((distance * 3) / speed));
+	local fleetSize = (minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
+	
+	// Adjust the fleet size for early routes
+	// TODO: Make this more generic
+	local year = AIDate.GetYear(AIDate.GetCurrentDate());
+	if(year < 1950) {
+		year = max(year, 1905);
+		fleetSize = (fleetSize * (year - 1900)) / 50;
+	}
+
+	// Ensure the fleet is not too small
+	fleetSize = max(minFleetSize, fleetSize);
 	
 	local engineName = AIEngine.GetName(engine);
 	AILog.Info("  Building a fleet of " + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
