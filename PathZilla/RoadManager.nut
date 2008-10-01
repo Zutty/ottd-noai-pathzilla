@@ -132,14 +132,14 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 
 /*
  * Build enough stations in a town such that the combined coverage meets or
- * exceeds TARGET_TOWN_COVERAGE.
+ * exceeds the target coverage percentage.
  * 
  * The function returns the number of stations that were added.
  */
-function RoadManager::BuildStations(town, cargo, roadType) {
+function RoadManager::BuildStations(town, cargo, roadType, target) {
 	local numStationsBuilt = 0;
 
-	// Set the correcy road type before starting
+	// Set the correct road type before starting
 	AIRoad.SetCurrentRoadType(roadType);
 
 	// Get the type of station that is needed	
@@ -150,10 +150,10 @@ function RoadManager::BuildStations(town, cargo, roadType) {
 	local stationList = AIStationList(stationType);
 	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
 	stationList.RemoveValue(0);
-		
-	// Build new stations until the coverage exceeds the target percentage
+	
+	// Build new stations if there are none or until the coverage exceeds the target
 	local stationID = 0;
-	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= PathZilla.TARGET_TOWN_COVERAGE) && stationID >= 0) {
+	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= target) && stationID >= 0) {
 		PathZilla.Sleep(1);
 
 		stationID = RoadManager.BuildStation(town, cargo, roadType);
@@ -161,7 +161,7 @@ function RoadManager::BuildStations(town, cargo, roadType) {
 			numStationsBuilt++;
 		}
 	}
-	
+
 	return numStationsBuilt;
 }
 

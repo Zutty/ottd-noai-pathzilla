@@ -40,6 +40,7 @@ class ServiceDescriptor {
 	SRLZ_ENGINE = 3;
 	SRLZ_DISTANCE = 4;
 	SRLZ_INCOME = 5;
+	SRLZ_COVERAGE_TARGET = 8;
 	
 	// Member variables
 	schemaId = 0;
@@ -50,8 +51,9 @@ class ServiceDescriptor {
 	engine = null;
 	distance = 0;
 	rawIncome = 0;
+	coverageTarget = 0;
 	
-	constructor(schemaId, fromTown, toTown, cargo, roadType, engine, distance, rawIncome) {
+	constructor(schemaId, fromTown, toTown, cargo, roadType, engine, distance, rawIncome, coverageTarget) {
 		this.schemaId = schemaId;
 		this.fromTown = fromTown;
 		this.toTown = toTown;
@@ -60,6 +62,7 @@ class ServiceDescriptor {
 		this.engine = engine;
 		this.distance = distance;
 		this.rawIncome = rawIncome;
+		this.coverageTarget = coverageTarget;
 	}
 }
 
@@ -106,6 +109,13 @@ function Service::GetEngine() {
 }
 
 /*
+ * Get the town coverage target percentage
+ */
+function Service::GetCoverageTarget() {
+	return this.coverageTarget;
+}
+
+/*
  * Get the graph path this this service would run along.
  */
 function ServiceDescriptor::GetDistance() {
@@ -123,7 +133,7 @@ function ServiceDescriptor::GetRawIncome() {
  * Implement a real service based on this descriptor.
  */
 function ServiceDescriptor::Create() {
-	return Service(this.fromTown, this.toTown, this.cargo, this.roadType, this.engine);
+	return Service(this.fromTown, this.toTown, this.cargo, this.roadType, this.engine, this.coverageTarget);
 }
 
 /*
@@ -139,6 +149,7 @@ function ServiceDescriptor::Serialize() {
 	data[SRLZ_ENGINE] <- this.engine;
 	data[SRLZ_DISTANCE] <- this.distance;
 	data[SRLZ_INCOME] <- this.rawIncome;
+	data[SRLZ_COVERAGE_TARGET] <- this.coverageTarget;
 	return data;
 }
 
@@ -154,6 +165,7 @@ function ServiceDescriptor::Unserialize(data) {
 	this.engine = data[SRLZ_ENGINE];
 	this.distance = data[SRLZ_DISTANCE];
 	this.rawIncome = data[SRLZ_INCOME];
+	this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
 }
 
 /*

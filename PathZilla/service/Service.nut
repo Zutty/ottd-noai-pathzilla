@@ -34,6 +34,7 @@ class Service {
 	SRLZ_ROAD_TYPE = 5;
 	SRLZ_ENGINE = 3;
 	SRLZ_GROUP = 4;
+	SRLZ_COVERAGE_TARGET = 6;
 	
 	fromTown = null;
 	toTown = null;
@@ -43,13 +44,15 @@ class Service {
 	profitability = 0;
 	vehicles = null;
 	group = null;
+	coverageTarget = 0;
 	
-	constructor(fromTown, toTown, cargo, roadType, engine) {
+	constructor(fromTown, toTown, cargo, roadType, engine, coverageTarget) {
 		this.fromTown = fromTown;
 		this.toTown = toTown;
 		this.cargo = cargo;
 		this.roadType = roadType;
 		this.engine = engine;
+		this.coverageTarget = coverageTarget;
 
 		this.vehicles = AIList();
 		this.group = AIGroup.CreateGroup(AIVehicle.VEHICLE_ROAD);
@@ -100,6 +103,13 @@ function Service::SetEngine(e) {
 }
 
 /*
+ * Get the town coverage target percentage
+ */
+function Service::GetCoverageTarget() {
+	return this.coverageTarget;
+}
+
+/*
  * Check if the service visits a town
  */
 function Service::GoesTo(town) {
@@ -146,6 +156,7 @@ function Service::Serialize() {
 	data[SRLZ_ROAD_TYPE] <- this.roadType;
 	data[SRLZ_ENGINE] <- this.engine;
 	data[SRLZ_GROUP] <- this.group;
+	data[SRLZ_COVERAGE_TARGET] <- this.coverageTarget;
 	return data;
 }
 
@@ -159,6 +170,7 @@ function Service::Unserialize(data) {
 	this.roadType = data[SRLZ_ROAD_TYPE];
 	this.engine = data[SRLZ_ENGINE];
 	this.group = data[SRLZ_GROUP];
+	this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
 }
 
 /*

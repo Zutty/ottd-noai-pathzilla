@@ -71,7 +71,7 @@ function ServiceManager::MaintainServices() {
 
 		if(!townsTried.HasItem(service.GetFromTown())) {
 			townsTried.AddItem(service.GetFromTown(), 0);
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
+			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
 			
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetFromTown(), 0);
@@ -80,7 +80,7 @@ function ServiceManager::MaintainServices() {
 
 		if(!townsTried.HasItem(service.GetToTown())) {
 			townsTried.AddItem(service.GetToTown(), 0);
-			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
+			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
 			
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetToTown(), 0);
@@ -165,9 +165,27 @@ function ServiceManager::FindNewServices() {
 				local annualCost = AIEngine.GetRunningCost(engine) * factor;
 				local annualProfit = (annualRevenue - annualCost) / factor;
 				
+				// Decide on a limit for the target coverage level
+				local coverageLimit = PathZilla.MAX_TARGET_COVERAGE;
+				local year = AIDate.GetYear(AIDate.GetCurrentDate());
+				if(year < 1950) {
+					year = max(year, 1910);
+					coverageLimit = ((year - 1900) * 16 / 10);
+				}
+
+				// Decide on the coverage level itself
+				// TODO: Move this code into the schema and make it more general
+				local maxCoverage = PathZilla.MAX_TARGET_COVERAGE;
+				local coverageTarget = maxCoverage;
+				if(roadType == AIRoad.ROADTYPE_TRAM) coverageTarget = maxCoverage / 2; // Penalise trams to prevent sprawl
+				if(AICargo.HasCargoClass(cargo, AICargo.CC_MAIL)) coverageTarget = maxCoverage / 4; // Penalise mail to prevent over-servicing
+				
+				// Ensure the target does not exceed the limit
+				coverageTarget = min(coverageTarget, coverageLimit);
+				
 				// Only consider the service if it is more profitable than it is costly
 				if(annualProfit > (annualCost/factor)) {
-					this.potentialServices.Insert(ServiceDescriptor(schema.GetId(), aTown, bTown, cargo, roadType, engine, netDist[bTile], annualProfit));
+					this.potentialServices.Insert(ServiceDescriptor(schema.GetId(), aTown, bTown, cargo, roadType, engine, netDist[bTile], annualProfit, coverageTarget));
 				}
 			}
 		}
@@ -262,13 +280,13 @@ function ServiceManager::ImplementService() {
 			}
 			
 			// Ensure that the source town has bus stops
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
+			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetFromTown(), 0);
 			}
 			
 			// Ensure that the destination town has bus stops
-			added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
+			added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetToTown(), 0);
 			}
