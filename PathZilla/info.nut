@@ -26,11 +26,11 @@
  */
 
 class PathZilla extends AIInfo {
-	function GetAuthor()      { return "Zutty"; }
+	function GetAuthor()      { return "George Weller"; }
 	function GetName()        { return "PathZilla"; }
-	function GetDescription() { return "A road networking AI"; }
-	function GetVersion()     { return 3; }
-	function GetDate()        { return "2008-08-16"; }
+	function GetDescription() { return "A networking AI"; }
+	function GetVersion()     { return 4; }
+	function GetDate()        { return "2008-10-01"; }
 	function CreateInstance() { return "PathZilla"; }
 	function GetSettings() {
 		SetSetting({name = "latency", description = "Latency", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});

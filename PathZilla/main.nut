@@ -18,11 +18,12 @@
  * 
  * main.nut
  *
- * PathZilla - A road networking AI. See readme.txt for details.
+ * PathZilla - A networking AI. See readme.txt for details.
  * 
  * Author:  George Weller (Zutty)
  * Created: 16/05/2008
- * Version: 1.3
+ * Updated: 01/10/2008
+ * Version: 4
  */
 
 class PathZilla extends AIController {
@@ -125,7 +126,7 @@ function PathZilla::Start() {
 		this.companyName = this.ChooseName();
 	}
 	
-	// Set the name
+	// Set the company name
 	AICompany.SetName(trnc(this.companyName));
 
 	// Initialse other data, based on load status
