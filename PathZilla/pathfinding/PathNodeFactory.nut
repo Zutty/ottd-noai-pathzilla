@@ -340,7 +340,7 @@ function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
 					// This is a bit of a hack. Due to a bug in NoAI, it is impossible to find out
 					// how much something costs if you cant already afford it. To find out we will
 					// have to keep upping our loan and testing again until we succeed.
-				    tryAgain = FinanceManager.Borrow(10000);
+				    tryAgain = FinanceManager.Borrow(100000);
 				    borrowed = true;
 					break;
 				case AIError.ERR_VEHICLE_IN_THE_WAY:
@@ -359,8 +359,8 @@ function PathNodeFactory::EstimateConstructionCosts(aTile, bTile, type) {
 	  	}
 	}
 	
-	// Repay the money we borrowed, if any
-	if(borrowed) FinanceManager.RepayLoan(PathZilla.FLOAT);
+	// Repay the any money we borrowed, quietly!
+	if(borrowed) FinanceManager.RepayLoan(PathZilla.FLOAT, true);
 
 	// Return the real cost
 	return costs;

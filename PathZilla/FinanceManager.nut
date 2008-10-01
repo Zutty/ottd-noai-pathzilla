@@ -85,10 +85,11 @@ function FinanceManager::MaintainFunds(float) {
  * specified float remaining. If we were able to repay the load, or if no 
  * repayments were necessary the function returns true.
  */
-function FinanceManager::RepayLoan(float) {
+function FinanceManager::RepayLoan(float, ...) {
 	local bankBalance = AICompany.GetBankBalance(AICompany.MY_COMPANY);
 	local currentLoan = AICompany.GetLoanAmount();
 	local success = true; 
+	local quiet = (vargc > 0);
 
 	// Only proceed if we have a loan and we are capable of repaying
 	if((currentLoan > 0) && (bankBalance > float)) {
@@ -98,14 +99,14 @@ function FinanceManager::RepayLoan(float) {
 		// If we can afford to pay it all off then do so
 		if(requiredLoan < 0) {
 			success = AICompany.SetLoanAmount(0);
-			if(success) {
+			if(success && !quiet) {
 				AILog.Info("    Paid off loan!");
 			}
 		} else {
 			// Otherwise just pay enough off to retain our float
 			success = AICompany.SetMinimumLoanAmount(requiredLoan);
 
-			if(AICompany.GetLoanAmount() < currentLoan) {
+			if(AICompany.GetLoanAmount() < currentLoan && !quiet) {
 				AILog.Info("    Repaid  " + amountToRepay);
 			}
 		}
