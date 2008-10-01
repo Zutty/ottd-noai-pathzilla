@@ -599,16 +599,18 @@ function ServiceManager::UpdateOrders(service) {
 	// Get the stations
 	local fromStations = RoadManager.GetStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
 	local toStations = RoadManager.GetStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
-
+	
 	// If the engine type is articulated, forbid the vehicle from visiting regular stations
 	if(AIEngine.IsArticulated(service.GetEngine())) {
-		local callback = function (station) {
+		local callback = function (station, roadType) {
+			// Ensure we check the correct road type
+			AIRoad.SetCurrentRoadType(roadType);
 			return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
 		};
 		
-		fromStations.Valuate(callback);
+		fromStations.Valuate(callback, service.GetRoadType());
 		fromStations.RemoveValue(0);
-		toStations.Valuate(callback);
+		toStations.Valuate(callback, service.GetRoadType());
 		toStations.RemoveValue(0);
 	}
 
