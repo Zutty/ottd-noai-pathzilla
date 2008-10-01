@@ -298,10 +298,27 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	
 	// Check if the tile on the OTHER side is also road
 	local otherSide = LandManager.GetApproachTile(stationTile, roadTile);
-	if(dtrsOnTownRoads && LandManager.IsClearable(otherSide) && !(AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide))) {
-		AITile.DemolishTile(otherSide);
+	
+	// Test to see if we should demolish the tile on the other side of the road
+	local demolished = true;
+	if((dtrsOnTownRoads && LandManager.IsClearable(otherSide)
+		 && !(AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide)))
+		 || (!dtrsOnTownRoads && roadType == AIRoad.ROADTYPE_TRAM)) {
+		demolished = AITile.DemolishTile(otherSide);
 	}
-	local useDtrs = ((AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide)) && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
+	
+	// If we could not demolish the tile then we can't continue
+	if(!demolished) {
+		AISign.BuildSign(stationTile, "COULD NOT DEMOLISH");
+		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
+		AILog.Error("COULD NOT CLEAR AREA FOR " + strType + " STOP!");
+		return -1;
+	}
+
+	// Test to see if we should build a DTRS
+	local useDtrs = (roadType == AIRoad.ROADTYPE_TRAM)
+		 || ((AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide))
+		 && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
 	
 	// Ensure we have a bit of cash available
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
