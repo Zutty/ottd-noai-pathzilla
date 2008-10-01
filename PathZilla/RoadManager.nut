@@ -101,7 +101,7 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 			if(AITown.IsWithinTownInfluence(town, tile) && isCompetitors && AITile.IsStationTile(tile)) {
 				// Identify the station type
 				local stRadius = 0;
-				if(AIRoad.IsRoadStationTile(tile)) {
+				if(LandManager.IsRoadStationAny(tile)) {
 					stRadius = AIStation.GetCoverageRadius(AIStation.STATION_BUS_STOP);
 				} else if(AITile.HasTransportType(tile, AITile.TRANSPORT_RAIL)) {
 					stRadius = AIStation.GetCoverageRadius(AIStation.STATION_TRAIN);
@@ -333,6 +333,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		// TODO - Handle this situation more gracefully
 		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
 		AILog.Error("COULD NOT CONNECT ROAD TO " + strType + " STOP!");
+		AISign.BuildSign(stationTile, ":"+trnc(AIError.GetLastErrorString()));
 		return -1;
 	}
 	
