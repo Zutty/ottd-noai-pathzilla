@@ -331,7 +331,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 
 	if(!built) {
 		// TODO - Handle this situation more gracefully
-		AILog.Error("COULD NOT CONNECT ROAD TO BUS STOP!");
+		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
+		AILog.Error("COULD NOT CONNECT ROAD TO " + strType + " STOP!");
 		return -1;
 	}
 	
@@ -357,7 +358,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	local success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, useDtrs, false);
 	
 	if(!success) {
-		AILog.Error("BUS STOP WAS NOT BUILT");
+		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
+		AILog.Error(strType + " STOP WAS NOT BUILT");
 		local err = AIError.GetLastErrorString();
 		if(err.len() > 30) err = err.slice(0, 30);
 		AISign.BuildSign(stationTile, ""+err);
