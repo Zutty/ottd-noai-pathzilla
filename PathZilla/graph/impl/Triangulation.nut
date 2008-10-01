@@ -46,6 +46,33 @@ class Triangulation extends Graph {
 	constructor(targetList) {
 		Graph.constructor();
 		
+		AILog.Info("  Computing triangulation over " + targetList.Count() + " targets...");
+
+		// If there are fewer than three targets then use a special case
+		if(targetList.Count() == 1) {
+			this.vertices.RawInsert(Vertex.FromTile(targetList.GetValue(targetList.Begin())));
+
+			AILog.Info("     Done.");
+			return;
+		} else if(targetList.Count() == 2) {
+			local a = Vertex.FromTile(targetList.GetValue(targetList.Begin()));
+			local b = Vertex.FromTile(targetList.GetValue(targetList.Next()));
+			
+			this.vertices.RawInsert(a);
+			this.vertices.RawInsert(b);
+
+			this.edges.RawInsert(Edge(a, b));
+
+			this.data[a.ToTile()] <- SortedSet(); 
+			this.data[a.ToTile()].RawInsert(b);
+
+			this.data[b.ToTile()] <- SortedSet(); 
+			this.data[b.ToTile()].RawInsert(a);
+			
+			AILog.Info("     Done.");
+			return;
+		}
+		
 		// Get the corners of the map
 		local superVertices = [
 				Vertex(1, 1),
@@ -60,8 +87,6 @@ class Triangulation extends Graph {
 				Triangle(superVertices[1], superVertices[2], superVertices[3]) 
 			];
 		local completedTriangles = [];
-		
-		AILog.Info("  Computing triangulation over " + targetList.Count() + " targets...");
 	
 		// Compute the trianglation
 		local steps = 0;

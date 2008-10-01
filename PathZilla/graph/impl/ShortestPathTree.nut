@@ -38,14 +38,25 @@ class ShortestPathTree extends Graph {
 	constructor(masterGraph, sourceTile) {
 		Graph.constructor();
 		
+		AILog.Info("  Computing shortest path tree...");
+
+		// Use a special case if there are less than three vertices
+		if(masterGraph.GetVertices().Len() < 3) {
+			// Just copy the data!
+			this.vertices = clone masterGraph.vertices;
+			this.edges = clone masterGraph.edges;
+			this.data = clone masterGraph.data;
+			
+			AILog.Info("     Done");
+			return;
+		}
+		
 		// Initialise
 		local queue = BinaryHeap();
 		local dist = {};
 		local prev = {};
 		local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY();
 		infinity = infinity * infinity; // Square it  
-		
-		AILog.Info("  Computing shortest path tree...");
 
 		// Initialise distance and previous node lists
 		foreach(v in masterGraph.GetVertices()) {

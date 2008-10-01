@@ -42,6 +42,17 @@ class MinimumSpanTree extends Graph {
 		
 		AILog.Info("  Computing minimum spanning tree...");
 
+		// Use a special case if there are less than three vertices
+		if(masterGraph.GetVertices().Len() < 3) {
+			// Just copy the data!
+			this.vertices = clone masterGraph.vertices;
+			this.edges = clone masterGraph.edges;
+			this.data = clone masterGraph.data;
+			
+			AILog.Info("     Done");
+			return;
+		}
+
 		local queue = BinaryHeap();
 		local closed = {};
 		local edgeSet = SortedSet();
