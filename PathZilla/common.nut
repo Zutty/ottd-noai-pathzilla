@@ -203,3 +203,10 @@ function ArrayToList(array) {
 	
 	return list;
 }
+
+/*
+ * Truncate a string to match the OpenTTD name length requirements.
+ */
+function trnc(str) {
+	return (str.len() > 30) ? str.slice(0, 30) : str;
+}

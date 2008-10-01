@@ -53,7 +53,7 @@ class Service {
 
 		this.vehicles = AIList();
 		this.group = AIGroup.CreateGroup(AIVehicle.VEHICLE_ROAD);
-		AIGroup.SetName(this.group, AITown.GetName(fromTown) + " to " + AITown.GetName(toTown));
+		AIGroup.SetName(this.group, trnc(AITown.GetName(fromTown) + " to " + AITown.GetName(toTown)));
 	}
 }
 

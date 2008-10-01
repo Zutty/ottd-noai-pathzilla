@@ -360,9 +360,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	if(!success) {
 		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
 		AILog.Error(strType + " STOP WAS NOT BUILT");
-		local err = AIError.GetLastErrorString();
-		if(err.len() > 30) err = err.slice(0, 30);
-		AISign.BuildSign(stationTile, ""+err);
+		AISign.BuildSign(stationTile, ""+trnc(AIError.GetLastErrorString()));
 		return -1;
 	}
 	

@@ -126,7 +126,7 @@ function PathZilla::Start() {
 	}
 	
 	// Set the name
-	AICompany.SetCompanyName(this.companyName);
+	AICompany.SetName(trnc(this.companyName));
 
 	// Initialse other data, based on load status
 	if(!this.loaded) {
@@ -264,7 +264,7 @@ function PathZilla::ChooseName() {
 		
 		do {
 			name = "PathZilla #" + i++;
-		} while(!AICompany.SetCompanyName(name));
+		} while(!AICompany.SetName(trnc(name)));
 		
 		return name;
 	}
