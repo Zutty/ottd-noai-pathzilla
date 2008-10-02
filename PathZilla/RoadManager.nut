@@ -438,7 +438,7 @@ function RoadManager::CanRoadTilesBeConnected(zTile, aTile, bTile, ...) {
 	if(origTile == null) {
 		local tiles = LandManager.GetAdjacentTileList(aTile);
 		tiles.RemoveTile(bTile);
-		tiles.Valuate(AIRoad.IsRoadTile);
+		tiles.Valuate(AIRoad.AreRoadTilesConnected, aTile);
 		tiles.KeepValue(1);
 		if(tiles.Count() > 0) {
 			origTile = tiles.Begin();
