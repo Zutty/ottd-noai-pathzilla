@@ -36,7 +36,7 @@ class PathFinder {
  * there are none nearby. 
  */ 
 function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
-	AILog.Info("  Searching for a path between [" + fromTile + "] and [" + toTile + "]...");
+	AILog.Info("  Searching for a path between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
 	
 	// Initialise	
 	local factory = PathNodeFactory(fromTile, toTile, roadType);
