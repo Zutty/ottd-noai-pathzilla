@@ -84,6 +84,10 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 		}
 	}
 	
+	//local signs = [];
+	//signs.append(AISign.BuildSign(fromTile, "START"));
+	//signs.append(AISign.BuildSign(goalTile, "GOAL"));
+	
 	// Ensure that the goal tile is not already closed
 	closed.RemoveItem(goalTile);
 
@@ -106,7 +110,7 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 			continue;
 		}
 
-		//AISign.BuildSign(tile, ""+node.GetCost().GetTotalCost());
+		//signs.append(AISign.BuildSign(tile, ""+node.GetCost().GetTotalCost()));
 
 		// Ensure we dont try it again
 		closed.AddItem(tile, 0);
@@ -284,6 +288,10 @@ function PathFinder::FindPath(fromTile, toTile, roadType, ...) {
 	}
 	
 	AILog.Info("  Finished.")
+	
+	//foreach(sign in signs) {
+	//	AISign.RemoveSign(sign);
+	//}
 	
 	return 1;
 }
