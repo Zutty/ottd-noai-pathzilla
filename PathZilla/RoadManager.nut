@@ -433,7 +433,7 @@ function RoadManager::SafelyBuildRoad(tileA, tileB) {
 /*
  * Check if a road can be built at aTile that will connect to bTile from zTile
  */
-function RoadManager::CanRoadTilesBeConnected(zTile, aTile, bTile, ...) {
+function RoadManager::CanRoadTilesBeConnected(zTile, aTile, bTile) {
 	local origTile = zTile;
 	if(origTile == null) {
 		local tiles = LandManager.GetAdjacentTileList(aTile);

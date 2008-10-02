@@ -172,12 +172,10 @@ function PathNodeFactory::GetNeighbours(node) {
 	bType = PathNode.TYPE_ROAD;
 	
 	// Check all the adjacent tiles
-	foreach(i, bTile in LandManager.GetAdjacentTiles(aTile)) {
-		local dir = i + 1;
-		
+	foreach(bTile in LandManager.GetAdjacentTiles(aTile)) {
 		// Ensure the tile is traversable
 		if(this.IsTileTraversable(bTile) && (bTile != zTile) && !AITile.IsSteepSlope(AITile.GetSlope(bTile))) {
-			local addNeighbour = RoadManager.CanRoadTilesBeConnected(zTile, aTile, bTile, dir);
+			local addNeighbour = RoadManager.CanRoadTilesBeConnected(zTile, aTile, bTile);
 
 			if(addNeighbour) {
 				neighbours.append(PathNode(bTile, node, this.ComputeCost(bTile, node, bType), bType));
