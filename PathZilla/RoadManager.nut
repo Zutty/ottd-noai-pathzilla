@@ -374,8 +374,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		sideRoads.RemoveTile(otherSide);
 
 		// Build the road loops
-		PathFinder.FindPath(otherSide, loopTile, roadType, [stationTile], false)
-		if(loopTile != roadTile) PathFinder.FindPath(roadTile, loopTile, roadType, [stationTile], false)
+		PathWrapper.BuildRoad(otherSide, loopTile, roadType, [stationTile], false, true);
+		if(loopTile != roadTile) PathWrapper.BuildRoad(roadTile, loopTile, roadType, [stationTile], false, true)
 	}
 	
 	return AIStation.GetStationID(stationTile);

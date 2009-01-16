@@ -177,6 +177,35 @@ function LandManager::GetDirection(a, b) {
 /*
  * Checks if the specified tile is a road station tile of any road type.
  */
+function LandManager::IsDriveThroughRoadStationAny(tile) {
+	// First check if there is a staion of the current type
+	local isDriveThroughRoadStation = AIRoad.IsDriveThroughRoadStationTile(tile);
+	
+	// If not, change road types and check again
+	if(!isDriveThroughRoadStation) {
+		// Buffer the current type
+		local prevType = AIRoad.GetCurrentRoadType();
+
+		// Change types (there are only two at the time of implementation)
+		if(prevType == AIRoad.ROADTYPE_ROAD) {
+			AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_TRAM);
+		} else {
+			AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_ROAD);
+		}
+		
+		// Check again
+		isDriveThroughRoadStation = AIRoad.IsDriveThroughRoadStationTile(tile);
+		
+		// Reset the previous road type
+		AIRoad.SetCurrentRoadType(prevType);
+	}
+
+	return isDriveThroughRoadStation;
+}
+
+/*
+ * Checks if the specified tile is a road station tile of any road type.
+ */
 function LandManager::IsRoadStationAny(tile) {
 	// First check if there is a staion of the current type
 	local isRoadStation = AIRoad.IsRoadStationTile(tile);

@@ -78,11 +78,8 @@ class PathZilla extends AIController {
 		require("graph/impl/MinimumSpanTree.nut");
 		require("graph/impl/ShortestPathTree.nut");
 		require("graph/impl/Triangulation.nut");
-		require("pathfinding/BasicCost.nut");
-		require("pathfinding/PathCost.nut");
-		require("pathfinding/PathFinder.nut");
-		require("pathfinding/PathNode.nut");
-		require("pathfinding/PathNodeFactory.nut");
+		require("pathfinding/PathWrapper.nut");
+		require("pathfinding/Road.nut");
 		require("schema/Schema.nut");
 		require("service/Service.nut");
 		require("service/ServiceDescriptor.nut");

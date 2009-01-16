@@ -270,7 +270,7 @@ function ServiceManager::ImplementService() {
 		
 					// Build a link between the towns
 					AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-					local success = PathFinder.FindPath(a.ToTile(), b.ToTile(), service.GetRoadType());
+					local success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType());
 					
 					// If we were able to build the link, add the edge to the actual graph
 					if(success > 0) {

@@ -118,13 +118,16 @@ function FinanceManager::RepayLoan(float, quiet = false) {
  * Borrow the specified amount. The function returns true if we were able to 
  * borrow enough.
  */
-function FinanceManager::Borrow(amount) {
-	local success = false; 
+function FinanceManager::Borrow(amount = -1) {
+	if(amount < 0) {
+		amount = AICompany.GetLoanInterval();
+	}
+	
+	local success = false;
 	local requiredLoan = AICompany.GetLoanAmount() + amount;
 
 	// Only proceed if we are able to borrow enough
 	if(requiredLoan <= AICompany.GetMaxLoanAmount()) {
-		//AILog.Info("        Trying to set the loan to " + requiredLoan);
 		success = AICompany.SetMinimumLoanAmount(requiredLoan);
 	}
 	
