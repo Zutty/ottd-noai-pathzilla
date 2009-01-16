@@ -333,7 +333,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		// TODO - Handle this situation more gracefully
 		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
 		AILog.Error("COULD NOT CONNECT ROAD TO " + strType + " STOP!");
-		AISign.BuildSign(stationTile, ":"+trnc(AIError.GetLastErrorString()));
+		//AISign.BuildSign(stationTile, ":"+trnc(AIError.GetLastErrorString()));
 		return -1;
 	}
 	

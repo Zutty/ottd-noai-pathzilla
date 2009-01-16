@@ -75,7 +75,6 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 
 			if(!AITile.IsBuildable(ptile) && !(AIRoad.IsRoadTile(ptile) || AIBridge.IsBridgeTile(ptile) || AITunnel.IsTunnelTile(ptile))) {
 				AITile.DemolishTile(ptile);
-				AISign.BuildSign(ptile, "X");
 				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 			}
 			
