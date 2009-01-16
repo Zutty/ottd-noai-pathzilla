@@ -190,14 +190,14 @@ function PathZilla::Start() {
  * compatible with this AI. The method also relies on the classes that are used
  * as data structures implementing the Unserialize method.
  */
-function PathZilla::Load(data) {
+function PathZilla::Load(version, data) {
 	local dataValid = false;
 	
 	// First check that the data is for this AI, and this verion
 	if(data.rawin(PathZilla.SRLZ_IDENT)) {
 		if(typeof data[PathZilla.SRLZ_IDENT] == typeof PathZilla.PZ_IDENT) {
 			dataValid = (data[PathZilla.SRLZ_IDENT] == PathZilla.PZ_IDENT)
-					     && (data[PathZilla.SRLZ_VERSION] == PathZilla.PZ_VERSION);
+					     && (version == PathZilla.PZ_VERSION);
 		}
 	}
 	
@@ -229,9 +229,8 @@ function PathZilla::Load(data) {
 function PathZilla::Save() {
 	local data = {};
 	
-	// Store the ident and version number
+	// Store the ident
 	data[PathZilla.SRLZ_IDENT] <- PathZilla.PZ_IDENT;
-	data[PathZilla.SRLZ_VERSION] <- PathZilla.PZ_VERSION
 
 	// Store the basic data
 	data[PathZilla.SRLZ_COMPANY_NAME] <- this.companyName;

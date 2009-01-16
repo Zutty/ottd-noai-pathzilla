@@ -93,11 +93,11 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 						if (AIRoad.IsRoadTile(tile)) AITile.DemolishTile(tile);
 						
 						if (AITunnel.GetOtherTunnelEnd(tile) == ptile) {
-							success = AITunnel.BuildTunnel(AIVehicle.VEHICLE_ROAD, tile);
+							success = AITunnel.BuildTunnel(AIVehicle.VT_ROAD, tile);
 						}
 					} else {
 						local bridgeType = LandManager.ChooseBridgeType(tile, ptile);
-						success = AIBridge.BuildBridge(AIVehicle.VEHICLE_ROAD, bridgeType, tile, ptile);
+						success = AIBridge.BuildBridge(AIVehicle.VT_ROAD, bridgeType, tile, ptile);
 					}
 				}
 				

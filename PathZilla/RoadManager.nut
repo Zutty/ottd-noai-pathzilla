@@ -95,7 +95,7 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 		// Find those tiles that are controlled by competitors
 		foreach(tile, _ in tileList) {
 			local owner = AITile.GetOwner(tile);
-			local isCompetitors = (owner != AICompany.ResolveCompanyID(AICompany.MY_COMPANY) && owner != AICompany.ResolveCompanyID(AICompany.INVALID_COMPANY));
+			local isCompetitors = (owner != AICompany.ResolveCompanyID(AICompany.COMPANY_SELF) && owner != AICompany.ResolveCompanyID(AICompany.COMPANY_INVALID));
 			
 			// If its a station tile and not ours then look into it
 			if(AITown.IsWithinTownInfluence(town, tile) && isCompetitors && AITile.IsStationTile(tile)) {
@@ -199,7 +199,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// Find a list of tiles that are controlled by competitors
 	foreach(tile, _ in tileList) {
 		local owner = AITile.GetOwner(tile);
-		local isCompetitors = (owner != AICompany.ResolveCompanyID(AICompany.MY_COMPANY) && owner != AICompany.ResolveCompanyID(AICompany.INVALID_COMPANY));
+		local isCompetitors = (owner != AICompany.ResolveCompanyID(AICompany.COMPANY_SELF) && owner != AICompany.ResolveCompanyID(AICompany.COMPANY_INVALID));
 
 		if(AITile.IsStationTile(tile) && isCompetitors) {
 			local offs = AIMap.GetTileIndex(comptSpacing, comptSpacing);
@@ -280,7 +280,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	local stationTile = tileList.Begin();
 	
 	// Check that we're able to build here first
-	local rating = AITown.GetRating(town, AICompany.MY_COMPANY);
+	local rating = AITown.GetRating(town, AICompany.COMPANY_SELF);
 	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
 	if(!allowed) {
 		AILog.Error(AITown.GetName(town) + " local authority refuses construction");

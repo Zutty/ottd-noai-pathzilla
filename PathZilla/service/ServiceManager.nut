@@ -354,7 +354,7 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkSt
 		if(forbidArv) AILog.Warning("Cannot build ARVs for this service");
 	}
 	
-	local engineList = AIEngineList(AIVehicle.VEHICLE_ROAD);
+	local engineList = AIEngineList(AIVehicle.VT_ROAD);
 	engineList.Valuate(function (engine, cargo, availableFunds, forbidArv, roadType) {
 		if(AIEngine.GetRoadType(engine) != roadType) return -1;
 		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
@@ -643,7 +643,7 @@ function ServiceManager::UpdateOrders(service) {
 		local fromTile = AIStation.GetLocation(RandomItemByWeight(fromStations, fromSum));
 		local toTile = AIStation.GetLocation(RandomItemByWeight(toStations, toSum));
 		
-		local currentOrder = AIOrder.ResolveOrderPosition(v, AIOrder.CURRENT_ORDER);
+		local currentOrder = AIOrder.ResolveOrderPosition(v, AIOrder.ORDER_CURRENT);
 		//local destination = AIOrder.GetOrderDestination(v, currentOrder);
 		
 		// Clear the order list i It would be nice to have an AIOrder.ClearOrders() function

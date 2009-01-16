@@ -55,7 +55,7 @@ class Service {
 		this.coverageTarget = coverageTarget;
 
 		this.vehicles = AIList();
-		this.group = AIGroup.CreateGroup(AIVehicle.VEHICLE_ROAD);
+		this.group = AIGroup.CreateGroup(AIVehicle.VT_ROAD);
 		AIGroup.SetName(this.group, trnc(AITown.GetName(fromTown) + " to " + AITown.GetName(toTown)));
 	}
 }

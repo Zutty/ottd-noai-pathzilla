@@ -36,7 +36,7 @@ class FinanceManager {
  * the function returns false.
  */
 function FinanceManager::EnsureFundsAvailable(amount) {
-	local bankBalance = AICompany.GetBankBalance(AICompany.MY_COMPANY);
+	local bankBalance = AICompany.GetBankBalance(AICompany.COMPANY_SELF);
 	local success = true; 
 	
 	// Only proceed if we actually need to borrow anything
@@ -68,7 +68,7 @@ function FinanceManager::EnsureFundsAvailable(amount) {
  * function returns true.
  */
 function FinanceManager::MaintainFunds(float) {
-	local bankBalance = AICompany.GetBankBalance(AICompany.MY_COMPANY);
+	local bankBalance = AICompany.GetBankBalance(AICompany.COMPANY_SELF);
 	local success = true; 
 
 	if(bankBalance > float) {
@@ -86,7 +86,7 @@ function FinanceManager::MaintainFunds(float) {
  * repayments were necessary the function returns true.
  */
 function FinanceManager::RepayLoan(float, quiet = false) {
-	local bankBalance = AICompany.GetBankBalance(AICompany.MY_COMPANY);
+	local bankBalance = AICompany.GetBankBalance(AICompany.COMPANY_SELF);
 	local currentLoan = AICompany.GetLoanAmount();
 	local success = true; 
 
@@ -139,7 +139,7 @@ function FinanceManager::Borrow(amount = -1) {
  * bank balance and any further loan that can be taken out.
  */
 function FinanceManager::GetAvailableFunds() {
-	return AICompany.GetBankBalance(AICompany.MY_COMPANY) + (AICompany.GetMaxLoanAmount() - AICompany.GetLoanAmount());
+	return AICompany.GetBankBalance(AICompany.COMPANY_SELF) + (AICompany.GetMaxLoanAmount() - AICompany.GetLoanAmount());
 }
 
 /*

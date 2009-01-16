@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 27/05/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class PathZilla extends AIInfo {
@@ -32,9 +32,13 @@ class PathZilla extends AIInfo {
 	function GetVersion()     { return 4; }
 	function GetDate()        { return "2008-10-01"; }
 	function CreateInstance() { return "PathZilla"; }
+	function GetShortName()   { return "PZLA"; }
 	function GetSettings() {
-		SetSetting({name = "latency", description = "Latency", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});
-		SetSetting({name = "aggressive", description = "Aggressive", min_value = 0, max_value = 1, easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = 0});
+		AddSetting({name = "latency", description = "Latency", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});
+		AddSetting({name = "aggressive", description = "Aggressive", min_value = 0, max_value = 1, easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = 0});
+	}
+	function CanLoadFromVersion(version) {
+		return (version == 4);
 	}
 }
 
