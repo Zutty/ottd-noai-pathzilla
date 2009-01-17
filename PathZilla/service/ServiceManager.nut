@@ -290,6 +290,10 @@ function ServiceManager::ImplementService() {
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetToTown(), 0);
 			}
+			
+			// Ensure depot exist in both towns
+			this.BuildDepotInTown(service.GetFromTown(), service.GetRoadType());
+			this.BuildDepotInTown(service.GetToTown(), service.GetRoadType());
 	
 			// Create a fleet of vehicles to operate this service
 			this.CreateFleet(service);
@@ -656,6 +660,66 @@ function ServiceManager::UpdateOrders(service) {
 		
 		// Ensure the vehicle is still heading to the same town it was before
 		AIVehicle.SkipToVehicleOrder(v, currentOrder);
+	}
+}
+
+/*
+ * Build a depot int eh specified town if none exits
+ */
+function ServiceManager::BuildDepotInTown(town, roadType) {
+	local townTile = AITown.GetLocation(town);
+	AIRoad.SetCurrentRoadType(roadType);
+
+	// Check for existing depots in the town
+	local depots = AIDepotList(AITile.TRANSPORT_ROAD);
+	depots.Valuate(function (depot, town, roadType) {
+		return AITown.IsWithinTownInfluence(town, depot) && AIRoad.HasRoadType(depot, roadType);
+	}, town, roadType);
+	depots.KeepValue(1);
+	
+	// If there aren't any we need to build one
+	if(depots.Count() == 0) {
+		// Get a list of tiles to search in
+		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
+		local tileList = AITileList();
+		tileList.AddRectangle(townTile - offset, townTile + offset);
+		
+		// Rank those tiles by their suitability for a depot
+		tileList.Valuate(function(tile, roadType, town) {
+			// Find suitable roads adjacent to the tile
+			local adjRoads = LandManager.GetAdjacentTileList(tile);
+			adjRoads.Valuate(function (_tile, roadType) {
+				return (AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
+			}, roadType);
+			adjRoads.KeepValue(1);
+			
+			local score = 0;
+			
+			if(!AITile.IsWaterTile(tile) && !AITile.IsSteepSlope(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
+				 && !AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile)) {
+				score = AITown.GetDistanceManhattanToTile(town, tile);
+				if(adjRoads.Count() > 0) score += 10000;
+				if(AITile.IsBuildable(tile)) score += 100;
+				if(AITown.IsWithinTownInfluence(town, tile)) score += 1000;
+			}
+			
+			return score;
+		}, roadType, town);
+		
+		tileList.RemoveValue(0);
+		
+		foreach(depotTile, _ in tileList) {
+			local path = PathWrapper.FindPath(townTile, depotTile, roadType);
+			if(path != null) {
+				PathWrapper.BuildPath(path, roadType);
+				AITile.DemolishTile(depotTile);
+				AIRoad.BuildRoadDepot(depotTile, path.GetParent().GetTile());
+				break;
+			}
+		}
+		
+		PathZilla.Sleep(1000);
 	}
 }
 

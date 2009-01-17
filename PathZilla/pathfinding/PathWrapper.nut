@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 15/01/2009
- * Version: 1.0
+ * Version: 1.1
  */
 
 class PathWrapper {
@@ -31,6 +31,19 @@ class PathWrapper {
 }
 
 function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], buildDepot = true, demolish = false) {
+	local path = PathWrapper.FindPath(fromTile, toTile, roadType, ignoreTiles, demolish) 
+	
+	if(path == null) {
+		AILog.Error("  COULD NOT FIND A PATH!");
+		return 0;
+	}
+	
+	AILog.Info("    Done.");
+	
+	return PathWrapper.BuildPath(path, roadType);
+}
+
+function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false) {
 	local pathfinder = Road();
 	pathfinder.cost.allow_demolition = demolish;
 	pathfinder.cost.no_existing_road = 150;
@@ -42,6 +55,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 	}
 	
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
+	AIRoad.SetCurrentRoadType(roadType);
 	
 	AILog.Info("  Searching for a path between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
 
@@ -53,15 +67,12 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 			PathZilla.Sleep(1);
 		}
 	}
-	
-	AILog.Info("    Done.");
 
+	return path;
+}
+
+function PathWrapper::BuildPath(path, roadType) {	
 	AIRoad.SetCurrentRoadType(roadType);
-
-	local builtDepot = !buildDepot;
-	local halfWayPoint = AIMap.DistanceManhattan(fromTile, toTile) / 2; // Manhattan distance is only lower bound, but best we can do
-	local distance = 0;
-	local counter = 0;
 
 	while (path != null) {
 		local par = path.GetParent();
@@ -69,7 +80,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 
 		if (par != null) {
 			local ptile = par.GetTile();
-			distance = AIMap.DistanceManhattan(tile, ptile);
+			local distance = AIMap.DistanceManhattan(tile, ptile);
 
 			FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 
@@ -136,53 +147,10 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 			}
 		}
 
-		// Check if this is a suitable spot for a depot		
-		local isSuitable = !AITunnel.IsTunnelTile(path.GetTile()) && LandManager.IsLevel(path.GetTile());
-
-  		// If were more than half way, try to build a depot
-		if(counter >= halfWayPoint && !builtDepot && isSuitable) {
-			// First check if there is already a depot nearby
-			/*
-			local depots = AIDepotList(AITile.TRANSPORT_ROAD);
-			depots.Valuate(AITile.GetDistanceManhattanToTile, path.GetTile());
-			depots.KeepBelowValue(10);
-			
-			// For nearby depots, check that they are connected
-			if(depots.Count() > 0) {
-				foreach(depot, _ in depots) {
-					local frontTile = AIRoad.GetRoadDepotFrontTile(depot); 
-					if(PathFinder.AreRoadsConnected(frontTile, path.GetTile())) {
-						builtDepot = true;
-						break;
-					}
-				}
-			}
-			*/
-			
-			// If we couldn't find an existing one, then build away!
-			if(!builtDepot) {
-				local candidates = LandManager.GetAdjacentTileList(path.GetTile());
-				candidates.Valuate(function (tile) {
-					local sl = AITile.GetSlope(tile);
-					local level = (sl == AITile.SLOPE_FLAT || sl == AITile.SLOPE_NWS || sl == AITile.SLOPE_WSE || sl == AITile.SLOPE_SEN || sl == AITile.SLOPE_ENW);
-					local condition = AITile.IsBuildable(tile) && !AIRoad.IsRoadTile(tile) && !AITunnel.IsTunnelTile(tile) && level;
-					return (condition) ? 1 : 0;
-				});
-				candidates.RemoveValue(0);
-	
-				// If there any good spots, build it
-				if(candidates.Count() > 0) {
-					AILog.Info("  Building depot...");
-					local depotTile = candidates.Begin();
-					RoadManager.SafelyBuildRoad(path.GetTile(), depotTile);
-					AITile.DemolishTile(depotTile);
-					AIRoad.BuildRoadDepot(depotTile, path.GetTile());
-					builtDepot = true;
-				}
-			}
-		}
-
-		counter += distance;
 		path = par;
 	}
+	
+	AILog.Info("  Finished.")
+
+	return 1;
 }
