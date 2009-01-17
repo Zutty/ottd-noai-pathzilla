@@ -233,7 +233,7 @@ function Road::_Cost(path, new_tile, new_direction, self)
 	}
 	
 	foreach(item in self._cost_callbacks) {
-		local args = [{}, new_tile, prev_tile];
+		local args = [this, new_tile, prev_tile];
 		args.extend(item[1]);
 		local value = item[0].acall(args);
 		
