@@ -270,7 +270,7 @@ function ServiceManager::ImplementService() {
 		
 					// Build a link between the towns
 					AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-					local success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType());
+					local success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES]);
 					
 					// If we were able to build the link, add the edge to the actual graph
 					if(success > 0) {
@@ -710,7 +710,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 		tileList.RemoveValue(0);
 		
 		foreach(depotTile, _ in tileList) {
-			local path = PathWrapper.FindPath(townTile, depotTile, roadType);
+			local path = PathWrapper.FindPath(townTile, depotTile, roadType, [], true);
 			if(path != null) {
 				PathWrapper.BuildPath(path, roadType);
 				AITile.DemolishTile(depotTile);
@@ -719,7 +719,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 			}
 		}
 		
-		PathZilla.Sleep(1000);
+		PathZilla.Sleep(1);
 	}
 }
 

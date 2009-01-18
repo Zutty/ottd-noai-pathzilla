@@ -369,13 +369,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	if(success && useDtrs) {
 		AILog.Info("  Building a loop...");
 		local loopTile = (stationTile != townTile) ? townTile : roadTile;
-		local sideRoads = LandManager.GetAdjacentTileList(stationTile);
-		sideRoads.RemoveTile(roadTile);
-		sideRoads.RemoveTile(otherSide);
-
-		// Build the road loops
-		PathWrapper.BuildRoad(otherSide, loopTile, roadType, [stationTile], false, true);
-		if(loopTile != roadTile) PathWrapper.BuildRoad(roadTile, loopTile, roadType, [stationTile], false, true)
+		PathWrapper.BuildRoad(otherSide, loopTile, roadType, [stationTile], true, [PathWrapper.FEAT_ROAD_LOOP]);
+		if(loopTile != roadTile) PathWrapper.BuildRoad(roadTile, loopTile, roadType, [stationTile], true, [PathWrapper.FEAT_ROAD_LOOP])
 	}
 	
 	return AIStation.GetStationID(stationTile);
