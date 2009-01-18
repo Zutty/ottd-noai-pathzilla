@@ -147,6 +147,7 @@ function PathWrapper::BuildPath(path, roadType) {
 
 			FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 
+			// Check if we need to demolish the tile (e.g. is a town house is in the way)
 			if(!AITile.IsBuildable(ptile) && !(AIRoad.IsRoadTile(ptile) || AIBridge.IsBridgeTile(ptile) || AITunnel.IsTunnelTile(ptile))) {
 				AITile.DemolishTile(ptile);
 				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
@@ -158,20 +159,20 @@ function PathWrapper::BuildPath(path, roadType) {
 			local ignore = false;
 
 			while(!success && attempts++ < MAXIMUM_ATTEMPTS) {
-				if (distance == 1) {
+				if(distance == 1) {
 					success = AIRoad.BuildRoad(tile, ptile);
 				} else {
 					// Build a bridge or tunnel.
-					if (!AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile)) {
+					if(!AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile)) {
 						// If it was a road tile, demolish it first. Do this to work around expended roadbits.
-						if (AIRoad.IsRoadTile(tile)) AITile.DemolishTile(tile);
+						if(AIRoad.IsRoadTile(tile)) AITile.DemolishTile(tile);
 						
-						if (AITunnel.GetOtherTunnelEnd(tile) == ptile) {
+						if(AITunnel.GetOtherTunnelEnd(tile) == ptile) {
 							success = AITunnel.BuildTunnel(AIVehicle.VT_ROAD, tile);
+						} else {
+							local bridgeType = LandManager.ChooseBridgeType(tile, ptile);
+							success = AIBridge.BuildBridge(AIVehicle.VT_ROAD, bridgeType, tile, ptile);
 						}
-					} else {
-						local bridgeType = LandManager.ChooseBridgeType(tile, ptile);
-						success = AIBridge.BuildBridge(AIVehicle.VT_ROAD, bridgeType, tile, ptile);
 					}
 				}
 				
