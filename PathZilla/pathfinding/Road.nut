@@ -30,6 +30,7 @@ class Road
 	cost = null;                   ///< Used to change the costs.
 	_cost_callbacks = null;        ///< Stores [callback, args] tuples for additional cost.
 	_running = null;
+	signs = null;
 
 	constructor()
 	{
@@ -50,6 +51,7 @@ class Road
 		this.cost = this.Cost(this);
 		_cost_callbacks = [];
 		this._running = false;
+		this.signs = [];
 	}
 
 	/**
@@ -151,6 +153,10 @@ function Road::FindPath(iterations)
 	local test_mode = AITestMode();
 	local ret = this._pathfinder.FindPath(iterations);
 	this._running = (ret == false) ? true : false;
+	{
+		local _ = AIExecMode();
+		foreach(sign in this.signs) AISign.RemoveSign(sign);
+	}
 	return ret;
 }
 
@@ -242,6 +248,11 @@ function Road::_Cost(path, new_tile, new_direction, self)
 		}
 		
 		cost += value;
+	}
+	
+	{
+		local _ = AIExecMode();
+		//self.signs.append(AISign.BuildSign(new_tile, ""+cost));
 	}
 
 	return path.GetCost() + cost;

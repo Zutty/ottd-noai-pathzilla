@@ -655,8 +655,8 @@ function ServiceManager::UpdateOrders(service) {
 		//local destination = AIOrder.GetOrderDestination(v, currentOrder);
 		
 		// Clear the order list i It would be nice to have an AIOrder.ClearOrders() function
-		AIOrder.RemoveOrder(v, 2);
 		AIOrder.RemoveOrder(v, 1);
+		AIOrder.RemoveOrder(v, 0);
 		
 		// Set the new orders
 		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);
