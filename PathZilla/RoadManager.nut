@@ -137,6 +137,9 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
  * The function returns the number of stations that were added.
  */
 function RoadManager::BuildStations(town, cargo, roadType, target) {
+	local strType = (roadType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
+	AILog.Info("  Building " + strType + " stations in " + AITown.GetName(town) + "...");
+
 	local numStationsBuilt = 0;
 
 	// Set the correct road type before starting

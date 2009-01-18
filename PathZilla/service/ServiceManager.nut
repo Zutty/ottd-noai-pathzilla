@@ -300,6 +300,8 @@ function ServiceManager::ImplementService() {
 	
 			// Finally, add the service to the list	
 			this.serviceList.Insert(service);
+			
+			AILog.Info("Done implementing service.");
 		}
 	
 		// Don't remove it until we are finished
@@ -455,6 +457,8 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkSt
  * orders between the stations in both towns.
  */
 function ServiceManager::CreateFleet(service) {
+	AILog.Info("  Creating a fleet of vehicles...");
+
 	// Initialise
 	local fromTown = service.fromTown;
 	local toTown = service.toTown;
@@ -667,6 +671,9 @@ function ServiceManager::UpdateOrders(service) {
  * Build a depot int eh specified town if none exits
  */
 function ServiceManager::BuildDepotInTown(town, roadType) {
+	local strType = (roadType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
+	AILog.Info("  Checking for a " + strType + " depot in " + AITown.GetName(town) + "...");
+
 	local townTile = AITown.GetLocation(town);
 	AIRoad.SetCurrentRoadType(roadType);
 
@@ -679,6 +686,8 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 	
 	// If there aren't any we need to build one
 	if(depots.Count() == 0) {
+		AILog.Info("    Building a new depot...");
+
 		// Get a list of tiles to search in
 		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
@@ -720,6 +729,8 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 		}
 		
 		PathZilla.Sleep(1);
+
+		AILog.Info("    Done building depot.");
 	}
 }
 

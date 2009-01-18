@@ -66,7 +66,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 		}
 	}
 
-	AILog.Info("  Trying to build a road between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
+	AILog.Info("    Trying to build a road between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
 
 	// Build the road and return the result
 	return PathWrapper._BuildRoad(pathfinder, roadType);
@@ -91,11 +91,11 @@ function PathWrapper::_BuildRoad(pathfinder, roadType) {
 	local path = PathWrapper._FindPath(pathfinder, roadType); 
 	
 	if(path == null) {
-		AILog.Error("  COULD NOT FIND A PATH!");
+		AILog.Error("      COULD NOT FIND A PATH!");
 		return 0;
 	}
 	
-	AILog.Info("    Done.");
+	AILog.Info("      Done finding road.");
 	
 	return PathWrapper.BuildPath(path, roadType);
 }
@@ -118,6 +118,8 @@ function PathWrapper::_FindPath(pathfinder, roadType) {
 
 function PathWrapper::BuildPath(path, roadType) {	
 	AIRoad.SetCurrentRoadType(roadType);
+
+	AILog.Info("      Building a road...")
 
 	while (path != null) {
 		local par = path.GetParent();
@@ -166,7 +168,7 @@ function PathWrapper::BuildPath(path, roadType) {
 						case AIError.ERR_NOT_ENOUGH_CASH:
 							if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
 								// We cant afford to borrow any more money, so give up!
-								AILog.Error("          CAN'T AFFORD IT - ABORTING!");
+								AILog.Error("      CAN'T AFFORD IT - ABORTING!");
 								return false;
 							} else {
 								// Otherwise, borrow some more money
@@ -195,7 +197,7 @@ function PathWrapper::BuildPath(path, roadType) {
 		path = par;
 	}
 	
-	AILog.Info("  Finished.")
+	AILog.Info("    Done building road.")
 
 	return 1;
 }
