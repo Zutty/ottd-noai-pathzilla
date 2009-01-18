@@ -40,7 +40,23 @@ class PathWrapper {
 }
 
 function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
-	local pathfinder = PathWrapper.InitPathfinder(fromTile, toTile, ignoreTiles, demolish);
+	local path = PathWrapper.FindPath(fromTile, toTile, roadType, ignoreTiles, demolish, features);
+
+	if(path == null) {
+		AILog.Error("      COULD NOT FIND A PATH!");
+		return 0;
+	}
+	
+	AILog.Info("      Done finding path.");
+
+	return PathWrapper.BuildPath(path, roadType);
+}
+
+function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
+	local pathfinder = Road();
+	pathfinder.cost.allow_demolition = demolish;
+	pathfinder.cost.no_existing_road = 150;
+	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
 
 	// Add on any additional features
 	foreach(feat in features) {
@@ -66,44 +82,13 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 		}
 	}
 
-	AILog.Info("    Trying to build a road between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
+	AILog.Info("    Trying find a path between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
 
-	// Build the road and return the result
-	return PathWrapper._BuildRoad(pathfinder, roadType);
-}
-
-function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, fark = false) {
-	return PathWrapper._FindPath(PathWrapper.InitPathfinder(fromTile, toTile, ignoreTiles, demolish, fark), roadType);
-}
-
-// ----------------------------------
-
-function PathWrapper::InitPathfinder(fromTile, toTile, ignoreTiles, demolish, fark = false) {
-	local pathfinder = Road();
-	pathfinder.cost.allow_demolition = demolish;
-	pathfinder.cost.no_existing_road = 150;
-	if(fark) pathfinder.cost.fark = 1;
-	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
-	return pathfinder;
-}
-
-function PathWrapper::_BuildRoad(pathfinder, roadType) {
-	local path = PathWrapper._FindPath(pathfinder, roadType); 
-	
-	if(path == null) {
-		AILog.Error("      COULD NOT FIND A PATH!");
-		return 0;
-	}
-	
-	AILog.Info("      Done finding road.");
-	
-	return PathWrapper.BuildPath(path, roadType);
-}
-
-function PathWrapper::_FindPath(pathfinder, roadType) {
+	// Make the necessary preparations
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	AIRoad.SetCurrentRoadType(roadType);
 
+	// Run the pathfinder
 	local path = false;
 	local steps = 0;
 	while (path == false) {
@@ -113,6 +98,7 @@ function PathWrapper::_FindPath(pathfinder, roadType) {
 		}
 	}
 
+	// Return the finished path
 	return path;
 }
 
