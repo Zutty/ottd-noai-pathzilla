@@ -26,12 +26,69 @@
  */
 
 class PathWrapper {
+	// Feature constants
+	FEAT_ROAD_LOOP = 1;
+	FEAT_SEPARATE_ROAD_TYPES = 2;
+	
+	// Costs
+	COST_ROAD_LOOP = 3000;
+	COST_SEPARATE_ROAD_TYPES = 200;
+	COST_PARALLEL_BONUS = 100;
+	
 	constructor() {
 	}
 }
 
-function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], buildDepot = true, demolish = false) {
-	local path = PathWrapper.FindPath(fromTile, toTile, roadType, ignoreTiles, demolish) 
+function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
+	local pathfinder = PathWrapper.InitPathfinder(fromTile, toTile, ignoreTiles, demolish);
+
+	// Add on any additional features
+	foreach(feat in features) {
+		switch(feat) {
+			case PathWrapper.FEAT_ROAD_LOOP:
+				local sideRoadList = LandManager.GetAdjacentTileList(ignoreTiles[0]);
+				sideRoadList.RemoveTile(AIRoad.GetRoadStationFrontTile(ignoreTiles[0]));
+				sideRoadList.RemoveTile(AIRoad.GetDriveThroughBackTile(ignoreTiles[0]));
+				local sideRoads = ListToArray(sideRoadList);
+
+				pathfinder.RegisterCostCallback(function (tile, prevTile, sideRoads) {
+					return (tile == sideRoads[0] || tile == sideRoads[1]) ? PathWrapper.COST_ROAD_LOOP : 0;
+				}, sideRoads);
+			break;
+			case PathWrapper.FEAT_SEPARATE_ROAD_TYPES:
+				pathfinder.RegisterCostCallback(function (tile, prevTile, roadType) {
+					local diff = AIMap.GetMapSizeY() / (tile - prevTile);
+					local parrl = (AIRoad.IsRoadTile(tile + diff) && !AIRoad.HasRoadType(tile + diff, roadType))
+								|| (AIRoad.IsRoadTile(tile - diff) && !AIRoad.HasRoadType(tile - diff, roadType));
+					return ((AIRoad.IsRoadTile(tile) && !AIRoad.HasRoadType(tile, roadType)) ? PathWrapper.COST_SEPARATE_ROAD_TYPES : 0) + ((parrl) ? 0 : PathWrapper.COST_PARALLEL_BONUS);
+				}, roadType);
+			break;
+		}
+	}
+
+	AILog.Info("  Trying to build a road between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
+
+	// Build the road and return the result
+	return PathWrapper._BuildRoad(pathfinder, roadType);
+}
+
+function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, fark = false) {
+	return PathWrapper._FindPath(PathWrapper.InitPathfinder(fromTile, toTile, ignoreTiles, demolish, fark), roadType);
+}
+
+// ----------------------------------
+
+function PathWrapper::InitPathfinder(fromTile, toTile, ignoreTiles, demolish, fark = false) {
+	local pathfinder = Road();
+	pathfinder.cost.allow_demolition = demolish;
+	pathfinder.cost.no_existing_road = 150;
+	if(fark) pathfinder.cost.fark = 1;
+	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
+	return pathfinder;
+}
+
+function PathWrapper::_BuildRoad(pathfinder, roadType) {
+	local path = PathWrapper._FindPath(pathfinder, roadType); 
 	
 	if(path == null) {
 		AILog.Error("  COULD NOT FIND A PATH!");
@@ -43,21 +100,9 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], bu
 	return PathWrapper.BuildPath(path, roadType);
 }
 
-function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false) {
-	local pathfinder = Road();
-	pathfinder.cost.allow_demolition = demolish;
-	pathfinder.cost.no_existing_road = 150;
-	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
-	if(demolish) {
-		pathfinder.RegisterCostCallback(function (new_tile, prev_tile) {
-			return (new_tile == 39138) ? 2000 : 0;
-		});
-	}
-	
+function PathWrapper::_FindPath(pathfinder, roadType) {
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	AIRoad.SetCurrentRoadType(roadType);
-	
-	AILog.Info("  Searching for a path between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
 
 	local path = false;
 	local steps = 0;
