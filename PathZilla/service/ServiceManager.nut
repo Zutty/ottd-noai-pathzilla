@@ -707,7 +707,6 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 			
 			if(!AITile.IsWaterTile(tile) && !AITile.IsSteepSlope(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
 				 && !AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile) && !AIRoad.IsRoadDepotTile(tile)) {
-				//score = AITown.GetDistanceManhattanToTile(town, tile);
 				score = AITown.GetDistanceManhattanToTile(town, tile);
 				if(adjRoads.Count() > 0) score += 10000;
 				if(AITile.IsBuildable(tile)) score += 100;
@@ -720,7 +719,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 		tileList.RemoveValue(0);
 		
 		foreach(depotTile, _ in tileList) {
-			local path = PathWrapper.FindPath(townTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT]);
+			local path = PathWrapper.FindPath(townTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN]);
 			if(path != null) {
 				PathWrapper.BuildPath(path, roadType);
 				AITile.DemolishTile(depotTile);

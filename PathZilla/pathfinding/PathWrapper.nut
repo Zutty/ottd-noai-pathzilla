@@ -30,12 +30,14 @@ class PathWrapper {
 	FEAT_ROAD_LOOP = 1;
 	FEAT_SEPARATE_ROAD_TYPES = 2;
 	FEAT_GRID_LAYOUT = 3;
+	FEAT_DEPOT_ALIGN = 4;
 	
 	// Costs
 	COST_ROAD_LOOP = 3000;
 	COST_SEPARATE_ROAD_TYPES = 200;
 	COST_PARALLEL_BONUS = 100;
 	COST_GRID_LAYOUT = 1000;
+	COST_DEPOT_ALIGN = 3000;
 	
 	constructor() {
 	}
@@ -90,6 +92,21 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 						local dy = abs(tile / AIMap.GetMapSizeY());
 						return (dx % n == 0 || dy % n == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
 					}, n);
+				}
+			break;
+			case PathWrapper.FEAT_DEPOT_ALIGN:
+				local sideTileList = LandManager.GetAdjacentTileList(toTile);
+				sideTileList.Valuate(AIRoad.IsRoadTile);
+				sideTileList.KeepValue(0);
+				local sideTiles = ListToArray(sideTileList);
+				if(sideTiles.len() < 4) {
+					pathfinder.RegisterCostCallback(function (tile, prevTile, sideTiles) {
+						local misaligned = false;
+						if(sideTiles.len() >= 3) misaligned = misaligned || (tile == sideTiles[2]);
+						if(sideTiles.len() >= 2) misaligned = misaligned || (tile == sideTiles[1]);
+						if(sideTiles.len() >= 1) misaligned = misaligned || (tile == sideTiles[0]);
+						return (misaligned) ? PathWrapper.COST_DEPOT_ALIGN : 0;
+					}, sideTiles);
 				}
 			break;
 		}
