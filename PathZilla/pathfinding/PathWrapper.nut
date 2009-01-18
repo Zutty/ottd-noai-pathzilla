@@ -29,11 +29,13 @@ class PathWrapper {
 	// Feature constants
 	FEAT_ROAD_LOOP = 1;
 	FEAT_SEPARATE_ROAD_TYPES = 2;
+	FEAT_GRID_LAYOUT = 3;
 	
 	// Costs
 	COST_ROAD_LOOP = 3000;
 	COST_SEPARATE_ROAD_TYPES = 200;
 	COST_PARALLEL_BONUS = 100;
+	COST_GRID_LAYOUT = 1000;
 	
 	constructor() {
 	}
@@ -53,6 +55,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 }
 
 function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
+	// Initialise the pathfinder
 	local pathfinder = Road();
 	pathfinder.cost.allow_demolition = demolish;
 	pathfinder.cost.no_existing_road = 150;
@@ -78,6 +81,16 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 								|| (AIRoad.IsRoadTile(tile - diff) && !AIRoad.HasRoadType(tile - diff, roadType));
 					return ((AIRoad.IsRoadTile(tile) && !AIRoad.HasRoadType(tile, roadType)) ? PathWrapper.COST_SEPARATE_ROAD_TYPES : 0) + ((parrl) ? 0 : PathWrapper.COST_PARALLEL_BONUS);
 				}, roadType);
+			break;
+			case PathWrapper.FEAT_GRID_LAYOUT:
+				local n = AIGameSettings.GetValue("economy.town_layout").tointeger();
+				if((n == 3 || n == 4) && roadType == AIRoad.ROADTYPE_ROAD) {
+					pathfinder.RegisterCostCallback(function (tile, prevTile, n) {
+						local dx = abs(tile % AIMap.GetMapSizeY());
+						local dy = abs(tile / AIMap.GetMapSizeY());
+						return (dx % n == 0 || dy % n == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+					}, n);
+				}
 			break;
 		}
 	}

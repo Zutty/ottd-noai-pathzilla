@@ -210,3 +210,10 @@ function ArrayToList(array) {
 function trnc(str) {
 	return (str.len() > 30) ? str.slice(0, 30) : str;
 }
+
+/*
+ * Get absolute value of a number
+ */
+function abs(val) {
+	return (val < 0) ? -val : val;
+}
