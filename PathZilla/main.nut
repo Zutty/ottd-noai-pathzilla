@@ -59,6 +59,7 @@ class PathZilla extends AIController {
 	MAX_POTENTIAL_SERVICES = 200;  // The maximum allowable number of potential service descriptors  
 	ARV_ACC_THRESHOLD = 50;        // Minimum percentage of acceptance via DTRSs before ARVs can be built
 	ENGINE_SCORE_THRESHOLD = 80;   // The minimum score for an engine to be randomly selected
+	MAX_CONSTR_ATTEMPTS = 20;	   // The maximum number of attempts when trying to build something
 	
 	// Member variables
 	stop = false;

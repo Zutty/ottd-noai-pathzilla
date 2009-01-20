@@ -178,6 +178,14 @@ function RoadManager::BuildStations(town, cargo, roadType, target) {
  */
 function RoadManager::BuildStation(town, cargo, roadType) {
 	local townTile = AITown.GetLocation(town);
+
+	// Before we do anything, check that we're able to build here first
+	local rating = AITown.GetRating(town, AICompany.COMPANY_SELF);
+	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
+	if(!allowed) {
+		AILog.Error(AITown.GetName(town) + " local authority refuses construction");
+		return -1;
+	}
 	
 	// Get the type of station we should build	
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
@@ -226,121 +234,116 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 
 	// Rank those tiles by their suitability for a station
 	tileList.Valuate(function (tile, town, cargo, radius, dtrsOnTownRoads, roadType) {
-		// Get the cargo acceptance around the tile
-		local acceptance = AITile.GetCargoAcceptance(tile, cargo, 1, 1, radius);
+		// Find roads that are connected to the tile
+		local adjRoadList = LandManager.GetAdjacentTileList(tile);
+		adjRoadList.Valuate(function (_tile, tile) {
+			//return AIRoad.IsRoadTile(tile) || AIRoad.IsRoadDepotTile(tile) || AIRoad.IsRoadStationTile(road)
+			//	 || (AITunnel.IsTunnelTile(tile) && AITile.HasTransportType(tile, TRANSPORT_ROAD))
+			//	 || (AIBridge.IsBridgeTile(tile) && AITile.HasTransportType(tile, TRANSPORT_ROAD));
+			return AIRoad.AreRoadTilesConnected(tile, _tile);
+		}, tile);
+		adjRoadList.KeepValue(1);
+		local adjRoads = ListToArray(adjRoadList);
+		local straightRoad = false;
 		
-		// Find suitable roads adjacent to the tile
-		local adjRoads = LandManager.GetAdjacentTileList(tile);
-		adjRoads.Valuate(function (_tile, roadType) {
-			//return (AITile.HasTransportType(_tile, AITile.TRANSPORT_ROAD) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
-			return (AIRoad.IsRoadTile(_tile)) ? 1 : 0;
-		}, roadType);
-		adjRoads.KeepValue(1);
+		if(adjRoads.len() == 1) {
+			straightRoad = true;
+		} else if(adjRoads.len() == 2) {
+			local dx = abs(adjRoads[1] % AIMap.GetMapSizeY()) - abs(adjRoads[0] % AIMap.GetMapSizeY());
+			local dy = abs(adjRoads[1] / AIMap.GetMapSizeY()) - abs(adjRoads[0] / AIMap.GetMapSizeY());
+			straightRoad = (dx == 0) || (dy == 0);
+		}
 		
-		// Check if the road tile is straight, i.e. if we can build a DTRS on it
-		local straightRoad = AIRoad.IsRoadTile(tile) && (adjRoads.Count() == 1 || (adjRoads.Count() == 2 && adjRoads.Begin() == LandManager.GetApproachTile(tile, adjRoads.Next())));
-
 		// Find the roads that would run parallel to a DTRS in this spot
-		local parallelRoads = LandManager.GetAdjacentTileList(tile);
-		if(adjRoads.Count() > 0) {
-			local roadTile = adjRoads.Begin();
-	
-			parallelRoads.RemoveTile(roadTile);
-			parallelRoads.RemoveTile(LandManager.GetApproachTile(tile, roadTile));
-			parallelRoads.Valuate(AIRoad.IsRoadTile);
-			parallelRoads.KeepValue(1);
+		local parlRoadList = LandManager.GetAdjacentTileList(tile);
+		parlRoadList.Valuate(function (_tile, tile) {
+			return AIRoad.IsRoadTile(_tile) && !AIRoad.AreRoadTilesConnected(tile, _tile);
+		}, tile);
+		parlRoadList.KeepValue(1);
+		local parlRoads = ListToArray(parlRoadList);
+		local inCorner = false;
+
+		if(parlRoads.len() >= 3) {
+			inCorner = true;
+		} else if(parlRoads.len() == 2) {
+			local dx = abs(parlRoads[1] % AIMap.GetMapSizeY()) - abs(parlRoads[0] % AIMap.GetMapSizeY());
+			local dy = abs(parlRoads[1] / AIMap.GetMapSizeY()) - abs(parlRoads[0] / AIMap.GetMapSizeY());
+			inCorner = (dx != 0) || (dy == 0);
 		}
 
 		// Check if this tile is acceptable
-		local acceptable = AITown.IsWithinTownInfluence(town, tile) && LandManager.IsLevel(tile) && adjRoads.Count() > 0;
+		local canBuildOnRoad = (AITile.GetOwner(tile) == AICompany.COMPANY_INVALID) ? dtrsOnTownRoads : AICompany.IsMine(AITile.GetOwner(tile)); 
+		local cl = (AIRoad.IsRoadTile(tile)) ? ((canBuildOnRoad) ? straightRoad : false) : LandManager.IsClearable(tile);
+		local acceptable = AITown.IsWithinTownInfluence(town, tile) && LandManager.IsLevel(tile) && cl;
 		
-		// Check if we are allowed to build DTRSs on town roads
-		if(dtrsOnTownRoads) {
-			// If so and we are on a road tile, the road must be suitable for a DTRS
-			acceptable = acceptable && (adjRoads.Count() < 3) && ((AIRoad.IsRoadTile(tile)) ? straightRoad : (parallelRoads.Count() == 0 && AITile.IsBuildable(tile)));
-		} else {
-			// If not, the tile must not be a road and be clearable
-			acceptable = acceptable && !AIRoad.IsRoadTile(tile) && LandManager.IsClearable(tile);
-		} 
+		// Get the cargo acceptance around the tile
+		local score = AITile.GetCargoAcceptance(tile, cargo, 1, 1, radius);
+		acceptable = acceptable && (score >= 8);
 		
-		// If the spot is acceptable, return a the level of acceptance
-		return (acceptable) ? acceptance : 0;
+		// Penalise tiles in a corner (and if we had an alternative)
+		score /= (dtrsOnTownRoads && inCorner) ? 2 : 1;
+		
+		// Promote tiles on road we can build on
+		score += (AIRoad.IsRoadTile(tile) && canBuildOnRoad) ? 30 : 0;
+
+		// If the spot is acceptable, return tile score
+		return (acceptable) ? score : 0;
 	}, town, cargo, radius, dtrsOnTownRoads, roadType);
+	
+	// Remove unacceptable tiles
+	tileList.RemoveValue(0);
 			
-	// Remove those tiles that don't produce enough
-	tileList.RemoveBelowValue(8);
+	foreach(tile, acc in tileList) {
+		//AISign.BuildSign(tile, ""+acc);
+	}
+	//PathZilla.Sleep(1000);
 	
 	// If we can't find any suitable tiles then just give up!			
 	if(tileList.Count() == 0) {
 		if(stationList.Count() == 0) {
-			AILog.Error("  Bus stop could not be built in " + AITown.GetName(town) + "!");
+			AILog.Error("  Station could not be built in " + AITown.GetName(town) + "!");
 		}
 		
 		return -1;
 	}
 	
-	// Get the best location for the station
-	local stationTile = tileList.Begin();
+	local stationTile = null;
+	local roadTile = null;
+	local otherSide = null;
 	
-	// Check that we're able to build here first
-	local rating = AITown.GetRating(town, AICompany.COMPANY_SELF);
-	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
-	if(!allowed) {
-		AILog.Error(AITown.GetName(town) + " local authority refuses construction");
-		return -1;
+	// Check each tile for valid paths that will connect it to the town.
+	foreach(stTile, _ in tileList) {
+		// Find a path from the town to the station
+ 		local path = PathWrapper.FindPath(townTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN]);
+ 		
+		if(path != null) {
+			// Find a loop back to the town
+			roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : townTile;
+			otherSide = LandManager.GetApproachTile(stTile, roadTile);
+			local loopTile = (stTile != townTile) ? townTile : roadTile;
+			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT]);
+			
+			if(loop != null) {
+				// Build everything
+				PathWrapper.BuildPath(path, roadType);
+				PathWrapper.BuildPath(loop, roadType);
+				RoadManager.SafelyBuildRoad(otherSide, stTile);
+				
+				stationTile = stTile;
+				break;
+			}
+		}
 	}
 	
-	// Find the road tile that we should connect to
-	local neighbourList = LandManager.GetAdjacentTileList(stationTile);
-	neighbourList.Valuate(function (tile, stationTile) {
-		local otherSide = LandManager.GetApproachTile(stationTile, tile);
-		return (AIRoad.IsRoadTile(tile) && RoadManager.CanRoadTilesBeConnected(tile, stationTile, otherSide)) ? ((AIRoad.IsRoadTile(otherSide)) ? 2 : 1) : 0;
-	}, stationTile);
-	neighbourList.RemoveValue(0);
-	local roadTile = neighbourList.Begin();
-	
-	// Check if the tile on the OTHER side is also road
-	local otherSide = LandManager.GetApproachTile(stationTile, roadTile);
-	
-	// Test to see if we should demolish the tile on the other side of the road
-	local demolished = true;
-	if((dtrsOnTownRoads && LandManager.IsClearable(otherSide)
-		 && !(AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide)))
-		 || (!dtrsOnTownRoads && roadType == AIRoad.ROADTYPE_TRAM)) {
-		demolished = AITile.DemolishTile(otherSide);
+	// If we couldn;t find a path to any of the tiles then give up.
+	if(stationTile == null) {
+		AILog.Error("  Station could not be reached in " + AITown.GetName(town) + "!");
 	}
-	
-	// If we could not demolish the tile then we can't continue
-	if(!demolished) {
-		AISign.BuildSign(stationTile, "COULD NOT DEMOLISH");
-		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
-		AILog.Error("COULD NOT CLEAR AREA FOR " + strType + " STOP!");
-		return -1;
-	}
-
-	// Test to see if we should build a DTRS
-	local useDtrs = (roadType == AIRoad.ROADTYPE_TRAM)
-		 || ((AITile.HasTransportType(otherSide, AITile.TRANSPORT_ROAD) || AITile.IsBuildable(otherSide))
-		 && RoadManager.CanRoadTilesBeConnected(roadTile, stationTile, otherSide));
 	
 	// Ensure we have a bit of cash available
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	
-	// Connect the site to the road(s)
-	local built = RoadManager.SafelyBuildRoad(roadTile, stationTile);
-	if(useDtrs && built) {
-		built = RoadManager.SafelyBuildRoad(otherSide, stationTile);
-	}
-
-	if(!built) {
-		// TODO - Handle this situation more gracefully
-		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
-		AILog.Error("COULD NOT CONNECT ROAD TO " + strType + " STOP!");
-		//AISign.BuildSign(stationTile, ":"+trnc(AIError.GetLastErrorString()));
-		return -1;
-	}
-	
-	AILog.Info("  Building a " + ((useDtrs)? "drive through " : "") + "station...");
+	AILog.Info("  Building a station in " + AITown.GetName(town) + "...");
 	
 	// Clean up little road stubs, if any
 	if(AIRoad.IsRoadTile(stationTile)) {
@@ -358,25 +361,59 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		AIRoad.SetCurrentRoadType(roadType); 
 	}
 
-	// Build the station
-	local success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, useDtrs, false);
+	local success = false;
+	local attempts = 0;
+	local fail = false;
+
+	// Finally, try to build the station
+	while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
+		success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, true, false);
+	
+		if(!success) {
+			switch(AIError.GetLastError()) {
+				case AIError.ERR_ROAD_DRIVE_THROUGH_WRONG_DIRECTION:
+					// This shouldn't happen. Try to clear the tile, and if 
+					// that doesn't work then just give up. 
+					if(attempts <= 1) {
+						AITile.DemolishTile(tile);
+					} else {
+						break;
+					}
+				break;
+				case AIError.ERR_AREA_NOT_CLEAR:
+					// Something must have been built since we checked the tile. Clear it.
+					AITile.DemolishTile(tile);
+				break;
+				case AIError.ERR_NOT_ENOUGH_CASH:
+					if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
+						// We cant afford to borrow any more money, so give up!
+						AILog.Error("      CAN'T AFFORD IT - ABORTING!");
+						break;
+					} else {
+						// Otherwise, borrow some more money
+						FinanceManager.Borrow();
+					}
+				break;
+				case AIError.ERR_VEHICLE_IN_THE_WAY:
+					// Theres a vehicle in the way... just wait a bit.
+					PathZilla.Sleep(50);
+				break;
+				// NO idea what to do here! Just give up.
+				case AIError.ERR_UNKNOWN:
+						break;
+				break;
+			}
+		}
+
+	}
 	
 	if(!success) {
 		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
 		AILog.Error(strType + " STOP WAS NOT BUILT");
 		AISign.BuildSign(stationTile, ""+trnc(AIError.GetLastErrorString()));
-		return -1;
 	}
-	
-	// If we have built a DTRS, build a loop in the road to give vehicles somewhere to go
-	if(success && useDtrs) {
-		AILog.Info("  Building a loop...");
-		local loopTile = (stationTile != townTile) ? townTile : roadTile;
-		PathWrapper.BuildRoad(otherSide, loopTile, roadType, [stationTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT]);
-		if(loopTile != roadTile) PathWrapper.BuildRoad(roadTile, loopTile, roadType, [stationTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT])
-	}
-	
-	return AIStation.GetStationID(stationTile);
+
+	return (success) ? AIStation.GetStationID(stationTile) : -1;
 }
 
 /*

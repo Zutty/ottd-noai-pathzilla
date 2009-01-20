@@ -68,8 +68,8 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 		switch(feat) {
 			case PathWrapper.FEAT_ROAD_LOOP:
 				local sideRoadList = LandManager.GetAdjacentTileList(ignoreTiles[0]);
-				sideRoadList.RemoveTile(AIRoad.GetRoadStationFrontTile(ignoreTiles[0]));
-				sideRoadList.RemoveTile(AIRoad.GetDriveThroughBackTile(ignoreTiles[0]));
+				sideRoadList.RemoveTile(toTile);
+				sideRoadList.RemoveTile(LandManager.GetApproachTile(ignoreTiles[0], toTile));
 				local sideRoads = ListToArray(sideRoadList);
 
 				pathfinder.RegisterCostCallback(function (tile, prevTile, sideRoads) {
@@ -155,10 +155,9 @@ function PathWrapper::BuildPath(path, roadType) {
 			
 			local success = false;
 			local attempts = 0;
-			local MAXIMUM_ATTEMPTS = 100;
 			local ignore = false;
 
-			while(!success && attempts++ < MAXIMUM_ATTEMPTS) {
+			while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
 				if(distance == 1) {
 					success = AIRoad.BuildRoad(tile, ptile);
 				} else {
