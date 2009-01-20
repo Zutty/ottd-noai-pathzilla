@@ -179,8 +179,53 @@ function RoadManager::BuildStations(town, cargo, roadType, target) {
 function RoadManager::BuildStation(town, cargo, roadType) {
 	local townTile = AITown.GetLocation(town);
 
-	// Before we do anything, check that we're able to build here first
+	// Get a list of tiles to search in
+	local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
+
+	// Before we do anything, check the local authority rating
 	local rating = AITown.GetRating(town, AICompany.COMPANY_SELF);
+	
+	// If the rating is low, take steps to improve it
+	if(rating < AITown.TOWN_RATING_GOOD) {
+		// See if we can bribe the town
+		if(rating < AITown.TOWN_RATING_MEDIOCRE && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
+			AITown.PerformTownAction(town, AITown.TOWN_ACTION_BRIBE);
+		}
+		
+		// After that, find places we can build trees
+		local tileList = AITileList();
+		tileList.AddRectangle(townTile - offset, townTile + offset);
+		tileList.Valuate(function (tile, town) {
+			return (!AITile.IsWithinTownInfluence(tile, town) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile)) ? 1 : 0;
+		}, town);
+		tileList.RemoveValue(0);
+		tileList.Valuate(function (tile, town, townTile) {
+			return AITile.GetDistanceManhattanToTile(tile, townTile) + AIBase.RandRange(6) - 3;
+		}, town, townTile);
+		tileList.Sort(AIAbstractList.SORT_BY_VALUE, true);
+		
+		// For the places that are available, build a "green belt" around the town
+		if(!tileList.IsEmpty()) {
+			local expenditure = 0;
+			local tile = tileList.Begin();
+			
+			while(AITown.GetRating(town, AICompany.COMPANY_SELF) < AITown.TOWN_RATING_GOOD && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
+				local acc = AIAccounting();
+				for(local i = 0; i < 4; i++) {
+					AITile.PlantTree(tile);
+				}
+				expenditure += acc.GetCosts();
+				tile = tileList.Next();
+			}
+		}
+	}
+	
+	// Get a list of tiles
+	local tileList = AITileList();
+	tileList.AddRectangle(townTile - offset, townTile + offset);
+
+	// Check if we are now allowed to build in town
 	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
 	if(!allowed) {
 		AILog.Error(AITown.GetName(town) + " local authority refuses construction");
@@ -200,12 +245,6 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	local radius = AIStation.GetCoverageRadius(stationType);
 	local stationSpacing = (radius * 3) / 2;
 	local comptSpacing = (PathZilla.IsAggressive() || stationList.Count() == 0) ? 1 : stationSpacing;
-
-	// Get a list of tiles to search in
-	local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
-	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
-	local tileList = AITileList();
-	tileList.AddRectangle(townTile - offset, townTile + offset);
 		
 	// Find a list of tiles that are controlled by competitors
 	foreach(tile, _ in tileList) {
