@@ -323,7 +323,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 			local loopTile = (stTile != townTile) ? townTile : roadTile;
 			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT]);
 			
-			if(loop != null) {
+			// Check that the loop exists and that it can connect to the station
+			if(loop != null && AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetTile())) {
 				// Build everything
 				PathWrapper.BuildPath(path, roadType);
 				PathWrapper.BuildPath(loop, roadType);
