@@ -705,7 +705,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 			
 			local score = 0;
 			
-			if(!AITile.IsWaterTile(tile) && !AITile.IsSteepSlope(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
+			if(!AITile.IsWaterTile(tile) && LandManager.IsLevel(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
 				 && !AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile) && !AIRoad.IsRoadDepotTile(tile)) {
 				score = AITown.GetDistanceManhattanToTile(town, tile);
 				if(adjRoads.Count() > 0) score += 10000;
