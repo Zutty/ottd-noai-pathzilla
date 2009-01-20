@@ -314,14 +314,14 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// Check each tile for valid paths that will connect it to the town.
 	foreach(stTile, _ in tileList) {
 		// Find a path from the town to the station
- 		local path = PathWrapper.FindPath(townTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN]);
+ 		local path = PathWrapper.FindPath(townTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
  		
 		if(path != null) {
 			// Find a loop back to the town
 			roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : townTile;
 			otherSide = LandManager.GetApproachTile(stTile, roadTile);
 			local loopTile = (stTile != townTile) ? townTile : roadTile;
-			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT]);
+			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE]);
 			
 			// Check that the loop exists and that it can connect to the station
 			if(loop != null && AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetTile())) {

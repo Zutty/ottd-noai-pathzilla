@@ -50,12 +50,11 @@ class PathZilla extends AIController {
 			
 	// Configurable constants
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
-	PATHFINDER_MAX_STEPS = 25000;  // Maximum time the pathfinder can take to find a path
 	MAX_TARGETS = 750;             // Maximum number of targets that can be in a single graph 
 	FLOAT = 20000;                 // Minimum amount of money to keep at all times
 	MAX_TARGET_COVERAGE = 80;      // Maximum percentage of town houses to fall within combined station coverage area
 	NEW_VEHICLE_SPREAD_DELAY = 20; // The delay in ms between launching new vehicles in a fleet.
-	MAX_BRIDGE_LENGTH = 64;        // The maximum allowable bridge length - to prevent ridiculous bridges
+	MAX_BRIDGE_LENGTH = 16;        // The maximum allowable bridge length - to prevent ridiculous bridges
 	MAX_POTENTIAL_SERVICES = 200;  // The maximum allowable number of potential service descriptors  
 	ARV_ACC_THRESHOLD = 50;        // Minimum percentage of acceptance via DTRSs before ARVs can be built
 	ENGINE_SCORE_THRESHOLD = 80;   // The minimum score for an engine to be randomly selected

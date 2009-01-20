@@ -31,6 +31,7 @@ class PathWrapper {
 	FEAT_SEPARATE_ROAD_TYPES = 2;
 	FEAT_GRID_LAYOUT = 3;
 	FEAT_DEPOT_ALIGN = 4;
+	FEAT_SHORT_SCOPE = 5;
 	
 	// Costs
 	COST_ROAD_LOOP = 3000;
@@ -61,6 +62,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	local pathfinder = Road();
 	pathfinder.cost.allow_demolition = demolish;
 	pathfinder.cost.no_existing_road = 150;
+	pathfinder.cost.max_bridge_length  = PathZilla.MAX_BRIDGE_LENGTH;
 	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
 
 	// Add on any additional features
@@ -109,6 +111,9 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 					}, sideTiles);
 				}
 			break;
+			case PathWrapper.FEAT_SHORT_SCOPE:
+				pathfinder.cost.max_cost = 60000;
+			break;
 		}
 	}
 
@@ -122,10 +127,8 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	local path = false;
 	local steps = 0;
 	while (path == false) {
-		path = pathfinder.FindPath(100);
-		if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
-			PathZilla.Sleep(1);
-		}
+		path = pathfinder.FindPath(PathZilla.PROCESSING_PRIORITY);
+		PathZilla.Sleep(1);
 	}
 
 	// Return the finished path
