@@ -156,6 +156,12 @@ function Graph::GetShortestDistances(source) {
 	local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY();
 	infinity = infinity * infinity; // Square it  
 	
+	// If there is only one vertex, Dijkstra wont work!
+	if(this.GetVertices().Len() <= 1) {
+		dist[source.ToTile()] <- 0;
+		return dist;
+	}
+
 	// Initialise distance and previous node lists
 	foreach(v in this.GetVertices()) {
 		local tile = v.ToTile();
