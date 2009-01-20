@@ -725,6 +725,8 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 				AITile.DemolishTile(depotTile);
 				AIRoad.BuildRoadDepot(depotTile, path.GetParent().GetTile());
 				break;
+			} else {
+				AILog.Warning("  Could not find path to depot!");
 			}
 		}
 		

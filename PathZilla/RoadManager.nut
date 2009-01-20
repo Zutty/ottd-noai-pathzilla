@@ -331,7 +331,11 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 				
 				stationTile = stTile;
 				break;
+			} else {
+				AILog.Warning("  Could not find loop to station!");
 			}
+		} else {
+			AILog.Warning("  Could not find path to station!");
 		}
 	}
 	
@@ -371,18 +375,18 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	
 		if(!success) {
 			switch(AIError.GetLastError()) {
-				case AIError.ERR_ROAD_DRIVE_THROUGH_WRONG_DIRECTION:
+				case AIRoad.ERR_ROAD_DRIVE_THROUGH_WRONG_DIRECTION:
 					// This shouldn't happen. Try to clear the tile, and if 
 					// that doesn't work then just give up. 
 					if(attempts <= 1) {
-						AITile.DemolishTile(tile);
+						AITile.DemolishTile(stationTile);
 					} else {
 						break;
 					}
 				break;
 				case AIError.ERR_AREA_NOT_CLEAR:
 					// Something must have been built since we checked the tile. Clear it.
-					AITile.DemolishTile(tile);
+					AITile.DemolishTile(stationTile);
 				break;
 				case AIError.ERR_NOT_ENOUGH_CASH:
 					if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
