@@ -98,7 +98,9 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 			break;
 			case PathWrapper.FEAT_DEPOT_ALIGN:
 				local sideTileList = LandManager.GetAdjacentTileList(toTile);
-				sideTileList.Valuate(AIRoad.IsRoadTile);
+				sideTileList.Valuate(function (tile, roadType) {
+					return AIRoad.IsRoadTile(tile) && AIRoad.HasRoadType(tile, roadType);
+				}, roadType);
 				sideTileList.KeepValue(0);
 				local sideTiles = ListToArray(sideTileList);
 				if(sideTiles.len() < 4) {
