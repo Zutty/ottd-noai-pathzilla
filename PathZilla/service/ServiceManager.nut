@@ -319,58 +319,14 @@ function ServiceManager::ImplementService() {
  */
 function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkStations) {
 	local availableFunds = FinanceManager.GetAvailableFunds();
-	local forbidArv = false;
-	
-	if(checkStations) {
-		// Get the coverage radius of the appropriate station type	
-		local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
-		local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
-		local radius = AIStation.GetCoverageRadius(stationType);
-	
-		local fromStations = RoadManager.GetStations(fromTown, cargo, roadType);
-		fromStations.Valuate(AIStation.GetLocation);
-		local toStations = RoadManager.GetStations(toTown, cargo, roadType);
-		toStations.Valuate(AIStation.GetLocation);
-		
-		local fromAcc = 0;
-		local fromArvAcc = 0;
-		local toAcc = 0;
-		local toArvAcc = 0;
-		
-		foreach(stationTile in fromStations) {
-			local acceptance = AITile.GetCargoAcceptance(stationTile, cargo, 1, 1, radius);
-			
-			fromAcc += acceptance;
-			if(AIRoad.IsDriveThroughRoadStationTile(stationTile)) {
-				fromArvAcc += acceptance;
-			}
-		}
-				
-		foreach(stationTile in toStations) {
-			local acceptance = AITile.GetCargoAcceptance(stationTile, cargo, 1, 1, radius);
-			
-			toAcc += acceptance;
-			if(AIRoad.IsDriveThroughRoadStationTile(stationTile)) {
-				toArvAcc += acceptance;
-			}
-		}
-		
-		local fromArvAccR = (fromArvAcc * 100) / max(1, fromAcc);
-		local toArvAccR = (toArvAcc * 100) / max(1, toAcc);
-	
-		forbidArv = (fromArvAccR < PathZilla.ARV_ACC_THRESHOLD) || (toArvAccR < PathZilla.ARV_ACC_THRESHOLD);
-		
-		if(forbidArv) AILog.Warning("Cannot build ARVs for this service");
-	}
 	
 	local engineList = AIEngineList(AIVehicle.VT_ROAD);
-	engineList.Valuate(function (engine, cargo, availableFunds, forbidArv, roadType) {
+	engineList.Valuate(function (engine, cargo, availableFunds, roadType) {
 		if(AIEngine.GetRoadType(engine) != roadType) return -1;
 		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
 		if(AIEngine.GetPrice(engine) > availableFunds) return -1;
-		if(forbidArv && AIEngine.IsArticulated(engine)) return -1;
 		return 1;
-	}, cargo, availableFunds, forbidArv, roadType);
+	}, cargo, availableFunds, roadType);
 	
 	// Discount vehciles that are invalid or that can't be built
 	engineList.RemoveValue(-1);
@@ -589,7 +545,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 	if(fleetSize == 0) return;
 	
 	local engineName = AIEngine.GetName(engine);
-	AILog.Warning(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
+	AILog.Info(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
 	
 	// Borrow enough to buy whole fleet of vehicles
 	FinanceManager.EnsureFundsAvailable(AIEngine.GetPrice(engine) * (fleetSize + 1));
