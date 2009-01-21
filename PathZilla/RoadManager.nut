@@ -387,6 +387,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// If we couldn;t find a path to any of the tiles then give up.
 	if(stationTile == null) {
 		AILog.Error("  Station could not be reached in " + AITown.GetName(town) + "!");
+		return -1;
 	}
 	
 	// Ensure we have a bit of cash available
