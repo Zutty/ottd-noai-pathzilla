@@ -274,17 +274,23 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// Rank those tiles by their suitability for a station
 	tileList.Valuate(function (tile, town, cargo, radius, dtrsOnTownRoads, roadType) {
 		// Find roads that are connected to the tile
-		local adjRoadList = LandManager.GetAdjacentTileList(tile);
-		adjRoadList.Valuate(function (_tile, tile) {
-			//return AIRoad.IsRoadTile(tile) || AIRoad.IsRoadDepotTile(tile) || AIRoad.IsRoadStationTile(road)
-			//	 || (AITunnel.IsTunnelTile(tile) && AITile.HasTransportType(tile, TRANSPORT_ROAD))
-			//	 || (AIBridge.IsBridgeTile(tile) && AITile.HasTransportType(tile, TRANSPORT_ROAD));
-			return AIRoad.AreRoadTilesConnected(tile, _tile);
-		}, tile);
-		adjRoadList.KeepValue(1);
-		local adjRoads = ListToArray(adjRoadList);
-		local straightRoad = false;
+		local adjRoadListRd = LandManager.GetAdjacentTileList(tile);
+		AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_ROAD);
+		adjRoadListRd.Valuate(AIRoad.AreRoadTilesConnected, tile);
+		adjRoadListRd.KeepValue(1);
 		
+		// Find tram tracks that are connected to the tile
+		local adjRoadListTrm = LandManager.GetAdjacentTileList(tile);
+		AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_TRAM);
+		adjRoadListTrm.Valuate(AIRoad.AreRoadTilesConnected, tile);
+		adjRoadListTrm.KeepValue(1);
+		
+		// Combine to see all the adjacent road tiles of any type that are connected to
+		adjRoadListTrm.AddList(adjRoadListRd);
+		local adjRoads = ListToArray(adjRoadListTrm);
+		local straightRoad = false;
+
+		// Check if the road tile is a straight road  
 		if(adjRoads.len() == 1) {
 			straightRoad = true;
 		} else if(adjRoads.len() == 2) {
@@ -293,6 +299,9 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 			straightRoad = (dx == 0) || (dy == 0);
 		}
 		
+		// Reset road type		
+		AIRoad.SetCurrentRoadType(roadType);
+
 		// Find the roads that would run parallel to a DTRS in this spot
 		local parlRoadList = LandManager.GetAdjacentTileList(tile);
 		parlRoadList.Valuate(function (_tile, tile) {
@@ -331,11 +340,6 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	
 	// Remove unacceptable tiles
 	tileList.RemoveValue(0);
-			
-	foreach(tile, acc in tileList) {
-		//AISign.BuildSign(tile, ""+acc);
-	}
-	//PathZilla.Sleep(1000);
 	
 	// If we can't find any suitable tiles then just give up!			
 	if(tileList.Count() == 0) {
@@ -346,6 +350,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		return -1;
 	}
 	
+	// The tiles we need for reference
 	local stationTile = null;
 	local roadTile = null;
 	local otherSide = null;
@@ -454,7 +459,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	if(!success) {
 		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
 		AILog.Error(strType + " STOP WAS NOT BUILT");
-		AISign.BuildSign(stationTile, ""+trnc(AIError.GetLastErrorString()));
+		//AISign.BuildSign(stationTile, ""+trnc(AIError.GetLastErrorString()));
 	}
 
 	return (success) ? AIStation.GetStationID(stationTile) : -1;
