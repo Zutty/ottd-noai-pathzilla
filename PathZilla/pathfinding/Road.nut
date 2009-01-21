@@ -406,25 +406,28 @@ function Road::_IsConnectable(cur_node, par_node, next_tile)
 	local connectable = true;
 	
 	if (par_node != null) {
-		connectable = AIRoad.CanBuildConnectedRoadPartsHere(cur_node, par_node.GetTile(), next_tile);
+		connectable = (AIRoad.CanBuildConnectedRoadPartsHere(cur_node, par_node.GetTile(), next_tile) != 0);
+		if(!connectable) return false;
+		
 		foreach(offset in offsets) {
 			local pp_tile = par_node.GetTile() + offset;
 			local nn_tile = next_tile + offset;
 			
 			if (AIRoad.AreRoadTilesConnected(par_node.GetTile(), pp_tile)) {
-				connectable = connectable && AIRoad.CanBuildConnectedRoadPartsHere(par_node.GetTile(), pp_tile, cur_node);
+				connectable = connectable && (AIRoad.CanBuildConnectedRoadPartsHere(par_node.GetTile(), pp_tile, cur_node) != 0);
 			}
-			if (AIRoad.AreRoadTilesConnected(next_tile, nn_tile)) {
-				connectable = connectable && AIRoad.CanBuildConnectedRoadPartsHere(next_tile, nn_tile, cur_node);
+			if (nn_tile != cur_node && connectable && AIRoad.AreRoadTilesConnected(next_tile, nn_tile)) {
+				connectable = (AIRoad.CanBuildConnectedRoadPartsHere(next_tile, nn_tile, cur_node) != 0);
 			}
+			if(!connectable) return false;
 		}
 	}
 	
 	if (AIRoad.IsDriveThroughRoadStationTile(cur_node)) {
 		connectable = connectable && (AIRoad.GetRoadStationFrontTile(cur_node) == next_tile || AIRoad.GetDriveThroughBackTile(cur_node) == next_tile);
 	}
-	if (AIRoad.IsDriveThroughRoadStationTile(next_tile)) {
-		connectable = connectable && (AIRoad.GetRoadStationFrontTile(next_tile) == cur_node || AIRoad.GetDriveThroughBackTile(next_tile) == cur_node);
+	if (connectable && AIRoad.IsDriveThroughRoadStationTile(next_tile)) {
+		connectable = (AIRoad.GetRoadStationFrontTile(next_tile) == cur_node || AIRoad.GetDriveThroughBackTile(next_tile) == cur_node);
 	}
 	return connectable;
 }
