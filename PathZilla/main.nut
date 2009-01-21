@@ -116,7 +116,7 @@ function PathZilla::Start() {
 
 	// Select a home town from which all construction will be based
 	if(!this.loaded) {
-		this.homeTown = this.SelectLargeTown();
+		this.homeTown = this.SelectHomeTown();
 	}
 	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
 
@@ -272,16 +272,37 @@ function PathZilla::ChooseName() {
 /*
  * Randomly choose a large town from the top 10 percentile by popuation.
  */
-function PathZilla::SelectLargeTown() {
+function PathZilla::SelectHomeTown() {
 	// Get a list of towns by population
 	local towns = AITownList();
 	towns.Valuate(AITown.GetPopulation);
 
 	// Remove all but the larges
 	local upperLimit = AITown.GetPopulation(towns.Begin());
-	local lowerLimit = (upperLimit * 9) / 10;
+	local lowerLimit = (upperLimit * 5) / 10;
 	towns.RemoveBelowValue(lowerLimit);
 	
+	// Find towns that have no competitors in them
+	towns.Valuate(function (town) {
+		// Get a list of tiles to search in
+		local townTile = AITown.GetLocation(town);
+		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
+		local tileList = AITileList();
+		tileList.AddRectangle(townTile - offset, townTile + offset);
+		tileList.Valuate(AITile.IsStationTile);
+		tileList.RemoveValue(0);
+		return tileList.IsEmpty();
+	});
+	towns.RemoveValue(0);
+	
+	// If there are no empty towns, just reset the list
+	if(towns.IsEmpty()) {
+		towns = AITownList();
+		towns.Valuate(AITown.GetPopulation);
+		towns.RemoveBelowValue(lowerLimit);
+	}
+
 	// Select a random town from remaining ones
 	towns.Valuate(AIBase.RandItem);
 	return towns.Begin();
