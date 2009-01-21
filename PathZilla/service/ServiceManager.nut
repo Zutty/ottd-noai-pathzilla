@@ -699,7 +699,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 			// Find suitable roads adjacent to the tile
 			local adjRoads = LandManager.GetAdjacentTileList(tile);
 			adjRoads.Valuate(function (_tile, roadType) {
-				return (AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
+				return (LandManager.IsLevel(_tile) && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
 			}, roadType);
 			adjRoads.KeepValue(1);
 			
@@ -719,7 +719,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 		tileList.RemoveValue(0);
 		
 		foreach(depotTile, _ in tileList) {
-			local path = PathWrapper.FindPath(townTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN]);
+			local path = PathWrapper.FindPath(townTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
 			if(path != null) {
 				PathWrapper.BuildPath(path, roadType);
 				AITile.DemolishTile(depotTile);
