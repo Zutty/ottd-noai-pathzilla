@@ -68,6 +68,9 @@ function ServiceManager::MaintainServices() {
 	
 	foreach(service in this.serviceList) {
 		PathZilla.Sleep(1);
+		
+		// Update fleet size
+		this.CreateFleet(service, true);
 
 		if(!townsTried.HasItem(service.GetFromTown())) {
 			townsTried.AddItem(service.GetFromTown(), 0);
@@ -456,8 +459,12 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkSt
  * suitable fleet size, then builds the vehicles with randomly distributed 
  * orders between the stations in both towns.
  */
-function ServiceManager::CreateFleet(service) {
-	AILog.Info("  Creating a fleet of vehicles...");
+function ServiceManager::CreateFleet(service, update = false) {
+	if(!update) {
+		AILog.Info("  Creating a fleet of vehicles...");
+	} else {
+		AILog.Info("  Updating a fleet of vehicles...");
+	}
 
 	// Initialise
 	local fromTown = service.fromTown;
@@ -465,8 +472,13 @@ function ServiceManager::CreateFleet(service) {
 	local cargo = service.GetCargo();
 	
 	// Select an engine type
-	local engine = this.SelectEngine(service.GetFromTown(), service.GetToTown(), service.GetCargo(), service.GetRoadType(), true);
-	service.SetEngine(engine);
+	local engine = null;
+	if(update) {
+		engine = service.GetEngine();
+	} else {
+		engine = this.SelectEngine(service.GetFromTown(), service.GetToTown(), service.GetCargo(), service.GetRoadType(), true);
+		service.SetEngine(engine);
+	}
 	
 	// Get the stations
 	local fromStations = RoadManager.GetStations(fromTown, cargo, service.GetRoadType());
@@ -509,12 +521,35 @@ function ServiceManager::CreateFleet(service) {
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
 	local radius = AIStation.GetCoverageRadius(stationType);
 
-	// Estimate the amount that will be waiting and other details that will 
-	// influence our decision on fleet size.
+	// Get a few basic details
 	local townSize = max(AITown.GetPopulation(fromTown), AITown.GetPopulation(toTown));
 	local distance = AITile.GetDistanceManhattanToTile(fromTile, toTile);
 	local capacity = AIEngine.GetCapacity(engine);
 	local speed = AIEngine.GetMaxSpeed(engine);
+
+	// Calculate the required fleet size
+	local minFleetSize = 0;
+	local fleetSize = 0;
+
+	// If we are updating the service, base the decision on waiting cargo
+	if(update) {
+		// Create a valuator to rank stations based on waiting cargo
+		local srplsValuator = function(station, cargo) {
+			return AIStation.GetCargoWaiting(station, cargo);
+		}
+
+		// Prime the lists with waiting cargo values
+		fromStations.Valuate(srplsValuator, cargo);
+		toStations.Valuate(srplsValuator, cargo);
+
+		// Get the total waiting cargo for both towns
+		local waitingCargo = ListSum(fromStations) + ListSum(toStations);
+
+		// Estimate the number of additional vechiles required based on waiting cargo
+		minFleetSize = 0;
+		fleetSize = (waitingCargo / (capacity * 40)) * ((distance * 3) / speed)
+		fleetSize -= service.GetActualFleetSize();
+	}
 
 	// Create a lambda function to rank stations based on acceptance
 	local accValuator = function(station, cargo, radius) {
@@ -528,13 +563,17 @@ function ServiceManager::CreateFleet(service) {
 	// Get the total acceptance for both towns
 	local fromSum = ListSum(fromStations);
 	local toSum = ListSum(toStations);
+		
+	// Estimate the amount that will be waiting and other details that will 
+	// influence our decision on fleet size.
+	if(!update) {
+		// Get the lesser of the two
+		local minAcceptance = min(fromSum, toSum);
 	
-	// Get the lesser of the two
-	local minAcceptance = min(fromSum, toSum);
-
-	// Estimate how many vehicles will be needed to cover the route
-	local minFleetSize = fromStations.Count() + toStations.Count();
-	local fleetSize = (minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
+		// Estimate how many vehicles will be needed to cover the route
+		minFleetSize = fromStations.Count() + toStations.Count();
+		fleetSize = (minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
+	}
 	
 	// Adjust the fleet size for early routes
 	// TODO: Make this more generic
@@ -547,8 +586,10 @@ function ServiceManager::CreateFleet(service) {
 	// Ensure the fleet is not too small
 	fleetSize = max(minFleetSize, fleetSize);
 	
+	if(fleetSize == 0) return;
+	
 	local engineName = AIEngine.GetName(engine);
-	AILog.Info("  Building a fleet of " + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
+	AILog.Warning(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
 	
 	// Borrow enough to buy whole fleet of vehicles
 	FinanceManager.EnsureFundsAvailable(AIEngine.GetPrice(engine) * (fleetSize + 1));
