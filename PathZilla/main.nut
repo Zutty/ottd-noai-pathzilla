@@ -61,6 +61,7 @@ class PathZilla extends AIController {
 	MAX_CONSTR_ATTEMPTS = 20;	   // The maximum number of attempts when trying to build something
 	BRIBE_THRESHOLD = 5000000;	   // Minimum funds available before a bribe will be considered
 	MAX_TREE_SPEND = 8000;		   // Maximum we can spend on trees to improve rating
+	MAX_TOWN_RADIUS = 20;		   // Maximum distance from a town centre that anything can be built
 	
 	// Member variables
 	stop = false;
@@ -286,7 +287,7 @@ function PathZilla::SelectHomeTown() {
 	towns.Valuate(function (town) {
 		// Get a list of tiles to search in
 		local townTile = AITown.GetLocation(town);
-		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
 		tileList.AddRectangle(townTile - offset, townTile + offset);

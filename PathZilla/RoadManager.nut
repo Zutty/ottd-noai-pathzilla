@@ -87,7 +87,7 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 	if(!PathZilla.IsAggressive()) {
 		// Get a large area around the town
 		local townTile = AITown.GetLocation(town);
-		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local off = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
 		tileList.AddRectangle(townTile - off, townTile + off);		
@@ -180,7 +180,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	local townTile = AITown.GetLocation(town);
 
 	// Get a list of tiles to search in
-	local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+	local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
 	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 
 	// Before we do anything, check the local authority rating

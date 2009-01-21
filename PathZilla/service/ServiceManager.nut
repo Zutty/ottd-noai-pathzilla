@@ -686,7 +686,7 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 		AILog.Info("    Building a new depot...");
 
 		// Get a list of tiles to search in
-		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, 20);
+		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
 		tileList.AddRectangle(townTile - offset, townTile + offset);
