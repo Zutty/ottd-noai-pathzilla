@@ -62,6 +62,7 @@ class PathZilla extends AIController {
 	BRIBE_THRESHOLD = 3000000;	   // Minimum funds available before a bribe will be considered
 	MAX_TREE_SPEND = 8000;		   // Maximum we can spend on trees to improve rating
 	MAX_TOWN_RADIUS = 20;		   // Maximum distance from a town centre that anything can be built
+	MAX_REPATH_TRIES = 5		   // Maximum number a times path can be re-found due to construction problems
 	
 	// Member variables
 	stop = false;

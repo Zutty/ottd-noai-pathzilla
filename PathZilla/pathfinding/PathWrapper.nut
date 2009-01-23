@@ -53,8 +53,27 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 	}
 	
 	AILog.Info("      Done finding path.");
-
-	return PathWrapper.BuildPath(path, roadType);
+	
+	local tries = 0;
+	local success = -1;
+	
+	// Try to build the road
+	do {
+		success = PathWrapper.BuildPath(path, roadType);
+		
+		// If we failed, try to find the path from the point it went wrong
+		if(success != 0) {
+			path = PathWrapper.FindPath(fromTile, success, roadType, ignoreTiles, demolish, features);
+		}
+	} while(success != 0 && tries++ < PathZilla.MAX_REPATH_TRIES);
+	
+	// If we still failed after a number of attempts, show an error message
+	if(success != 0) {
+		AILog.Error("Ran out of tries! Road cannot be built.")
+		return false;
+	}
+	
+	return true;
 }
 
 function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
@@ -139,6 +158,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 
 function PathWrapper::BuildPath(path, roadType) {	
 	AIRoad.SetCurrentRoadType(roadType);
+	local prevTile = null;
 
 	AILog.Info("      Building a road...")
 
@@ -189,8 +209,8 @@ function PathWrapper::BuildPath(path, roadType) {
 						case AIError.ERR_NOT_ENOUGH_CASH:
 							if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
 								// We cant afford to borrow any more money, so give up!
-								AILog.Error("      CAN'T AFFORD IT - ABORTING!");
-								return false;
+								AILog.Error("      Cannot afford road - Aborting!");
+								return -1;
 							} else {
 								// Otherwise, borrow some more money
 								FinanceManager.Borrow();
@@ -210,15 +230,22 @@ function PathWrapper::BuildPath(path, roadType) {
 					}
 				}
 				
+				// Check that we DID succeed
+				if(!success && !ignore) {
+					AILog.Error("    Could not complete road!")
+					return (prevTile != null) ? prevTile : tile;
+				}
+
 				// If its an error we can ignore then just break.
 				if(ignore) break;
 			}
 		}
-
+		
+		prevTile = tile;
 		path = par;
 	}
 	
 	AILog.Info("    Done building road.")
 
-	return 1;
+	return 0;
 }

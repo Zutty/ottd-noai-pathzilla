@@ -276,7 +276,7 @@ function ServiceManager::ImplementService() {
 					local success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT]);
 					
 					// If we were able to build the link, add the edge to the actual graph
-					if(success > 0) {
+					if(success) {
 						schema.GetActualGraph().AddEdge(edge);
 					}
 				}
