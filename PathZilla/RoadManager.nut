@@ -184,12 +184,12 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 
 	// Before we do anything, check the local authority rating
-	local rating = AITown.GetRating(town, AICompany.COMPANY_SELF);
+	local rating = AITown.GetRating(town, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
 	
 	// If the rating is low, take steps to improve it
 	if(rating < AITown.TOWN_RATING_GOOD) {
 		// See if we can bribe the town
-		if(rating < AITown.TOWN_RATING_MEDIOCRE && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
+		if(rating < AITown.TOWN_RATING_POOR && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
 			AITown.PerformTownAction(town, AITown.TOWN_ACTION_BRIBE);
 		}
 		
@@ -210,7 +210,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 			local expenditure = 0;
 			local tile = tileList.Begin();
 			
-			while(AITown.GetRating(town, AICompany.COMPANY_SELF) < AITown.TOWN_RATING_GOOD && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
+			while(AITown.GetRating(town, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF)) < AITown.TOWN_RATING_GOOD && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
 				local acc = AIAccounting();
 				for(local i = 0; i < 4; i++) {
 					AITile.PlantTree(tile);
