@@ -545,7 +545,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 	if(fleetSize == 0) return;
 	
 	local engineName = AIEngine.GetName(engine);
-	AILog.Info(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + ((ends_with(engineName, "s")) ? "es" : "s") + "...");
+	AILog.Info(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + "s...");
 	
 	// Borrow enough to buy whole fleet of vehicles
 	FinanceManager.EnsureFundsAvailable(AIEngine.GetPrice(engine) * (fleetSize + 1));
