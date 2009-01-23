@@ -18,7 +18,11 @@
  *
  * PathWrapper.nut
  * 
- * Wrapper for the (modified) library road pathfinder.
+ * Wrapper for the (modified) library road pathfinder. This class handles
+ * general path finding a road construction with robust construction and a
+ * path reassesment mechanism sensetive to changes in the map. This class also
+ * implements a number of cost decorator functions, which are explained in the 
+ * FindPath method below.
  * 
  * Author:  George Weller (Zutty)
  * Created: 15/01/2009
@@ -44,12 +48,19 @@ class PathWrapper {
 	}
 }
 
+/*
+ * Find a path between the two specified tiles and then attempts to build it up
+ * to PathZilla.MAX_REPATH_TRIES times. All parameters are passed up to the 
+ * FindPath method.
+ */
 function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
+	// First, try to find a path
 	local path = PathWrapper.FindPath(fromTile, toTile, roadType, ignoreTiles, demolish, features);
 
+	// If the path could not be found then there is nothing left to try
 	if(path == null) {
 		AILog.Error("      COULD NOT FIND A PATH!");
-		return 0;
+		return false;
 	}
 	
 	AILog.Info("      Done finding path.");
@@ -65,17 +76,30 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 		if(success != 0) {
 			path = PathWrapper.FindPath(fromTile, success, roadType, ignoreTiles, demolish, features);
 		}
-	} while(success != 0 && tries++ < PathZilla.MAX_REPATH_TRIES);
+	} while(success > 0 && tries++ < PathZilla.MAX_REPATH_TRIES);
 	
 	// If we still failed after a number of attempts, show an error message
 	if(success != 0) {
-		AILog.Error("Ran out of tries! Road cannot be built.")
+		AILog.Error("Road cannot be built.")
 		return false;
 	}
 	
 	return true;
 }
 
+/*
+ * Find a path between the specified tiles and return it. The path will be of 
+ * type roadType, will go around any tiles specified in the ignoreTiles array.
+ * If demolish is true then the path may go through town houses. Additionally
+ * a number of features may be specified to control the layout of the eventual
+ * path. Any of the following can be specified...
+ *
+ * FEAT_ROAD_LOOP - Build a loop around the first tile in ignoreTiles
+ * FEAT_SEPARATE_ROAD_TYPES - Split road types apart to run in parallel
+ * FEAT_GRID_LAYOUT - Snap roads to 2x2/3x3 town layouts
+ * FEAT_DEPOT_ALIGN - Join a road to the entrace of a depot not its side
+ * FEAT_SHORT_SCOPE - Avoid wasting time on paths that are known to be short
+ */
 function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
 	// Initialise the pathfinder
 	local pathfinder = Road();
@@ -156,6 +180,13 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	return path;
 }
 
+/*
+ * Build the path specified by path as a road of type roadType. If there any
+ * construction errors the method will re-try to a limited extent. If this also
+ * fails the method will return non-zero. If the returned value is greater than
+ * zero it indicates the tile just before which construction failed. If it is 
+ * less than zero it indicates that construction strictly cannot be completed.
+ */
 function PathWrapper::BuildPath(path, roadType) {	
 	AIRoad.SetCurrentRoadType(roadType);
 	local prevTile = null;
@@ -182,6 +213,7 @@ function PathWrapper::BuildPath(path, roadType) {
 			local attempts = 0;
 			local ignore = false;
 
+			// Try to build the next path segment
 			while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
 				if(distance == 1) {
 					success = AIRoad.BuildRoad(tile, ptile);
@@ -200,6 +232,7 @@ function PathWrapper::BuildPath(path, roadType) {
 					}
 				}
 				
+				// If something went wrong, try to fix it
 				if(!success) {
 					switch(AIError.GetLastError()) {
 						case AIError.ERR_AREA_NOT_CLEAR:
