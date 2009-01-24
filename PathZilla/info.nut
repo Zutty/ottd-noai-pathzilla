@@ -34,8 +34,8 @@ class PathZilla extends AIInfo {
 	function CreateInstance() { return "PathZilla"; }
 	function GetShortName()   { return "PZLA"; }
 	function GetSettings() {
-		AddSetting({name = "latency", description = "Latency", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});
-		AddSetting({name = "aggressive", description = "Aggressive", min_value = 0, max_value = 1, easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = 0});
+		AddSetting({name = "latency", description = "Planning Speed - Lower value makes AI faster", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});
+		AddSetting({name = "aggressive", description = "Aggressive - Value 1 makes AI build near competitor's stations", min_value = 0, max_value = 1, easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = 0});
 	}
 	function CanLoadFromVersion(version) {
 		return (version == 4);
