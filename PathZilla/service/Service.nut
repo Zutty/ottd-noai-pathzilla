@@ -169,6 +169,7 @@ function Service::Unserialize(data) {
 	this.cargo = data[SRLZ_CARGO];
 	this.roadType = data[SRLZ_ROAD_TYPE];
 	this.engine = data[SRLZ_ENGINE];
+	this.vehicles = AIList();
 	this.group = data[SRLZ_GROUP];
 	this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
 }

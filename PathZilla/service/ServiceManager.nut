@@ -770,6 +770,6 @@ function ServiceManager::PostLoad() {
 		local allVehicles = AIVehicleList();
 		allVehicles.Valuate(AIVehicle.GetGroupID);
 		allVehicles.KeepValue(service.group);
-		service.vehicles = allVehicles;
+		service.vehicles.AddList(allVehicles);
 	}
 }
