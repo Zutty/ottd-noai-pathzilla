@@ -328,8 +328,8 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		local score = AITile.GetCargoAcceptance(tile, cargo, 1, 1, radius);
 		acceptable = acceptable && (score >= 8);
 		
-		// Penalise tiles in a corner (and if we had an alternative)
-		score /= (dtrsOnTownRoads && inCorner) ? 2 : 1;
+		// Penalise tiles in a corner
+		score /= (inCorner) ? 3 : 1;
 		
 		// Promote tiles on road we can build on
 		score += (AIRoad.IsRoadTile(tile) && canBuildOnRoad) ? 30 : 0;
