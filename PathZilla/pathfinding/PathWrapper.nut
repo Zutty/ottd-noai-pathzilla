@@ -217,6 +217,7 @@ function PathWrapper::BuildPath(path, roadType) {
 			local success = false;
 			local attempts = 0;
 			local ignore = false;
+			local noError = false;
 
 			// Try to build the next path segment
 			while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
@@ -242,7 +243,9 @@ function PathWrapper::BuildPath(path, roadType) {
 					switch(AIError.GetLastError()) {
 						case AIError.ERR_AREA_NOT_CLEAR:
 							// Something must have been built since we check the tile. Clear it.
-							AITile.DemolishTile(tile);
+							if(AITile.DemolishTile(tile)) {
+								noError = true;
+							}
 						break;
 						case AIError.ERR_NOT_ENOUGH_CASH:
 							if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
@@ -269,7 +272,7 @@ function PathWrapper::BuildPath(path, roadType) {
 				}
 				
 				// Check that we DID succeed
-				if(!success && !ignore) {
+				if(!success && !ignore && !noError) {
 					AILog.Error("    Could not complete road!")
 					return (prevTile != null) ? prevTile : tile;
 				}
