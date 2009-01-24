@@ -59,7 +59,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 
 	// If the path could not be found then there is nothing left to try
 	if(path == null) {
-		AILog.Error("      COULD NOT FIND A PATH!");
+		AILog.Error("Could not find a path!");
 		return false;
 	}
 	
@@ -167,6 +167,11 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	// Make the necessary preparations
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	AIRoad.SetCurrentRoadType(roadType);
+	
+	// If we are very poor, do not attempt to build tunnels
+	if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
+		pathfinder.cost.max_tunnel_length = 1;
+	}
 
 	// Run the pathfinder
 	local path = false;
@@ -242,8 +247,8 @@ function PathWrapper::BuildPath(path, roadType) {
 						case AIError.ERR_NOT_ENOUGH_CASH:
 							if(!FinanceManager.CanAfford(PathZilla.FLOAT)) {
 								// We cant afford to borrow any more money, so give up!
-								AILog.Error("      Cannot afford road - Aborting!");
-								return -1;
+								AILog.Error("      Cannot afford path segment!");
+								attempts = PathZilla.MAX_CONSTR_ATTEMPTS + 1;
 							} else {
 								// Otherwise, borrow some more money
 								FinanceManager.Borrow();
