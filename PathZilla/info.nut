@@ -28,9 +28,9 @@
 class PathZilla extends AIInfo {
 	function GetAuthor()      { return "George Weller"; }
 	function GetName()        { return "PathZilla"; }
-	function GetDescription() { return "A networking AI"; }
-	function GetVersion()     { return 4; }
-	function GetDate()        { return "2008-10-01"; }
+	function GetDescription() { return "A networking AI. The focus of this AI is on high level planning and neat, realistic construction. Supports buses/trams and mail trucks only."; }
+	function GetVersion()     { return 5; }
+	function GetDate()        { return "2009-01-24"; }
 	function CreateInstance() { return "PathZilla"; }
 	function GetShortName()   { return "PZLA"; }
 	function GetSettings() {
@@ -38,7 +38,7 @@ class PathZilla extends AIInfo {
 		AddSetting({name = "aggressive", description = "Aggressive - Value 1 makes AI build near competitor's stations", min_value = 0, max_value = 1, easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = 0});
 	}
 	function CanLoadFromVersion(version) {
-		return (version == 4);
+		return (version == 5);
 	}
 }
 

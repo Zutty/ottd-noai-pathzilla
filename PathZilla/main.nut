@@ -22,8 +22,8 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 16/05/2008
- * Updated: 01/10/2008
- * Version: 4
+ * Updated: 24/01/2009
+ * Version: 5
  */
 
 class PathZilla extends AIController {
@@ -36,7 +36,7 @@ class PathZilla extends AIController {
 
 	// Info constants	
 	PZ_IDENT = "PATHZILLA!"
-	PZ_VERSION = 4;
+	PZ_VERSION = 5;
 	
 	// Serialisation constants
 	SRLZ_IDENT = 0;
