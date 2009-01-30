@@ -370,9 +370,9 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 			// Check that the loop exists and that it can connect to the station
 			if(loop != null && (AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetParent().GetTile()) != 0)) {
 				// Build everything
-				PathWrapper.BuildPath(path, roadType);
-				PathWrapper.BuildPath(loop, roadType);
-				RoadManager.SafelyBuildRoad(otherSide, stTile);
+				local pathed = PathWrapper.BuildPath(path, roadType) == 0;
+				local looped = PathWrapper.BuildPath(loop, roadType) == 0;
+				if(pathed && looped) RoadManager.SafelyBuildRoad(otherSide, stTile);
 				
 				stationTile = stTile;
 				break;
