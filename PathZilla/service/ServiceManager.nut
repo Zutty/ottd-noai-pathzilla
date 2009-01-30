@@ -448,6 +448,12 @@ function ServiceManager::CreateFleet(service, update = false) {
 	local fromStations = RoadManager.GetStations(fromTown, cargo, service.GetRoadType());
 	local toStations = RoadManager.GetStations(toTown, cargo, service.GetRoadType());
 	
+	// If either target has no stations then there is no point in building a 
+	// fleet - defer until stations have been built
+	if((fromStations.Count() == 0) || (toStations.Count() == 0)) {
+		return;
+	}
+	
 	// If the engine type is articulated, forbid the vehicle from visiting regular stations
 	if(AIEngine.IsArticulated(engine)) {
 		local callback = function (station) {
