@@ -502,9 +502,14 @@ function ServiceManager::CreateFleet(service, update = false) {
 		local waitingCargo = ListSum(fromStations) + ListSum(toStations);
 
 		// Estimate the number of additional vechiles required based on waiting cargo
+		local year = AIDate.GetYear(AIDate.GetCurrentDate());
+		year = min(max(year, 1915), 1950);
+		local multiplier = (60 - (year - 1900)) / 2;
+		multiplier /= PathZilla.GetSetting("traffic");
+		
 		minFleetSize = 0;
-		fleetSize = (waitingCargo / (capacity * 40)) * ((distance * 3) / speed)
-		fleetSize -= service.GetActualFleetSize();
+		fleetSize = (waitingCargo / (capacity * multiplier)) * ((distance * 3) / speed)
+		fleetSize = fleetSize - service.GetActualFleetSize();
 	}
 
 	// Create a lambda function to rank stations based on acceptance
@@ -528,7 +533,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 	
 		// Estimate how many vehicles will be needed to cover the route
 		minFleetSize = fromStations.Count() + toStations.Count();
-		fleetSize = (minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
+		fleetSize = (PathZilla.GetSetting("traffic") * minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
 	}
 	
 	// Adjust the fleet size for early routes
