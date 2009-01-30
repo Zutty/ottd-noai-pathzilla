@@ -136,7 +136,7 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
  * 
  * The function returns the number of stations that were added.
  */
-function RoadManager::BuildStations(town, cargo, roadType, target) {
+function RoadManager::BuildStations(town, cargo, roadType, target, maxAdd = 100) {
 	local strType = (roadType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
 	AILog.Info("  Building " + strType + " stations in " + AITown.GetName(town) + "...");
 
@@ -156,7 +156,7 @@ function RoadManager::BuildStations(town, cargo, roadType, target) {
 	
 	// Build new stations if there are none or until the coverage exceeds the target
 	local stationID = 0;
-	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= target) && stationID >= 0) {
+	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= target) && stationID >= 0 && numStationsBuilt < maxAdd) {
 		PathZilla.Sleep(1);
 
 		stationID = RoadManager.BuildStation(town, cargo, roadType);

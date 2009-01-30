@@ -72,18 +72,20 @@ function ServiceManager::MaintainServices() {
 		// Update fleet size
 		this.CreateFleet(service, true);
 
-		if(!townsTried.HasItem(service.GetFromTown())) {
+		local completeTram = (service.GetRoadType() == AIRoad.ROADTYPE_TRAM) && (RoadManager.GetStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType()).Count() > 0);
+		if(!townsTried.HasItem(service.GetFromTown()) && !completeTram) {
 			townsTried.AddItem(service.GetFromTown(), 0);
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
+			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget(), 1);
 			
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetFromTown(), 0);
 			}
 		}
 
-		if(!townsTried.HasItem(service.GetToTown())) {
+		completeTram = (service.GetRoadType() == AIRoad.ROADTYPE_TRAM) && (RoadManager.GetStations(service.GetToTown(), service.GetCargo(), service.GetRoadType()).Count() > 0);
+		if(!townsTried.HasItem(service.GetToTown()) && !completeTram) {
 			townsTried.AddItem(service.GetToTown(), 0);
-			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
+			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget(), 1);
 			
 			if(added > 0) {
 				this.townsUpdated.AddItem(service.GetToTown(), 0);
