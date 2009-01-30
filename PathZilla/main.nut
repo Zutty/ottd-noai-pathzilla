@@ -52,7 +52,7 @@ class PathZilla extends AIController {
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
 	MAX_TARGETS = 750;             // Maximum number of targets that can be in a single graph 
 	FLOAT = 20000;                 // Minimum amount of money to keep at all times
-	MAX_TARGET_COVERAGE = 80;      // Maximum percentage of town houses to fall within combined station coverage area
+	MAX_TARGET_COVERAGE = 70;      // Maximum percentage of town houses to fall within combined station coverage area
 	NEW_VEHICLE_SPREAD_DELAY = 20; // The delay in ms between launching new vehicles in a fleet.
 	MAX_BRIDGE_LENGTH = 16;        // The maximum allowable bridge length - to prevent ridiculous bridges
 	MAX_POTENTIAL_SERVICES = 200;  // The maximum allowable number of potential service descriptors  
@@ -177,7 +177,7 @@ function PathZilla::Start() {
 		
 		// Wait until we have a fair bit of cash before building a new line
 		if(noServices || (ticker % expansionInterval == 0
-			 && FinanceManager.GetAvailableFunds() >= (AICompany.GetMaxLoanAmount() / 2))) {
+			 && FinanceManager.GetAvailableFunds() >= (AICompany.GetMaxLoanAmount() / 4))) {
 			this.serviceManager.ImplementService();
 			noServices = false;
 		}
