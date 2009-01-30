@@ -506,11 +506,12 @@ function ServiceManager::CreateFleet(service, update = false) {
 		// Estimate the number of additional vechiles required based on waiting cargo
 		local year = AIDate.GetYear(AIDate.GetCurrentDate());
 		year = min(max(year, 1915), 1950);
-		local multiplier = (60 - (year - 1900)) / 2;
+		local multiplier = (65 - (year - 1900)) / 2;
 		multiplier /= PathZilla.GetSetting("traffic");
 		
 		minFleetSize = 0;
 		fleetSize = (waitingCargo / (capacity * multiplier)) * ((distance * 3) / speed)
+		fleetSize = min(fleetSize, PathZilla.MAX_VEHICLES_PER_SVC);
 		fleetSize = fleetSize - service.GetActualFleetSize();
 	}
 

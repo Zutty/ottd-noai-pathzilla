@@ -63,6 +63,7 @@ class PathZilla extends AIController {
 	MAX_TREE_SPEND = 8000;		   // Maximum we can spend on trees to improve rating
 	MAX_TOWN_RADIUS = 20;		   // Maximum distance from a town centre that anything can be built
 	MAX_REPATH_TRIES = 5		   // Maximum number a times path can be re-found due to construction problems
+	MAX_VEHICLES_PER_SVC = 100;	   // Maximum number of vehicles per service
 	
 	// Member variables
 	stop = false;
