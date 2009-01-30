@@ -233,85 +233,91 @@ function ServiceManager::ProvidesThisService(svc) {
  */
 function ServiceManager::ImplementService() {
 	// Check whether or not we can build any more vehicles
-	local proceed = (AIVehicleList().Count() < AIGameSettings.GetValue("vehicle.max_roadveh"));
+	if(AIVehicleList().Count() == AIGameSettings.GetValue("vehicle.max_roadveh")) return false;
 	
-	// Only proceed if we are even able to implement any further services
-	if(proceed) {
-		// Implement the service at the top of the list
-		local bestService = this.potentialServices.Peek();
+	// Implement the service at the top of the list
+	local bestService = this.potentialServices.Peek();
+
+	// Check that we don't already provide this service
+	while(bestService != null && this.ProvidesThisService(bestService)) {
+		// If we already provide it then move on to the next one
+		this.potentialServices.Pop();
+		bestService = this.potentialServices.Peek();
+	}
 	
-		// Check that we don't already provide this service
-		while(bestService != null && this.ProvidesThisService(bestService)) {
-			// If we already provide it then move on to the next one
-			this.potentialServices.Pop();
-			bestService = this.potentialServices.Peek();
-		}
+	// Only proceed if there are any services left to implement
+	if(bestService != null) {
+		local schema = pz.GetSchema(bestService.GetSchemaId());
+		local service = bestService.Create();
 		
-		// Only proceed if there are any services left to implement
-		if(bestService != null) {
-			local schema = pz.GetSchema(bestService.GetSchemaId());
-			local service = bestService.Create();
-			
-			local strType = (service.GetRoadType() == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
-			AILog.Info("Best service takes " + AICargo.GetCargoLabel(service.GetCargo()) + " from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()) + " by " + strType);
-			
-			local path = schema.GetPlanGraph().FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
-			
-			// Set the correcy road type before starting
-			AIRoad.SetCurrentRoadType(schema.GetRoadType());
+		local strType = (service.GetRoadType() == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
+		AILog.Info("Best service takes " + AICargo.GetCargoLabel(service.GetCargo()) + " from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()) + " by " + strType);
 		
-			for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
-				local a = walk.GetVertex();
-				local b = walk.GetParent().GetVertex();
-				local edge = Edge(a, b);
+		local path = schema.GetPlanGraph().FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
 		
-				if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
-					// Get the towns on this edges
-					local townA = GetTown(a.ToTile());
-					local townB = GetTown(b.ToTile());
-		
-					// Ensure we can afford to do some construction				
-					FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
-		
-					// Build a link between the towns
-					AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-					local success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT]);
-					
-					// If we were able to build the link, add the edge to the actual graph
-					if(success) {
-						schema.GetActualGraph().AddEdge(edge);
-					}
+		// Set the correcy road type before starting
+		AIRoad.SetCurrentRoadType(schema.GetRoadType());
+		local success = false;
+	
+		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
+			local a = walk.GetVertex();
+			local b = walk.GetParent().GetVertex();
+			local edge = Edge(a, b);
+	
+			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
+				// Get the towns on this edges
+				local townA = GetTown(a.ToTile());
+				local townB = GetTown(b.ToTile());
+	
+				// Ensure we can afford to do some construction				
+				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
+	
+				// Build a link between the towns
+				AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
+				success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT]);
+				
+				// If we were able to build the link, add the edge to the actual graph
+				if(success) {
+					schema.GetActualGraph().AddEdge(edge);
+				} else {
+					break;
 				}
 			}
-			
-			// Ensure that the source town has bus stops
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
-			if(added > 0) {
-				this.townsUpdated.AddItem(service.GetFromTown(), 0);
-			}
-			
-			// Ensure that the destination town has bus stops
-			added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
-			if(added > 0) {
-				this.townsUpdated.AddItem(service.GetToTown(), 0);
-			}
-			
-			// Ensure depot exist in both towns
-			this.BuildDepotInTown(service.GetFromTown(), service.GetRoadType());
-			this.BuildDepotInTown(service.GetToTown(), service.GetRoadType());
-	
-			// Create a fleet of vehicles to operate this service
-			this.CreateFleet(service);
-	
-			// Finally, add the service to the list	
-			this.serviceList.Insert(service);
-			
-			AILog.Info("Done implementing service.");
 		}
-	
-		// Don't remove it until we are finished
-		this.potentialServices.Pop();
+		
+		if(!success) {
+			return false;
+		}
+		
+		// Ensure that the source town has bus stops
+		local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
+		if(added > 0) {
+			this.townsUpdated.AddItem(service.GetFromTown(), 0);
+		}
+		
+		// Ensure that the destination town has bus stops
+		added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
+		if(added > 0) {
+			this.townsUpdated.AddItem(service.GetToTown(), 0);
+		}
+		
+		// Ensure depot exist in both towns
+		this.BuildDepotInTown(service.GetFromTown(), service.GetRoadType());
+		this.BuildDepotInTown(service.GetToTown(), service.GetRoadType());
+
+		// Create a fleet of vehicles to operate this service
+		this.CreateFleet(service);
+
+		// Finally, add the service to the list	
+		this.serviceList.Insert(service);
+		
+		AILog.Info("Done implementing service.");
 	}
+
+	// Don't remove it until we are finished
+	this.potentialServices.Pop();
+	
+	return true;
 }
 
 /*
