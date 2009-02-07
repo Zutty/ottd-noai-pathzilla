@@ -36,6 +36,7 @@ class PathWrapper {
 	FEAT_GRID_LAYOUT = 3;
 	FEAT_DEPOT_ALIGN = 4;
 	FEAT_SHORT_SCOPE = 5;
+	FEAT_NO_WORMHOLES = 6;
 	
 	// Costs
 	COST_ROAD_LOOP = 3000;
@@ -106,6 +107,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	pathfinder.cost.allow_demolition = demolish;
 	pathfinder.cost.no_existing_road = 150;
 	pathfinder.cost.max_bridge_length  = PathZilla.MAX_BRIDGE_LENGTH;
+	pathfinder.cost.bridge_per_tile = 350;
 	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
 
 	// Add on any additional features
@@ -158,6 +160,10 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 			break;
 			case PathWrapper.FEAT_SHORT_SCOPE:
 				pathfinder.cost.max_cost = 60000;
+			break;
+			case PathWrapper.FEAT_NO_WORMHOLES:
+				pathfinder.cost.max_tunnel_length = 1;
+				pathfinder.cost.max_bridge_length = 1;
 			break;
 		}
 	}
