@@ -108,6 +108,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	pathfinder.cost.no_existing_road = 150;
 	pathfinder.cost.max_bridge_length  = PathZilla.MAX_BRIDGE_LENGTH;
 	pathfinder.cost.bridge_per_tile = 350;
+	pathfinder.cost.tunnel_per_tile = 240;
 	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
 
 	// Add on any additional features
