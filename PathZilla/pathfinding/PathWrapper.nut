@@ -133,12 +133,59 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 			break;
 			case PathWrapper.FEAT_GRID_LAYOUT:
 				local n = AIGameSettings.GetValue("economy.town_layout").tointeger();
-				if((n == 3 || n == 4) && roadType == AIRoad.ROADTYPE_ROAD) {
-					pathfinder.RegisterCostCallback(function (tile, prevTile, n) {
-						local dx = abs(tile % AIMap.GetMapSizeY());
-						local dy = abs(tile / AIMap.GetMapSizeY());
-						return (dx % n == 0 || dy % n == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
-					}, n);
+				if((n >= 2 && n <= 4) && roadType == AIRoad.ROADTYPE_ROAD) {
+					local towns = AITownList();
+					
+					// Find the nearest town to the "from" tile
+					towns.Valuate(AITown.GetDistanceManhattanToTile, fromTile);
+					towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
+					local fromTown = AITown.GetLocation(towns.Begin());
+					
+					// Get some details about this town
+					local fType = AITown.GetRoadLayout(towns.Begin());
+					local fn = (fType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((fType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
+					local fx = abs(fromTown % AIMap.GetMapSizeY());
+					local fy = abs(fromTown / AIMap.GetMapSizeY());
+
+					// Find the nearest town to the "to" tile
+					towns.Valuate(AITown.GetDistanceManhattanToTile, toTile);
+					towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
+					local toTown = AITown.GetLocation(towns.Begin());
+					
+					// If both towns are the same then we only need to check one grid
+					if(fromTown == toTown && fn > 0) {
+						pathfinder.RegisterCostCallback(function (tile, prevTile, n, fx, fy) {
+							local dx = abs(tile % AIMap.GetMapSizeY());
+							local dy = abs(tile / AIMap.GetMapSizeY());
+
+							return ((dx - fx) % n == 0 || (dy - fy) % n == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+						}, fn, fx, fy);
+					} else if(fromTown != toTown) {
+						// Otherwise get details about the other town
+						local tType = AITown.GetRoadLayout(towns.Begin());
+						local tn = (tType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((tType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
+						local tx = abs(toTown % AIMap.GetMapSizeY());
+						local ty = abs(toTown / AIMap.GetMapSizeY());
+						
+						// If either town has a grid road layout then interpolate between the two
+						if(fn > 0 && tn > 0) {
+							pathfinder.RegisterCostCallback(function (tile, prevTile, fromTown, fn, fx, fy, toTown, tn, tx, ty) {
+								local dx = abs(tile % AIMap.GetMapSizeY());
+								local dy = abs(tile / AIMap.GetMapSizeY());
+		
+								local fCost = (fn == 0 || (dx - fx) % fn == 0 || (dy - fy) % fn == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+								local tCost = (tn == 0 || (dx - tx) % tn == 0 || (dy - ty) % tn == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+		
+								local fDist = AITile.GetDistanceManhattanToTile(tile, fromTown);
+								local tDist = AITile.GetDistanceManhattanToTile(tile, toTown);
+								local total = fDist + tDist;
+								local fBal = max(0, ((100 * tDist) / total) - 40);
+								local tBal = max(0, ((100 * fDist) / total) - 40);
+		
+								return min(PathWrapper.COST_GRID_LAYOUT, ((fBal * fCost) + (tBal * tCost)) / 50);
+							}, fromTown, fn, fx, fy, toTown, tn, tx, ty);
+						}
+					}
 				}
 			break;
 			case PathWrapper.FEAT_DEPOT_ALIGN:
