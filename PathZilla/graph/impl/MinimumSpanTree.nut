@@ -56,6 +56,10 @@ class MinimumSpanTree extends Graph {
 		local queue = BinaryHeap();
 		local closed = {};
 		local edgeSet = SortedSet();
+		local vtxMap = {};
+		foreach(v in masterGraph.GetVertices()) {
+			vtxMap[v.ToTile()] <- v;
+		}
 	
 		// Initialise the graph using the home town
 		local r = masterGraph.GetVertices().Begin();
@@ -69,10 +73,10 @@ class MinimumSpanTree extends Graph {
 			if(!closed[uTile]) {
 				closed[uTile] <- true;
 				
-				local uVertex = Vertex.FromTile(uTile);
+				local uVertex = vtxMap[uTile];
 				
 				if(uTile != r.ToTile()) {
-					edgeSet.RawInsert(Edge(uVertex, Vertex.FromTile(u.otherTile)));
+					edgeSet.RawInsert(Edge(uVertex, vtxMap[u.otherTile]));
 				}
 				
 				foreach(v in masterGraph.GetNeighbours(uVertex)) {

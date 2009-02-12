@@ -57,6 +57,10 @@ class ShortestPathTree extends Graph {
 		local prev = {};
 		local infinity = AIMap.GetMapSizeX() + AIMap.GetMapSizeY();
 		infinity = infinity * infinity; // Square it  
+		local vtxMap = {};
+		foreach(v in masterGraph.GetVertices()) {
+			vtxMap[v.ToTile()] <- v;
+		}
 
 		// Initialise distance and previous node lists
 		foreach(v in masterGraph.GetVertices()) {
@@ -76,7 +80,7 @@ class ShortestPathTree extends Graph {
 						
 			// Find the best cost node
 			local uTile = u.tile;
-			local uVertex = Vertex.FromTile(uTile);
+			local uVertex = vtxMap[uTile];
 
 			// Get the vertices adjacent to the current one and update them
 			foreach(v in masterGraph.GetNeighbours(uVertex)) {
@@ -97,7 +101,7 @@ class ShortestPathTree extends Graph {
 		// Compile the linked list of prev nodes into a graph
 		foreach(uTile, v in prev) {
 			if(v != null) {
-				local u = Vertex.FromTile(uTile);
+				local u = vtxMap[uTile];
 				local vTile = v.ToTile();
 				this.edges.RawInsert(Edge(u, v));
 	
