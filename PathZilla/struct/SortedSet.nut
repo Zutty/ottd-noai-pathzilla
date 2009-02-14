@@ -149,6 +149,26 @@ function SortedSet::RemoveAll(set) {
 }
 
 /*
+ * Remove those items in the list that when passed to the supplied filter 
+ * function yeild a false return value. The filter should take one 
+ * argument and return true if the item should be filtered from the set.
+ */
+function SortedSet::Filter(filterFn) {
+	local toRemove = [];
+	foreach(idx, i in this.data) {
+		if(filterFn(i)) {
+			toRemove.append(idx);
+		}
+	}
+
+	local offset = 0;
+	foreach(r in toRemove) {
+		this.data.remove(r - offset);
+		offset++;
+	}
+}
+
+/*
  * Remove the item at the specified index.
  */
 function SortedSet::Removei(idx) {
