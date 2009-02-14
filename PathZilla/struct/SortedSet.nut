@@ -65,6 +65,13 @@ function SortedSet::Sort() {
 }
 
 /*
+ * Re-sort the set by a certain comparator function.
+ */
+function SortedSet::SortBy(comparator) {
+	this.data.sort(comparator);
+}
+
+/*
  * Get the first item in the set.
  */
 function SortedSet::Begin() {
@@ -124,6 +131,24 @@ function SortedSet::Remove(item) {
 }
 
 /*
+ * Remove all items in the specified set from this set.
+ */
+function SortedSet::RemoveAll(set) {
+	local toRemove = [];
+	foreach(idx, i in this.data) {
+		if(set.Contains(i)) {
+			toRemove.append(idx);
+		}
+	}
+
+	local offset = 0;
+	foreach(r in toRemove) {
+		this.data.remove(r - offset);
+		offset++;
+	}
+}
+
+/*
  * Remove the item at the specified index.
  */
 function SortedSet::Removei(idx) {
@@ -166,7 +191,7 @@ function SortedSet::Merge(set) {
 }
 
 /*
- * Make a deep copy of the set.
+ * Make a shallow copy of the set.
  */
 function SortedSet::_cloned(original) {
 	local new = ::SortedSet();
