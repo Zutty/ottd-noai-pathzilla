@@ -152,6 +152,7 @@ function ServiceManager::FindNewServices() {
 				
 				local crowDist = AITile.GetDistanceManhattanToTile(aTarget.GetLocation(), bTile);
 				local travelTime = (179 * netDist[bTile]) / (10 * AIEngine.GetMaxSpeed(engine)); // in days
+				travelTime = max(1, travelTime); // Compensate for ultra-fast vehicles
 
 				// Get the base income for one trip				
 				local rawIncome = AICargo.GetCargoIncome(cargo, crowDist, travelTime);
@@ -305,6 +306,7 @@ function ServiceManager::SelectEngine(targets, cargo, transportType, subType, ch
 	// Build a function to compute the profit making potential of each vehicle
 	local profitValuator = function (engine, cargo, distance) {
 		local travelTime = (179 * distance) / (10 * AIEngine.GetMaxSpeed(engine)); // AIEngine.GetReliability(engine) / 100
+		travelTime = max(1, travelTime); // Compensate for ultra-fast vehicles
 		local unitIncome = AICargo.GetCargoIncome(cargo, distance, travelTime);
 		local period = 5; // years
 		local tco = AIEngine.GetPrice(engine) + (AIEngine.GetRunningCost(engine) * period);
