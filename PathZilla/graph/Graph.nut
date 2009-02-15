@@ -84,8 +84,19 @@ function Graph::ContainsVertex(vertex) {
 /*
  * Returns true if the vertex defined by the specified town forms part of the graph.
  */
-function Graph::ContainsTown(town) {
-	return this.vertices.Contains(Vertex.FromTown(town));
+function Graph::ContainsTarget(target) {
+	return this.vertices.Contains(target.GetVertex());
+}
+
+/*
+ * Get an array of all the targets in the vertices of this graph. 
+ */
+function Graph::GetTargets() {
+	local targets = SortedSet();
+	foreach(v in this.vertices) {
+		if(v.GetTarget() != null) targets.Insert(v.GetTarget());
+	}
+	return targets;
 }
 
 /*

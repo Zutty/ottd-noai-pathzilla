@@ -64,6 +64,7 @@ class PathZilla extends AIController {
 	MAX_TOWN_RADIUS = 20;		   // Maximum distance from a town centre that anything can be built
 	MAX_REPATH_TRIES = 5		   // Maximum number a times path can be re-found due to construction problems
 	MAX_VEHICLES_PER_SVC = 100;	   // Maximum number of vehicles per service
+	INDUSTRY_FLEET_MULTI = 4;	   // Fleet size multiplier for industrial services
 	
 	// Member variables
 	stop = false;
@@ -87,8 +88,8 @@ class PathZilla extends AIController {
 		require("pathfinding/Road.nut");
 		require("schema/Schema.nut");
 		require("service/Service.nut");
-		require("service/ServiceDescriptor.nut");
 		require("service/ServiceManager.nut");
+		require("service/Target.nut");
 		require("struct/Collection.nut");
 		require("struct/BinaryHeap.nut");
 		require("struct/SortedSet.nut");
@@ -136,14 +137,25 @@ function PathZilla::Start() {
 		// Add passenger schemas by road and tram
 		local cargoList = AICargoList();
 		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
-		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD));
+		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
 		
 		// Check that trams are supported before adding the schema
-		if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_TRAM));
+		if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
 
 		// Add a mail schema by road
 		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_MAIL);
-		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AIRoad.ROADTYPE_ROAD));
+		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+		
+		// Add coal - this is for development purposes
+		local coal = null;
+		foreach(cargo, _ in AICargoList()) {
+			if(AICargo.GetCargoLabel(cargo) == "COAL") coal = cargo;
+		}
+		
+		if(coal != null) {
+			this.AddSchema(Schema(this.homeTown, coal, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+		}
+		
 	} else {
 		// Load the vehicles into their groups
 		this.serviceManager.PostLoad();

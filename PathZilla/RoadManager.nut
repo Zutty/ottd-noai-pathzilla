@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 27/07/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class RoadManager {
@@ -30,17 +30,115 @@ class RoadManager {
 	}
 }
 
+function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
+	// Set the correcy road type before starting
+	AIRoad.SetCurrentRoadType(schema.GetSubType());
+
+	// Ensre that roads and depots are available for each target
+	foreach(target in service.GetTargets()) {
+		if(target.GetType() == Target.TYPE_TOWN) {
+			// Ensure that the source town has stations
+			local added = RoadManager.BuildTownStations(target, service.GetCargo(), service.GetSubType(), service.GetCoverageTarget());
+			if(added > 0) {
+				targetsUpdated.Insert(target);
+			}
+		} else {
+			// Ensure there is a station at the target
+			RoadManager.BuildIndustryStation(target, service.GetCargo(), service.GetSubType());
+		}
+
+		// Also ensure it has at least one depot
+		RoadManager.BuildDepot(target, service.GetSubType());
+	}
+
+	// Ensure the targets are connected by road
+	local prev = 0;
+	for(local next = 1; next < service.GetTargets().len(); next++) {
+		local from = service.GetTargets()[prev];
+		local to = service.GetTargets()[next];
+
+		local path = schema.GetPlanGraph().FindPath(from.GetVertex(), to.GetVertex());
+		local success = true;
+	
+		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
+			local a = walk.GetVertex();
+			local b = walk.GetParent().GetVertex();
+			local edge = Edge(a, b);
+	
+			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
+				// Get the towns on this edges
+				local aTarget = a.GetTarget();
+				local bTarget = b.GetTarget();
+	
+				// Ensure we can afford to do some construction				
+				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
+	
+				// Build a link between the towns
+				AILog.Info(" Building a road between " + aTarget.GetName() + " and " + bTarget.GetName() + "...");
+				success = PathWrapper.BuildRoad(aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT]);
+				
+				// If we were able to build the link, add the edge to the actual graph
+				if(success) {
+					schema.GetActualGraph().AddEdge(edge);
+				} else {
+					break;
+				}
+			}
+		}
+		
+		if(!success) {
+			AILog.Error("Could not link");
+			return false;
+		}
+		
+		prev = next;
+	}
+
+	return true;
+}
+
+function RoadManager::MaintainInfrastructure(service, targetsTried, targetsUpdated) {
+	foreach(target in service.GetTargets()) {
+		if(target.GetType() == Target.TYPE_TOWN) {
+			local completeTram = (service.GetSubType() == AIRoad.ROADTYPE_TRAM) && (RoadManager.GetStations(target, service.GetCargo(), service.GetSubType()).Count() > 0);
+			if(!targetsTried.Contains(target.GetId()) && !completeTram) {
+				targetsTried.Insert(target.GetId());
+				local added = RoadManager.BuildTownStations(target, service.GetCargo(), service.GetSubType(), service.GetCoverageTarget(), 1);
+				
+				if(added > 0) {
+					targetsUpdated.Insert(target);
+				}
+			}
+		} else if(target.GetType() == Target.TYPE_INDUSTRY) {
+			// Ensure a station can be found at the target
+			RoadManager.BuildIndustryStation(target, service.GetCargo(), service.GetSubType());
+		}
+	}
+}
+
 /*
  * Get a list of all the road stations in a town for a specified cargo
  */
-function RoadManager::GetStations(town, cargo, roadType) {
+function RoadManager::GetStations(target, cargo, roadType) {
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
+	local radius = AIStation.GetCoverageRadius(stationType);
 	
 	// Ensure we get the right type of station
-	local stationList = AIStationList(stationType);
-	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
-	stationList.RemoveValue(0);
+	local stationList = AIList();
+	if(target.IsTown()) {
+		stationList = AIStationList(stationType);
+		stationList.Valuate(AIStation.IsWithinTownInfluence, target.GetId());
+		stationList.RemoveValue(0);
+	} else {
+		local coveredTiles = (target.IsProducer()) ? AITileList_IndustryProducing(target.GetId(), radius) : AITileList_IndustryAccepting(target.GetId(), radius);
+		foreach(tile, _ in coveredTiles) {
+			local st = AIStation.GetStationID(tile);
+			if(AIStation.IsValidStation(st)) {
+				stationList.AddItem(st, 0);
+			}
+		}
+	}
 	
 	// Ensure the stations have the correct road type
 	stationList.Valuate(function (station, roadType) {
@@ -136,9 +234,10 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
  * 
  * The function returns the number of stations that were added.
  */
-function RoadManager::BuildStations(town, cargo, roadType, target, maxAdd = 100) {
+function RoadManager::BuildTownStations(target, cargo, roadType, coverageTarget, maxAdd = 100) {
+	local town = target.GetId();
 	local strType = (roadType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
-	AILog.Info("  Building " + strType + " stations in " + AITown.GetName(town) + "...");
+	AILog.Info("  Building " + strType + " stations in " + target.GetName() + "...");
 
 	local numStationsBuilt = 0;
 
@@ -156,10 +255,10 @@ function RoadManager::BuildStations(town, cargo, roadType, target, maxAdd = 100)
 	
 	// Build new stations if there are none or until the coverage exceeds the target
 	local stationID = 0;
-	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= target) && stationID >= 0 && numStationsBuilt < maxAdd) {
+	while(((stationList.Count() + numStationsBuilt == 0) || RoadManager.GetTownCoverage(town, cargo, roadType) <= coverageTarget) && stationID >= 0 && numStationsBuilt < maxAdd) {
 		PathZilla.Sleep(1);
 
-		stationID = RoadManager.BuildStation(town, cargo, roadType);
+		stationID = RoadManager.BuildStation(target, cargo, roadType);
 		if(stationID >= 0) {
 			numStationsBuilt++;
 		}
@@ -168,41 +267,50 @@ function RoadManager::BuildStations(town, cargo, roadType, target, maxAdd = 100)
 	return numStationsBuilt;
 }
 
+function RoadManager::BuildIndustryStation(target, cargo, roadType) {
+	local stations = RoadManager.GetStations(target, cargo, roadType);
+	
+	if(stations.IsEmpty()) {
+		RoadManager.BuildStation(target, cargo, roadType);
+	}
+}
+
 /*
  * Build a single station in the specified town to accept the specified cargo.
  * The position of the station will be selected based on the maximum level
  * of acceptance.
- *
- * The function will attempt to build a DTRS if the selected position has road
- * either side of it.
  */
-function RoadManager::BuildStation(town, cargo, roadType) {
-	local townTile = AITown.GetLocation(town);
+function RoadManager::BuildStation(target, cargo, roadType) {
+	local targetTile = target.GetTile();
 
 	// Get a list of tiles to search in
-	local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
+	local searchRadius = min(AIMap.DistanceFromEdge(targetTile) - 1, PathZilla.MAX_TOWN_RADIUS);
 	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 
 	// Before we do anything, check the local authority rating
-	local rating = AITown.GetRating(town, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
+	local townList = AITownList();
+	townList.Valuate(AITown.GetDistanceManhattanToTile, targetTile);
+	townList.Sort(AIAbstractList.SORT_BY_VALUE, true);
+	local nearestTown = townList.Begin()
+	local rating = AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
 	
 	// If the rating is low, take steps to improve it
 	if(rating < AITown.TOWN_RATING_GOOD) {
 		// See if we can bribe the town
 		if(rating < AITown.TOWN_RATING_POOR && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
-			AITown.PerformTownAction(town, AITown.TOWN_ACTION_BRIBE);
+			AITown.PerformTownAction(nearestTown, AITown.TOWN_ACTION_BRIBE);
 		}
 		
 		// After that, find places we can build trees
 		local tileList = AITileList();
-		tileList.AddRectangle(townTile - offset, townTile + offset);
-		tileList.Valuate(function (tile, town) {
-			return (!AITile.IsWithinTownInfluence(tile, town) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile)) ? 1 : 0;
-		}, town);
+		tileList.AddRectangle(targetTile - offset, targetTile + offset);
+		tileList.Valuate(function (tile, nearestTown) {
+			return (!AITile.IsWithinTownInfluence(tile, nearestTown) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile)) ? 1 : 0;
+		}, nearestTown);
 		tileList.RemoveValue(0);
-		tileList.Valuate(function (tile, town, townTile) {
-			return AITile.GetDistanceManhattanToTile(tile, townTile) + AIBase.RandRange(6) - 3;
-		}, town, townTile);
+		tileList.Valuate(function (tile, nearestTown, targetTile) {
+			return AITile.GetDistanceManhattanToTile(tile, targetTile) + AIBase.RandRange(6) - 3;
+		}, nearestTown, targetTile);
 		tileList.Sort(AIAbstractList.SORT_BY_VALUE, true);
 		
 		// For the places that are available, build a "green belt" around the town
@@ -210,7 +318,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 			local expenditure = 0;
 			local tile = tileList.Begin();
 			
-			while(AITown.GetRating(town, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF)) < AITown.TOWN_RATING_GOOD && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
+			while(AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF)) < AITown.TOWN_RATING_GOOD && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
 				local acc = AIAccounting();
 				for(local i = 0; i < 4; i++) {
 					AITile.PlantTree(tile);
@@ -220,32 +328,57 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 			}
 		}
 	}
-	
-	// Get a list of tiles
-	local tileList = AITileList();
-	tileList.AddRectangle(townTile - offset, townTile + offset);
 
 	// Check if we are now allowed to build in town
+	rating = AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
 	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
 	if(!allowed) {
-		AILog.Error(AITown.GetName(town) + " local authority refuses construction");
+		AILog.Error(AITown.GetName(nearestTown) + " local authority refuses construction");
 		return -1;
 	}
 	
-	// Get the type of station we should build	
+	// Get the type of station we should build and its radius	
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
-	
-	// Get a list of existing stations
-	local stationList = AIStationList(stationType);
-	stationList.Valuate(AIStation.IsWithinTownInfluence, town);
-	stationList.RemoveValue(0);
-	
-	// Initialise some presets
 	local radius = AIStation.GetCoverageRadius(stationType);
+
+	// Get a list of tiles
+	local tileList = AITileList();
+	if(target.IsTown()) {
+		tileList.AddRectangle(targetTile - offset, targetTile + offset);
+	} else {
+		if(target.IsProducer()) {
+			tileList = AITileList_IndustryProducing(target.GetId(), radius);
+		} else {
+			tileList = AITileList_IndustryAccepting(target.GetId(), radius);
+		}
+	}
+	
+	// Get a list of existing stations - INCOMPATIBLE WITH MULTIPLE TRANSPORT TYPES
+	local stationList = AIList();
+	if(target.IsTown()) {
+		stationList = AIStationList(stationType);
+		stationList.Valuate(AIStation.IsWithinTownInfluence, target.GetId());
+		stationList.RemoveValue(0);
+	} else {
+		local coveredTiles = (target.IsProducer()) ? AITileList_IndustryProducing(target.GetId(), radius) : AITileList_IndustryAccepting(target.GetId(), radius);
+		foreach(tile, _ in coveredTiles) {
+			local st = AIStation.GetStationID(tile);
+			if(AIStation.IsValidStation(st)) stationList.AddItem(st, 0);
+		}
+	}
+	
+	// Remove tiles surrounging our stations, to ensure they aren't built too close
 	local stationSpacing = (radius * 3) / 2;
+	offset = AIMap.GetTileIndex(stationSpacing, stationSpacing);
+	foreach(station, _ in stationList) {
+		local tile = AIStation.GetLocation(station);
+		tileList.RemoveRectangle(tile - offset, tile + offset);
+	}
+
+	// Calculate the station spacing
 	local comptSpacing = (PathZilla.IsAggressive() || stationList.Count() == 0) ? 1 : stationSpacing;
-		
+
 	// Find a list of tiles that are controlled by competitors
 	foreach(tile, _ in tileList) {
 		local owner = AITile.GetOwner(tile);
@@ -259,20 +392,11 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		}
 	}
 	
-	// Get the spacing offset for our stations
-	offset = AIMap.GetTileIndex(stationSpacing, stationSpacing);
-	
-	// Iterate over the list of our stations, to ensure they aren't built too close
-	foreach(station, _ in stationList) {
-		local tile = AIStation.GetLocation(station);
-		tileList.RemoveRectangle(tile - offset, tile + offset);
-	}
-	
 	// Check if the game allows us to build DTRSes on town roads and get the road type
 	local dtrsOnTownRoads = (AIGameSettings.GetValue("construction.road_stop_on_town_road") == 1);
 
 	// Rank those tiles by their suitability for a station
-	tileList.Valuate(function (tile, town, cargo, radius, dtrsOnTownRoads, roadType) {
+	tileList.Valuate(function (tile, target, cargo, radius, dtrsOnTownRoads, roadType) {
 		// Find roads that are connected to the tile
 		local adjRoadListRd = LandManager.GetAdjacentTileList(tile);
 		AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_ROAD);
@@ -322,21 +446,31 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 		// Check if this tile is acceptable
 		local canBuildOnRoad = (AITile.GetOwner(tile) == AICompany.COMPANY_INVALID) ? dtrsOnTownRoads : AICompany.IsMine(AITile.GetOwner(tile)); 
 		local cl = (AIRoad.IsRoadTile(tile)) ? ((canBuildOnRoad) ? straightRoad : false) : LandManager.IsClearable(tile);
-		local acceptable = AITown.IsWithinTownInfluence(town, tile) && LandManager.IsLevel(tile) && cl;
+		local acceptable = LandManager.IsLevel(tile) && cl;
+		if(target.IsTown()) acceptable = acceptable && AITown.IsWithinTownInfluence(target.GetId(), tile);
 		
 		// Get the cargo acceptance around the tile
-		local score = AITile.GetCargoAcceptance(tile, cargo, 1, 1, radius);
-		acceptable = acceptable && (score >= 8);
+		local score = 0;
+		local threshold = 0;
+		if(!target.IsTown() && target.IsProducer()) {
+			score = AITile.GetCargoProduction(tile, cargo, 1, 1, radius);
+		} else {
+			score = AITile.GetCargoAcceptance(tile, cargo, 1, 1, radius);
+			threshold = 8;
+		}
+		acceptable = acceptable && (score >= threshold);
 		
-		// Penalise tiles in a corner
-		score /= (inCorner) ? 3 : 1;
+		if(target.IsTown()) {
+			// Penalise tiles in a corner
+			score /= (inCorner) ? 3 : 1;
 		
-		// Promote tiles on road we can build on
-		score += (AIRoad.IsRoadTile(tile) && canBuildOnRoad) ? 30 : 0;
+			// Promote tiles on road we can build on
+			score += (AIRoad.IsRoadTile(tile) && canBuildOnRoad) ? 30 : 0;
+		}
 
 		// If the spot is acceptable, return tile score
 		return (acceptable) ? score : 0;
-	}, town, cargo, radius, dtrsOnTownRoads, roadType);
+	}, target, cargo, radius, dtrsOnTownRoads, roadType);
 	
 	// Remove unacceptable tiles
 	tileList.RemoveValue(0);
@@ -344,7 +478,7 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// If we can't find any suitable tiles then just give up!			
 	if(tileList.Count() == 0) {
 		if(stationList.Count() == 0) {
-			AILog.Error("  Station could not be built in " + AITown.GetName(town) + "!");
+			AILog.Error("  Station could not be built at " + target.GetName() + "!");
 		}
 		
 		return -1;
@@ -358,14 +492,17 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	// Check each tile for valid paths that will connect it to the town.
 	foreach(stTile, _ in tileList) {
 		// Find a path from the town to the station
- 		local path = PathWrapper.FindPath(townTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
+ 		local path = PathWrapper.FindPath(targetTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
  		
 		if(path != null) {
 			// Find a loop back to the town
-			roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : townTile;
+			roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : targetTile;
 			otherSide = LandManager.GetApproachTile(stTile, roadTile);
-			local loopTile = (stTile != townTile) ? townTile : roadTile;
-			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, [PathWrapper.FEAT_ROAD_LOOP, PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE]);
+			local loopTile = (stTile != targetTile) ? targetTile : roadTile;
+			
+			local features = [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE];
+			if(target.IsTown()) features.append(PathWrapper.FEAT_ROAD_LOOP);
+			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, features);
 			
 			// Check that the loop exists and that it can connect to the station
 			if(loop != null && (AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetParent().GetTile()) != 0)) {
@@ -386,14 +523,14 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	
 	// If we couldn;t find a path to any of the tiles then give up.
 	if(stationTile == null) {
-		AILog.Error("  Station could not be reached in " + AITown.GetName(town) + "!");
+		AILog.Error("  Station could not be reached at " + target.GetName() + "!");
 		return -1;
 	}
 	
 	// Ensure we have a bit of cash available
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	
-	AILog.Info("  Building a station in " + AITown.GetName(town) + "...");
+	AILog.Info("  Building a station at " + target.GetName() + "...");
 	
 	// Clean up little road stubs, if any
 	if(AIRoad.IsRoadTile(stationTile)) {
@@ -460,7 +597,6 @@ function RoadManager::BuildStation(town, cargo, roadType) {
 	if(!success) {
 		local strType = (truckStation) ? "TRUCK" : ((roadType == AIRoad.ROADTYPE_TRAM) ? "TRAM" : "BUS");
 		AILog.Error(strType + " STOP WAS NOT BUILT");
-		//AISign.BuildSign(stationTile, ""+trnc(AIError.GetLastErrorString()));
 	}
 
 	return (success) ? AIStation.GetStationID(stationTile) : -1;
@@ -513,4 +649,86 @@ function RoadManager::SafelyBuildRoad(tileA, tileB) {
 	}
 	
 	return built;
+}
+
+/*
+ * Build a depot at the specified target if none exits
+ */
+function RoadManager::BuildDepot(target, roadType) {
+	local strType = (roadType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
+	AILog.Info("  Checking for a " + strType + " depot in " + target.GetName() + "...");
+
+	local targetTile = target.GetTile();
+	AIRoad.SetCurrentRoadType(roadType);
+
+	// Check for existing depots in the town
+	local depots = AIDepotList(AITile.TRANSPORT_ROAD);
+	depots.Valuate(AIRoad.HasRoadType, roadType);
+	depots.KeepValue(1);
+	if(target.IsTown()) {
+		depots.Valuate(function (depot, town, roadType) {
+			return AITown.IsWithinTownInfluence(town, depot);
+		}, target.GetId(), roadType);
+		depots.KeepValue(1);
+	} else {
+		depots.Valuate(AITile.GetDistanceManhattanToTile, targetTile);
+		depots.KeepBelowValue(10);
+		foreach(depot, _ in depots) {
+			local value = 1; // TODO - Is depot connected to target tile
+			depots.SetValue(depot, value);
+		}
+		depots.KeepValue(1);
+	}
+	
+	// If there aren't any we need to build one
+	if(depots.Count() == 0) {
+		AILog.Info("    Building a new depot...");
+
+		// Get a list of tiles to search in
+		local searchRadius = min(AIMap.DistanceFromEdge(targetTile) - 1, PathZilla.MAX_TOWN_RADIUS);
+		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
+		local tileList = AITileList();
+		tileList.AddRectangle(targetTile - offset, targetTile + offset);
+		
+		// Rank those tiles by their suitability for a depot
+		tileList.Valuate(function(tile, roadType, target, searchRadius) {
+			// Find suitable roads adjacent to the tile
+			local adjRoads = LandManager.GetAdjacentTileList(tile);
+			adjRoads.Valuate(function (_tile, roadType) {
+				return (LandManager.IsLevel(_tile) && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
+			}, roadType);
+			adjRoads.KeepValue(1);
+			
+			local score = 0;
+			
+			if(!AITile.IsWaterTile(tile) && LandManager.IsLevel(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
+				 && !AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile) && !AIRoad.IsRoadDepotTile(tile)) {
+				score = AITile.GetDistanceManhattanToTile(target.GetTile(), tile);
+				if(!target.IsTown()) score = (searchRadius * searchRadius) - score;
+				if(adjRoads.Count() > 0) score += 10000;
+				if(AITile.IsBuildable(tile)) score += 100;
+				if(target.IsTown() && AITown.IsWithinTownInfluence(target.GetId(), tile)) score += 1000;
+			}
+			
+			return score;
+		}, roadType, target, searchRadius);
+		
+		tileList.RemoveValue(0);
+		
+		foreach(depotTile, _ in tileList) {
+			local path = PathWrapper.FindPath(targetTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE, PathWrapper.FEAT_NO_WORMHOLES]);
+			if(path != null) {
+				PathWrapper.BuildPath(path, roadType);
+				AITile.DemolishTile(depotTile);
+				AIRoad.BuildRoadDepot(depotTile, path.GetParent().GetTile());
+				break;
+			} else {
+				AILog.Warning("  Could not find path to depot!");
+			}
+		}
+		
+		PathZilla.Sleep(1);
+
+		AILog.Info("    Done building depot.");
+	}
 }

@@ -42,19 +42,33 @@ class Schema {
 	id = 0;
 	sourceNode = null;
 	cargo = null;
-	roadType = null;
+	transportType = null;
+	subType = null;
 	planGraph = null;
 	actualGraph = null;
 
-	constructor(sourceNode, cargo, roadType) {
+	constructor(sourceNode, cargo, transportType, subType) {
 		this.id = 0;
 		this.sourceNode = sourceNode;
 		this.cargo = cargo;
-		this.roadType = roadType;
+		this.transportType = transportType;
+		this.subType = subType;
 		this.planGraph = null;
 		this.actualGraph = null;
 		
-		this.InitialiseGraphs();
+		local targets = [];
+		local noEffect = (AICargo.GetTownEffect(cargo) == AICargo.TE_NONE);
+		if(!AICargo.IsFreight(cargo) && !noEffect) {
+			// Towns 
+			targets = this.GetTownTargets();
+		} else if(noEffect) {
+			// Industry 
+			targets = this.GetIndustryTargets();
+		} else {
+			// TODO - Heterogenous services
+		}
+		
+		this.InitialiseGraphs(targets);
 	}
 }
 
@@ -80,10 +94,17 @@ function Schema::GetCargo() {
 }
 
 /*
- * Get the road type 
+ * Get the transport type 
  */
-function Schema::GetRoadType() {
-	return this.roadType;
+function Schema::GetTransportType() {
+	return this.transportType;
+}
+
+/*
+ * Get the sub type 
+ */
+function Schema::GetSubType() {
+	return this.subType;
 }
 
 /*
@@ -101,24 +122,60 @@ function Schema::GetActualGraph() {
 }
 
 /*
- * Create the plan and actual graphs based on a triangulation of all targets 
- * (up to a maximum of MAX_TARGETS) on the map.
+ * Create an array of targets from all towns (up to a maximum of MAX_TARGETS)  
+ * on the map.
  */
-function Schema::InitialiseGraphs() {
+function Schema::GetTownTargets() {
 	// Prime a list of the closest MAX_TARGETS targets to the home town
 	local allTowns = AITownList();
 	allTowns.Valuate(AITown.GetDistanceManhattanToTile, AITown.GetLocation(this.sourceNode));
 	allTowns.KeepTop(PathZilla.MAX_TARGETS);
 	
-	if(this.GetRoadType() == AIRoad.ROADTYPE_TRAM) {
+	// HACK: If using trams, only consider large towns
+	if(this.GetSubType() == AIRoad.ROADTYPE_TRAM) {
 		allTowns.Valuate(AITown.GetPopulation);
 		allTowns.RemoveBelowValue(1000);
 	}
 	
-	allTowns.Valuate(AITown.GetLocation);
+	// Build a list of targets
+	local targets = [];
+	foreach(town, _ in allTowns) {
+		targets.append(Target(Target.TYPE_TOWN, town));
+	}
+	
+	return targets;
+}
 
+/*
+ * Create an array of targets from industries on the map that accept or produce 
+ * the predefined cargo for this schema. 
+ */
+function Schema::GetIndustryTargets() {
+	// Get a list of all industries that handle the appropriate cargo
+	local indList = AIIndustryList_CargoAccepting(this.cargo);
+	indList.AddList(AIIndustryList_CargoProducing(this.cargo));
+	
+	// The source node is currently a town, which is no good!
+	indList.Valuate(AIIndustry.GetDistanceManhattanToTile, AITown.GetLocation(this.sourceNode));
+	indList.Sort(AIAbstractList.SORT_BY_VALUE, true);
+	this.sourceNode = indList.Begin();
+	
+	// Build a list of targets
+	local targets = [];
+	foreach(industry, _ in indList) {
+		targets.append(Target(Target.TYPE_INDUSTRY, industry));
+	}
+	
+	return targets;
+}
+
+/*
+ * Create the plan and actual graphs based on a triangulation over the supplied
+ * list of targets.
+ */
+function Schema::InitialiseGraphs(targets) {
 	// Get the master graph for the whole map
-	local masterGraph = Triangulation(allTowns);
+	local masterGraph = Triangulation(targets);
 	
 	// For the plan graph use a combination of the shortest path from the home 
 	// town and the minimum spanning tree.

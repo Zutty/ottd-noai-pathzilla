@@ -43,20 +43,20 @@
 class Triangulation extends Graph {
 	edgeSet = null;
 	
-	constructor(targetList) {
+	constructor(targets) {
 		Graph.constructor();
 		
-		AILog.Info("  Computing triangulation over " + targetList.Count() + " targets...");
+		AILog.Info("  Computing triangulation over " + targets.len() + " targets...");
 
 		// If there are fewer than three targets then use a special case
-		if(targetList.Count() == 1) {
-			this.vertices.RawInsert(Vertex.FromTile(targetList.GetValue(targetList.Begin())));
+		if(targets.len() == 1) {
+			this.vertices.RawInsert(targets[0].GetVertex());
 
 			AILog.Info("     Done.");
 			return;
-		} else if(targetList.Count() == 2) {
-			local a = Vertex.FromTile(targetList.GetValue(targetList.Begin()));
-			local b = Vertex.FromTile(targetList.GetValue(targetList.Next()));
+		} else if(targets.len() == 2) {
+			local a = targets[0].GetVertex();
+			local b = targets[1].GetVertex();
 			
 			this.vertices.RawInsert(a);
 			this.vertices.RawInsert(b);
@@ -90,13 +90,13 @@ class Triangulation extends Graph {
 	
 		// Compute the trianglation
 		local steps = 0;
-		foreach(tile in targetList) {
+		foreach(target in targets) {
 			// Only sleep once every PROCESSING_PRIORITY iterations
 			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
 				PathZilla.Sleep(1);
 			}
 			
-			local vertex = Vertex.FromTile(tile);
+			local vertex = target.GetVertex();
 			this.edgeSet = [];
 			local toRemove = [];
 

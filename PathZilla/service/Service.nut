@@ -22,7 +22,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 18/06/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class Service {
@@ -36,42 +36,50 @@ class Service {
 	SRLZ_GROUP = 4;
 	SRLZ_COVERAGE_TARGET = 6;
 	
-	fromTown = null;
-	toTown = null;
+	schemaId = null;
+	targets = null;
 	cargo = 0;
-	roadType = null;
+	transportType = null;
+	subType = null;
 	engine = null;
 	profitability = 0;
 	vehicles = null;
 	group = null;
+	distance = 0;
+	rawIncome = 0;
 	coverageTarget = 0;
 	
-	constructor(fromTown, toTown, cargo, roadType, engine, coverageTarget) {
-		this.fromTown = fromTown;
-		this.toTown = toTown;
+	constructor(schemaId, targets, cargo, transportType, subType, engine, distance, rawIncome, coverageTarget) {
+		this.schemaId = schemaId;
+		this.targets = targets;
 		this.cargo = cargo;
-		this.roadType = roadType;
+		this.transportType = transportType;
+		this.subType = subType;
 		this.engine = engine;
+		this.distance = distance;
+		this.rawIncome = rawIncome;
 		this.coverageTarget = coverageTarget;
-
-		this.vehicles = AIList();
-		this.group = AIGroup.CreateGroup(AIVehicle.VT_ROAD);
-		AIGroup.SetName(this.group, trnc(AITown.GetName(fromTown) + " to " + AITown.GetName(toTown)));
 	}
 }
 
-/*
- * Get the town this service goes from.
- */
-function Service::GetFromTown() {
-	return this.fromTown;
+function Service::Create() {
+	this.vehicles = AIList();
+	this.group = AIGroup.CreateGroup(AIVehicle.VT_ROAD);
+	AIGroup.SetName(this.group, trnc(this.targets[0].GetName() + " to " + this.targets[1].GetName()));
 }
 
 /*
- * Get the town this service goes to.
+ * Get the schema id
  */
-function Service::GetToTown() {
-	return this.toTown;
+function Service::GetSchemaId() {
+	return this.schemaId;
+}
+
+/*
+ * Get the targets this service visits.
+ */
+function Service::GetTargets() {
+	return this.targets;
 }
 
 /*
@@ -82,10 +90,17 @@ function Service::GetCargo() {
 }
 
 /*
- * Get the cargo this service carries.
+ * Get the transport type this service uses.
  */
-function Service::GetRoadType() {
-	return this.roadType;
+function Service::GetTransportType() {
+	return this.transportType;
+}
+
+/*
+ * Get the sub-type this service uses.
+ */
+function Service::GetSubType() {
+	return this.subType;
 }
 
 /*
@@ -103,6 +118,20 @@ function Service::SetEngine(e) {
 }
 
 /*
+ * Get the graph path this this service would run along.
+ */
+function Service::GetDistance() {
+	return this.distance;
+}
+
+/*
+ * Get the estimated income for the proposed service.
+ */
+function Service::GetRawIncome() {
+	return this.rawIncome;
+}
+
+/*
  * Get the town coverage target percentage
  */
 function Service::GetCoverageTarget() {
@@ -110,10 +139,23 @@ function Service::GetCoverageTarget() {
 }
 
 /*
- * Check if the service visits a town
+ * Check if the service visits a target with specified Id.
  */
-function Service::GoesTo(town) {
-	return (town == this.fromTown || town == this.toTown);
+function Service::GoesTo(tgt) {
+	foreach(target in this.targets) {
+		if(target.GetId() == tgt.GetId()) return true;
+	}
+	return false;
+}
+
+/*
+ * Check if the service visits all in a list of targets
+ */
+function Service::GoesToAll(targets) {
+	foreach(target in targets) {
+		if(!this.GoesTo(target)) return false;
+	}
+	return true;
 }
 
 /*
@@ -135,14 +177,25 @@ function Service::GetVehicles() {
  * Get the number of vehicles that are currently operating this service.
  */
 function Service::GetActualFleetSize() {
-	return this.vehicles.Count();
+	return (this.vehicles != null) ? this.vehicles.Count() : 0;
 }
 
 /*
  * Get a string representation of this service.
  */
 function Service::_tostring() {
-	return AICargo.GetCargoLabel(this.cargo) + " from " + AITown.GetName(this.fromTown) + " to " + AITown.GetName(this.toTown);
+	local strType = "";
+	if(transportType == AITile.TRANSPORT_ROAD) {
+		strType = (subType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
+	} else if(transportType == AITile.TRANSPORT_AIR) {
+		strType = "air";
+	}
+
+	local str = "";
+	if(this.targets.len() == 2) {
+		str = AICargo.GetCargoLabel(this.cargo) + " from " + this.targets[0].GetName() + " to " + this.targets[1].GetName() + " by " + strType;
+	}
+	return str;
 }
 
 /*
@@ -150,13 +203,13 @@ function Service::_tostring() {
  */
 function Service::Serialize() {
 	local data = {};
-	data[SRLZ_FROM_TOWN] <- this.fromTown;
-	data[SRLZ_TO_TOWN] <- this.toTown;
-	data[SRLZ_CARGO] <- this.cargo;
-	data[SRLZ_ROAD_TYPE] <- this.roadType;
-	data[SRLZ_ENGINE] <- this.engine;
-	data[SRLZ_GROUP] <- this.group;
-	data[SRLZ_COVERAGE_TARGET] <- this.coverageTarget;
+	//data[SRLZ_FROM_TOWN] <- this.fromTown;
+	//data[SRLZ_TO_TOWN] <- this.toTown;
+	//data[SRLZ_CARGO] <- this.cargo;
+	//data[SRLZ_ROAD_TYPE] <- this.roadType;
+	//data[SRLZ_ENGINE] <- this.engine;
+	//data[SRLZ_GROUP] <- this.group;
+	//data[SRLZ_COVERAGE_TARGET] <- this.coverageTarget;
 	return data;
 }
 
@@ -164,23 +217,65 @@ function Service::Serialize() {
  * Loads data from a table.
  */
 function Service::Unserialize(data) {
-	this.fromTown = data[SRLZ_FROM_TOWN];
-	this.toTown = data[SRLZ_TO_TOWN];
-	this.cargo = data[SRLZ_CARGO];
-	this.roadType = data[SRLZ_ROAD_TYPE];
-	this.engine = data[SRLZ_ENGINE];
-	this.vehicles = AIList();
-	this.group = data[SRLZ_GROUP];
-	this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
+	//this.fromTown = data[SRLZ_FROM_TOWN];
+	//this.toTown = data[SRLZ_TO_TOWN];
+	//this.cargo = data[SRLZ_CARGO];
+	//this.roadType = data[SRLZ_ROAD_TYPE];
+	//this.engine = data[SRLZ_ENGINE];
+	//this.vehicles = AIList();
+	//this.group = data[SRLZ_GROUP];
+	//this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
 }
 
 /*
  * Compare this service to another. This function returns 0 (i.e. equal) for 
  * services that go to/from the same towns, and otherwise orders services by
- * profitability (Errr... what?? I think this is a hangover from legacy code) 
+ * profitability. 
  */
 function Service::_cmp(svc) {
-	if((fromTown == svc.fromTown && toTown == svc.toTown) || (fromTown == svc.toTown && toTown == svc.fromTown)) return 0;
-	if(profitability > svc.profitability) return 1;
-	return -1;
+	local same = this.cargo == svc.cargo;
+	same = same && this.transportType == svc.transportType;
+	same = same && this.subType == svc.subType;
+	if(same) {
+		foreach(target in this.targets) {
+			same = same && svc.GoesTo(target);
+		}
+	}
+	if(same) return 0; 
+	
+	local tProfit = this.rawIncome / this.distance;
+	local sProfit = svc.rawIncome / svc.distance;
+	
+	local tMaxPop = 0;
+	local tMinPop = 10000000;
+	local tAllTowns = true;
+	local sMaxPop = 0;
+	local sMinPop = 10000000;
+	local sAllTowns = true;
+	
+	foreach(target in this.targets) {
+		if(target.GetType() == Target.TYPE_TOWN) {
+			tMaxPop = max(tMaxPop, AITown.GetPopulation(target.GetId()));
+			tMinPop = min(tMinPop, AITown.GetPopulation(target.GetId()));
+		} else {
+			tAllTowns = false;
+		}
+	}
+	foreach(target in svc.targets) {
+		if(target.GetType() == Target.TYPE_TOWN) {
+			sMaxPop = max(sMaxPop, AITown.GetPopulation(target.GetId()));
+			sMinPop = min(sMinPop, AITown.GetPopulation(target.GetId()));
+		} else {
+			sAllTowns = false;
+		}
+	}
+
+	// If both services are for towns only then weight them by population(-ish)
+	if(tAllTowns && sAllTowns) {
+		tProfit *= (tMaxPop + (tMinPop * tMinPop));
+		sProfit *= (sMaxPop + (sMinPop * sMinPop));
+	}
+
+	if(tProfit > sProfit) return -1;
+	return 1;
 }

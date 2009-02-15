@@ -29,11 +29,20 @@
 class Vertex {
 	x = 0;
 	y = 0;
+	target = null;
 	
-	constructor(x, y) {
+	constructor(x, y, target = null) {
 		this.x = x;
 		this.y = y;
+		this.target = target;
 	}
+}
+
+/*
+ * Get the underlying target for this vertex
+ */
+function Vertex::GetTarget() {
+	return this.target;
 }
 
 /*
@@ -82,13 +91,5 @@ function Vertex::ToTile() {
  * Static method to create a vertex based on a tile index in the current map.
  */
 function Vertex::FromTile(tile) {
-	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile));
-}
-
-/*
- * Static method to create a vertex based on a town's location.
- */
-function Vertex::FromTown(town) {
-	local tile = AITown.GetLocation(town);
-	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile));
+	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), null);
 }

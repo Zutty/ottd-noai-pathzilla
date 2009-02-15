@@ -22,29 +22,29 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 27/07/2008
- * Version: 1.0
+ * Version: 1.1
  */
 
 class ServiceManager {
 	// Serialization constants
 	CLASS_NAME = "ServiceManager";
 	SRLZ_SERVICE_LIST = 0;
-	SRLZ_TOWNS_UPDATED = 1;
+	SRLZ_TARGETS_UPDATED = 1;
 	SRLZ_POTENTIAL_SERVICES = 2;
-	SRLZ_TOWNS_CONSIDERED = 3;
+	SRLZ_TARGETS_CONSIDERED = 3;
 	
 	// Member variables
 	pz = null;
 	potentialServices = null;
-	townsConsidered = null;
+	targetsConsidered = null;
 	serviceList = null;
-	townsUpdated = null;
+	targetsUpdated = null;
 	
 	constructor(pathzilla) {
 		this.pz = pathzilla;
 		
-		this.townsUpdated = AIList();
-		this.townsConsidered = AIList();
+		this.targetsConsidered = SortedSet();
+		this.targetsUpdated = SortedSet();
 		
 		this.serviceList = SortedSet();		
 		this.potentialServices = BinaryHeap();
@@ -64,7 +64,7 @@ function ServiceManager::GetServices() {
  * distributed adequately.
  */
 function ServiceManager::MaintainServices() {
-	local townsTried = AIList();
+	local targetsTried = SortedSet();
 	
 	foreach(service in this.serviceList) {
 		PathZilla.Sleep(1);
@@ -72,33 +72,21 @@ function ServiceManager::MaintainServices() {
 		// Update fleet size
 		this.CreateFleet(service, true);
 
-		local completeTram = (service.GetRoadType() == AIRoad.ROADTYPE_TRAM) && (RoadManager.GetStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType()).Count() > 0);
-		if(!townsTried.HasItem(service.GetFromTown()) && !completeTram) {
-			townsTried.AddItem(service.GetFromTown(), 0);
-			local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget(), 1);
-			
-			if(added > 0) {
-				this.townsUpdated.AddItem(service.GetFromTown(), 0);
-			}
-		}
-
-		completeTram = (service.GetRoadType() == AIRoad.ROADTYPE_TRAM) && (RoadManager.GetStations(service.GetToTown(), service.GetCargo(), service.GetRoadType()).Count() > 0);
-		if(!townsTried.HasItem(service.GetToTown()) && !completeTram) {
-			townsTried.AddItem(service.GetToTown(), 0);
-			local added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget(), 1);
-			
-			if(added > 0) {
-				this.townsUpdated.AddItem(service.GetToTown(), 0);
-			}
+		if(service.GetTransportType() == AITile.TRANSPORT_ROAD) {
+			RoadManager.MaintainInfrastructure(service, targetsTried, this.targetsUpdated);
 		}
 		
-		if(this.townsUpdated.HasItem(service.GetFromTown()) || this.townsUpdated.HasItem(service.GetToTown())) {
-			AILog.Info("  Updating service - " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()));
+		local needUpdate = false;
+		foreach(target in service.GetTargets()) {
+			needUpdate = needUpdate && this.targetsUpdated.Contains(target);
+		}
+		if(needUpdate) {
+			AILog.Info("  Updating service - " + service);
 			this.UpdateOrders(service);
 		}
 	}
 
-	this.townsUpdated = AIList();
+	this.targetsUpdated = SortedSet();
 }
 
 /*
@@ -109,56 +97,60 @@ function ServiceManager::MaintainServices() {
 function ServiceManager::FindNewServices() {
 	local schema = pz.GetNextSchema();
 	local cargo = schema.GetCargo();
-	local roadType = schema.GetRoadType();
+	local transportType = schema.GetTransportType();
+	local subType = schema.GetSubType();
 
 	// Discard the towns that we have already been to, or that can't be reached
-	local towns = AITownList();
-	towns.RemoveList(this.townsConsidered);
-	towns.Valuate(function (town, planGraph) {
-		return (planGraph.ContainsTown(town)) ? 1 : 0;
-	}, schema.GetPlanGraph());
-	towns.RemoveValue(0);
+	local targets = clone schema.GetPlanGraph().GetTargets();
+	targets.RemoveAll(this.targetsConsidered);
+	targets.Filter(function (target) {
+		return !target.IsProducer();
+	});
 	
 	// Check that there are any towns left that we haven't considered
-	if(towns.Count() > 0) {
+	if(targets.Len() > 0) {
 		// Order the remaining towns by populations, placing the home town first
-		towns.Valuate(function (town, homeTown) {
-			return (town == homeTown) ? 1000000 : AITown.GetPopulation(town);
-		}, pz.homeTown);
+		targets.SortBy(Target.SortByPotential(pz.homeTown, cargo));
 		
 		// Choose the first town and save it 
-		local aTown = towns.Begin();
-		this.townsConsidered.AddItem(aTown, 0);
+		local aTarget = targets.Begin();
+		this.targetsConsidered.Insert(aTarget);
 		
-		AILog.Info("  Looking for potential services from "+AITown.GetName(aTown)+"...");
+		AILog.Info("  Looking for potential services from " + aTarget.GetName() + "...");
 
 		// Get the shortest distances accross the network
-		local netDist = schema.GetPlanGraph().GetShortestDistances(Vertex.FromTown(aTown));
+		local netDist = schema.GetPlanGraph().GetShortestDistances(aTarget.GetVertex());
 
 		// Iterate over each town to test each possible connection
 		local steps = 0;
-		foreach(bTown, _ in AITownList()) {
+		foreach(bTarget in schema.GetPlanGraph().GetTargets()) {
+			if(!bTarget.IsAccepter()) continue;
+			
 			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
 				PathZilla.Sleep(1);
 			}
 
+			// Build a list of targets
+			local targets = [aTarget, bTarget];
+
 			// Ensure that its possible to connect to the town, and that we 
 			// don't already provide this service
-			if(bTown != aTown && schema.GetPlanGraph().ContainsTown(bTown) && !this.ProvidesService(aTown, bTown, cargo, roadType)) {
-				local bTile = AITown.GetLocation(bTown);
-				local engine = this.SelectEngine(aTown, bTown, cargo, roadType, false);
-				
+			if(bTarget != aTarget && !this.ProvidesService(targets, cargo, transportType, subType)) {
+				local bTile = bTarget.GetLocation();
+
+				// Select an engine
+				local engine = this.SelectEngine(targets, cargo, transportType, subType, false);
 				if(engine == null) {
-					AILog.Error("    There are no suitable vehicles for this route! [" + AITown.GetName(aTown) + " to " + AITown.GetName(bTown)+ "]");
+					AILog.Error("    There are no suitable vehicles for this route! [" + aTarget.GetName() + " to " + bTarget.GetName()+ "]");
 					continue;
 				}
 				
 				if(netDist[bTile] < 0) {
-					AILog.Error("    There is no possible path between " + AITown.GetName(aTown) + " and " + AITown.GetName(bTown));
+					AILog.Error("    There is no possible path between " + aTarget.GetName() + " and " + bTarget.GetName());
 					continue;
 				}
 				
-				local crowDist = AITown.GetDistanceManhattanToTile(aTown, AITown.GetLocation(bTown));
+				local crowDist = AITile.GetDistanceManhattanToTile(aTarget.GetLocation(), bTile);
 				local travelTime = (179 * netDist[bTile]) / (10 * AIEngine.GetMaxSpeed(engine)); // in days
 
 				// Get the base income for one trip				
@@ -182,7 +174,7 @@ function ServiceManager::FindNewServices() {
 				// TODO: Move this code into the schema and make it more general
 				local maxCoverage = PathZilla.MAX_TARGET_COVERAGE;
 				local coverageTarget = maxCoverage;
-				if(roadType == AIRoad.ROADTYPE_TRAM) coverageTarget = maxCoverage / 2; // Penalise trams to prevent sprawl
+				if(subType == AIRoad.ROADTYPE_TRAM) coverageTarget = maxCoverage / 2; // Penalise trams to prevent sprawl
 				if(AICargo.HasCargoClass(cargo, AICargo.CC_MAIL)) coverageTarget = maxCoverage / 4; // Penalise mail to prevent over-servicing
 				
 				// Ensure the target does not exceed the limit
@@ -190,7 +182,7 @@ function ServiceManager::FindNewServices() {
 				
 				// Only consider the service if it is more profitable than it is costly
 				if(annualProfit > (annualCost/factor)) {
-					this.potentialServices.Insert(ServiceDescriptor(schema.GetId(), aTown, bTown, cargo, roadType, engine, netDist[bTile], annualProfit, coverageTarget));
+					this.potentialServices.Insert(Service(schema.GetId(), targets, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget));
 				}
 			}
 		}
@@ -207,9 +199,9 @@ function ServiceManager::FindNewServices() {
  * Checks to see if the company provides a service from a to b for the
  * specified cargo and road type.
  */
-function ServiceManager::ProvidesService(a, b, cargo, roadType) {
+function ServiceManager::ProvidesService(targets, cargo, transportType, subType) {
 	foreach(service in this.serviceList) {
-		if(service.GetCargo() == cargo && service.GoesTo(a) && service.GoesTo(b) && service.GetRoadType() == roadType) {
+		if(service.GetCargo() == cargo && service.GoesToAll(targets) && service.GetTransportType() == transportType && service.GetSubType() == subType) {
 			return true;
 		}
 	}
@@ -221,7 +213,7 @@ function ServiceManager::ProvidesService(a, b, cargo, roadType) {
  * Checks to see if the company already provides the specified service.
  */
 function ServiceManager::ProvidesThisService(svc) {
-	return this.ProvidesService(svc.GetFromTown(), svc.GetToTown(), svc.GetCargo(), svc.GetRoadType());
+	return this.ProvidesService(svc.GetTargets(), svc.GetCargo(), svc.GetTransportType(), svc.GetSubType());
 }
 
 /*
@@ -247,69 +239,23 @@ function ServiceManager::ImplementService() {
 	
 	// Only proceed if there are any services left to implement
 	if(bestService != null) {
-		local schema = pz.GetSchema(bestService.GetSchemaId());
-		local service = bestService.Create();
-		
-		local strType = (service.GetRoadType() == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
-		AILog.Info("Best service takes " + AICargo.GetCargoLabel(service.GetCargo()) + " from " + AITown.GetName(service.GetFromTown()) + " to " + AITown.GetName(service.GetToTown()) + " by " + strType);
-		
-		local path = schema.GetPlanGraph().FindPath(Vertex.FromTown(service.GetFromTown()), Vertex.FromTown(service.GetToTown()));
-		
-		// Set the correcy road type before starting
-		AIRoad.SetCurrentRoadType(schema.GetRoadType());
 		local success = false;
-	
-		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
-			local a = walk.GetVertex();
-			local b = walk.GetParent().GetVertex();
-			local edge = Edge(a, b);
-	
-			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
-				// Get the towns on this edges
-				local townA = GetTown(a.ToTile());
-				local townB = GetTown(b.ToTile());
-	
-				// Ensure we can afford to do some construction				
-				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
-	
-				// Build a link between the towns
-				AILog.Info(" Building a road between " + AITown.GetName(townA) + " and " + AITown.GetName(townB) + "...");
-				success = PathWrapper.BuildRoad(a.ToTile(), b.ToTile(), service.GetRoadType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT]);
-				
-				// If we were able to build the link, add the edge to the actual graph
-				if(success) {
-					schema.GetActualGraph().AddEdge(edge);
-				} else {
-					break;
-				}
-			}
+		local schema = pz.GetSchema(bestService.GetSchemaId());
+		
+		AILog.Info("Best service takes " + bestService);
+		
+		if(bestService.GetTransportType() == AITile.TRANSPORT_ROAD) {
+			success = RoadManager.BuildInfrastructure(bestService, schema, this.targetsUpdated);
 		}
 		
-		if(!success) {
-			return false;
-		}
-		
-		// Ensure that the source town has bus stops
-		local added = RoadManager.BuildStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
-		if(added > 0) {
-			this.townsUpdated.AddItem(service.GetFromTown(), 0);
-		}
-		
-		// Ensure that the destination town has bus stops
-		added = RoadManager.BuildStations(service.GetToTown(), service.GetCargo(), service.GetRoadType(), service.GetCoverageTarget());
-		if(added > 0) {
-			this.townsUpdated.AddItem(service.GetToTown(), 0);
-		}
-		
-		// Ensure depot exist in both towns
-		this.BuildDepotInTown(service.GetFromTown(), service.GetRoadType());
-		this.BuildDepotInTown(service.GetToTown(), service.GetRoadType());
+		if(!success) return false;
 
 		// Create a fleet of vehicles to operate this service
-		this.CreateFleet(service);
+		bestService.Create();
+		this.CreateFleet(bestService);
 
 		// Finally, add the service to the list	
-		this.serviceList.Insert(service);
+		this.serviceList.Insert(bestService);
 		
 		AILog.Info("Done implementing service.");
 	}
@@ -325,16 +271,21 @@ function ServiceManager::ImplementService() {
  * cargo. This method is compatible with NewGRF sets that require vehciles to 
  * be refitted.
  */
-function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkStations) {
+function ServiceManager::SelectEngine(targets, cargo, transportType, subType, checkStations) {
 	local availableFunds = FinanceManager.GetAvailableFunds();
 	
-	local engineList = AIEngineList(AIVehicle.VT_ROAD);
-	engineList.Valuate(function (engine, cargo, availableFunds, roadType) {
-		if(AIEngine.GetRoadType(engine) != roadType) return -1;
+	local vtTypeMap = {};
+	vtTypeMap[AITile.TRANSPORT_ROAD] <- AIVehicle.VT_ROAD;
+	
+	local engineList = AIEngineList(vtTypeMap[transportType]);
+	engineList.Valuate(function (engine, cargo, availableFunds, transportType, subType) {
+		if(transportType == AITile.TRANSPORT_ROAD) {
+			if(AIEngine.GetRoadType(engine) != subType) return -1;
+		}
 		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
 		if(AIEngine.GetPrice(engine) > availableFunds) return -1;
 		return 1;
-	}, cargo, availableFunds, roadType);
+	}, cargo, availableFunds, transportType, subType);
 	
 	// Discount vehciles that are invalid or that can't be built
 	engineList.RemoveValue(-1);
@@ -344,8 +295,12 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkSt
 		return null;
 	}
 	
-	local distance = AITown.GetDistanceManhattanToTile(fromTown, AITown.GetLocation(toTown));
-	//local totalPopulation = (AITown.GetPopulation(fromTown) + AITown.GetPopulation(toTown));
+	// Calculate the total distance
+	local distance = 0;
+	local prev = 0;
+	for(local next = 1; next < targets.len(); next++) {
+		distance += AITile.GetDistanceManhattanToTile(targets[prev].GetTile(), targets[next].GetTile());
+	}
 		
 	// Build a function to compute the profit making potential of each vehicle
 	local profitValuator = function (engine, cargo, distance) {
@@ -375,25 +330,18 @@ function ServiceManager::SelectEngine(fromTown, toTown, cargo, roadType, checkSt
 		local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
 		local radius = AIStation.GetCoverageRadius(stationType);
 
-		// Get the stations
-		local fromStations = RoadManager.GetStations(fromTown, cargo, roadType);
-		local toStations = RoadManager.GetStations(toTown, cargo, roadType);
-			
-		// Create a lambda function to rank stations based on acceptance
+		// Create a valuator function to rank stations based on acceptance
 		local accValuator = function(station, cargo, radius) {
 			return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
 		}
-		
-		// Prime the lists with acceptance values
-		fromStations.Valuate(accValuator, cargo, radius);
-		toStations.Valuate(accValuator, cargo, radius);
-	
-		// Get the total acceptance for both towns
-		local fromSum = ListSum(fromStations);
-		local toSum = ListSum(toStations);
-		
-		// Get the lesser of the two
-		minAcceptance = min(fromSum, toSum);
+
+		// Get the minimum level of acceptance for each target		
+		minAcceptance = 10000000;
+		foreach(target in targets) {
+			local stations = RoadManager.GetStations(target, cargo, subType);
+			stations.Valuate(accValuator, cargo, radius);
+			minAcceptance = min(minAcceptance, ListSum(stations));
+		}
 	}
 	
 	// Rank the remaining engines by their score
@@ -431,60 +379,51 @@ function ServiceManager::CreateFleet(service, update = false) {
 	}
 
 	// Initialise
-	local fromTown = service.fromTown;
-	local toTown = service.toTown;
 	local cargo = service.GetCargo();
+	local isIndustry = false;
 	
 	// Select an engine type
 	local engine = null;
 	if(update) {
 		engine = service.GetEngine();
 	} else {
-		engine = this.SelectEngine(service.GetFromTown(), service.GetToTown(), service.GetCargo(), service.GetRoadType(), true);
+		engine = this.SelectEngine(service.GetTargets(), cargo, service.GetTransportType(), service.GetSubType(), true);
 		service.SetEngine(engine);
 	}
-	
+
 	// Get the stations
-	local fromStations = RoadManager.GetStations(fromTown, cargo, service.GetRoadType());
-	local toStations = RoadManager.GetStations(toTown, cargo, service.GetRoadType());
-	
-	// If either target has no stations then there is no point in building a 
-	// fleet - defer until stations have been built
-	if((fromStations.Count() == 0) || (toStations.Count() == 0)) {
-		return;
+	local stations = {};
+	foreach(target in service.GetTargets()) {
+		stations[target.GetId()] <- RoadManager.GetStations(target, cargo, service.GetSubType());
+
+		if(!target.IsTown()) isIndustry = true;
+
+		// If the engine type is articulated, forbid the vehicle from visiting regular stations
+		if(AIEngine.IsArticulated(engine)) {
+			stations[target.GetId()].Valuate(function (station) {
+				return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
+			});
+			stations[target.GetId()].RemoveValue(0);
+		}
+
+		// If the target has no stations then there is no point in building a 
+		// fleet - defer until stations have been built
+		if(stations[target.GetId()].Count() == 0) {
+			AILog.Warning("No stations at " + target.GetName());
+			return;
+		}
 	}
-	
-	// If the engine type is articulated, forbid the vehicle from visiting regular stations
-	if(AIEngine.IsArticulated(engine)) {
-		local callback = function (station) {
-			return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
-		};
-		
-		fromStations.Valuate(callback);
-		fromStations.RemoveValue(0);
-		toStations.Valuate(callback);
-		toStations.RemoveValue(0);
-	}
-	
-	// Get the locations of the target towns
-	local fromTile = AITown.GetLocation(fromTown);
-	local toTile = AITown.GetLocation(toTown);
 	
 	// Find the closest depots to the starting town
-	local depots = AIDepotList(AITile.TRANSPORT_ROAD);
-	depots.Valuate(AIRoad.HasRoadType, service.GetRoadType());
-	depots.KeepValue(1);
-	depots.Valuate(AITile.GetDistanceManhattanToTile, fromTile);
-	depots.KeepBottom(1);
-	local fromDepot = depots.Begin();
-	
-	// Find the closest depots to the destination town
-	depots = AIDepotList(AITile.TRANSPORT_ROAD);
-	depots.Valuate(AIRoad.HasRoadType, service.GetRoadType());
-	depots.KeepValue(1);
-	depots.Valuate(AITile.GetDistanceManhattanToTile, toTile);
-	depots.KeepBottom(1);
-	local toDepot = depots.Begin();
+	local depots = {};
+	foreach(target in service.GetTargets()) {
+		local depotList = AIDepotList(AITile.TRANSPORT_ROAD);
+		depotList.Valuate(AIRoad.HasRoadType, service.GetSubType());
+		depotList.KeepValue(1);
+		depotList.Valuate(AITile.GetDistanceManhattanToTile, target.GetTile());
+		depotList.KeepBottom(1);
+		depots[target.GetId()] <- depotList.Begin();
+	}
 
 	// Get type of station the vechies will stop at
 	local truckStation = !AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS);
@@ -492,10 +431,13 @@ function ServiceManager::CreateFleet(service, update = false) {
 	local radius = AIStation.GetCoverageRadius(stationType);
 
 	// Get a few basic details
-	local townSize = max(AITown.GetPopulation(fromTown), AITown.GetPopulation(toTown));
-	local distance = AITile.GetDistanceManhattanToTile(fromTile, toTile);
 	local capacity = AIEngine.GetCapacity(engine);
 	local speed = AIEngine.GetMaxSpeed(engine);
+	local distance = 0;
+	local prev = 0;
+	for(local next = 1; next < service.GetTargets().len(); next++) {
+		distance += AITile.GetDistanceManhattanToTile(service.GetTargets()[prev].GetTile(), service.GetTargets()[next].GetTile());
+	}
 
 	// Calculate the required fleet size
 	local minFleetSize = 0;
@@ -503,17 +445,17 @@ function ServiceManager::CreateFleet(service, update = false) {
 
 	// If we are updating the service, base the decision on waiting cargo
 	if(update) {
-		// Create a valuator to rank stations based on waiting cargo
-		local srplsValuator = function(station, cargo) {
-			return AIStation.GetCargoWaiting(station, cargo);
+		// Get the total waiting cargo for all targets
+		local waitingCargo = 0;
+
+		// Prime the station lists with waiting cargo values
+		foreach(target in service.GetTargets()) {
+			stations[target.GetId()].Valuate(function(station, cargo) {
+				return AIStation.GetCargoWaiting(station, cargo);
+			}, cargo);
+			
+			waitingCargo += ListSum(stations[target.GetId()]);
 		}
-
-		// Prime the lists with waiting cargo values
-		fromStations.Valuate(srplsValuator, cargo);
-		toStations.Valuate(srplsValuator, cargo);
-
-		// Get the total waiting cargo for both towns
-		local waitingCargo = ListSum(fromStations) + ListSum(toStations);
 
 		// Estimate the number of additional vechiles required based on waiting cargo
 		local year = AIDate.GetYear(AIDate.GetCurrentDate());
@@ -527,27 +469,32 @@ function ServiceManager::CreateFleet(service, update = false) {
 		fleetSize = fleetSize - service.GetActualFleetSize();
 	}
 
-	// Create a lambda function to rank stations based on acceptance
-	local accValuator = function(station, cargo, radius) {
-		return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
-	}
+	// Find the minimum acceptance level
+	local minAcceptance = 0;
+	local accSum = {};
 	
-	// Prime the lists with acceptance values
-	fromStations.Valuate(accValuator, cargo, radius);
-	toStations.Valuate(accValuator, cargo, radius);
+	foreach(target in service.GetTargets()) {
+		stations[target.GetId()].Valuate(function(station, cargo, radius) {
+			return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
+		}, cargo, radius);
 
-	// Get the total acceptance for both towns
-	local fromSum = ListSum(fromStations);
-	local toSum = ListSum(toStations);
-		
+		// Get the minimum acceptance of all targets
+		accSum[target.GetId()] <- ListSum(stations[target.GetId()]);
+		if(target.IsAccepter()) {
+			minAcceptance = min(minAcceptance, accSum[target.GetId()]);
+		}
+	}
+
 	// Estimate the amount that will be waiting and other details that will 
 	// influence our decision on fleet size.
 	if(!update) {
-		// Get the lesser of the two
-		local minAcceptance = min(fromSum, toSum);
-	
+		// Ensure there is at least one vehicle per station
+		minFleetSize = 0;
+		foreach(target in service.GetTargets()) {
+			minFleetSize += stations[target.GetId()].Count();
+		}
+		
 		// Estimate how many vehicles will be needed to cover the route
-		minFleetSize = fromStations.Count() + toStations.Count();
 		fleetSize = (PathZilla.GetSetting("traffic") * minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
 	}
 	
@@ -562,8 +509,12 @@ function ServiceManager::CreateFleet(service, update = false) {
 	// Ensure the fleet is not too small
 	fleetSize = max(minFleetSize, fleetSize);
 	
+	// If there is no fleet to build then just return now
 	if(fleetSize == 0) return;
 	
+	// If the service is industrial, apply a multiplier
+	if(isIndustry) fleetSize = fleetSize * PathZilla.INDUSTRY_FLEET_MULTI;
+
 	local engineName = AIEngine.GetName(engine);
 	AILog.Info(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + "s...");
 	
@@ -574,24 +525,13 @@ function ServiceManager::CreateFleet(service, update = false) {
 	local needRefit = (AIEngine.GetCargoType(engine) != service.GetCargo());
 	
 	// Clone a fleet from the prototype vehicle
-	local first = true;
 	for(local i = 0; i < fleetSize; i++) {
 		// Wait some time to spread the vechiles out a bit.
-		pz.Sleep(PathZilla.NEW_VEHICLE_SPREAD_DELAY);
-		
-		//local fromTile = (fromStations.HasNext()) ? AIStation.GetLocation((first) ? fromStations.Begin() : fromStations.Next())
-		//										  : AIStation.GetLocation(RandomItemByWeight(fromStations, fromSum));
-		//local toTile = (toStations.HasNext()) ? AIStation.GetLocation((first) ? toStations.Begin() : toStations.Next())
-		//									  : AIStation.GetLocation(RandomItemByWeight(toStations, toSum));
-		//first = false;
-
-		// Choose stations to send the vechicles to
-		local fromTile = AIStation.GetLocation(RandomItemByWeight(fromStations, fromSum));
-		local toTile = AIStation.GetLocation(RandomItemByWeight(toStations, toSum));		
+		PathZilla.Sleep(PathZilla.NEW_VEHICLE_SPREAD_DELAY);
 		
 		// Alternate between depots
-		local alt = (i + 1) % 2;
-		local depot = (alt == 0) ? fromDepot : toDepot;
+		local alt = (i + 1) % service.GetTargets().len();
+		local depot = depots[service.GetTargets()[alt].GetId()];
 		
 		// Build a new vehicle at that depot
 		local v = AIVehicle.BuildVehicle(depot, engine);
@@ -601,10 +541,15 @@ function ServiceManager::CreateFleet(service, update = false) {
 			AIVehicle.RefitVehicle(v, service.GetCargo());
 		}
 		
-		// Add orders to the vehicle
-		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);// AIOrder.AIOF_FULL_LOAD);
-		AIOrder.AppendOrder(v, toTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);// AIOrder.AIOF_FULL_LOAD);
-
+		// Choose stations and assign orders
+		local j = 0;
+		foreach(target in service.GetTargets()) {
+			local tile = AIStation.GetLocation(RandomItemByWeight(stations[target.GetId()], accSum[target.GetId()]));
+			local flags = AIOrder.AIOF_NON_STOP_INTERMEDIATE;
+			if(!target.IsTown() && target.IsProducer()) flags = flags | AIOrder.AIOF_FULL_LOAD;
+			AIOrder.AppendOrder(v, tile, flags);
+		}
+		
 		// Send the vehicle to the destination nearest the depot we built it at
 		AIVehicle.SkipToVehicleOrder(v, alt);
 		
@@ -622,21 +567,24 @@ function ServiceManager::CreateFleet(service, update = false) {
  */
 function ServiceManager::UpdateOrders(service) {
 	// Get the stations
-	local fromStations = RoadManager.GetStations(service.GetFromTown(), service.GetCargo(), service.GetRoadType());
-	local toStations = RoadManager.GetStations(service.GetToTown(), service.GetCargo(), service.GetRoadType());
-	
-	// If the engine type is articulated, forbid the vehicle from visiting regular stations
-	if(AIEngine.IsArticulated(service.GetEngine())) {
-		local callback = function (station, roadType) {
-			// Ensure we check the correct road type
-			AIRoad.SetCurrentRoadType(roadType);
-			return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
-		};
-		
-		fromStations.Valuate(callback, service.GetRoadType());
-		fromStations.RemoveValue(0);
-		toStations.Valuate(callback, service.GetRoadType());
-		toStations.RemoveValue(0);
+	local stations = {};
+	foreach(target in service.GetTargets()) {
+		stations[target.GetId()] <- RoadManager.GetStations(target, cargo, service.GetSubType());
+
+		// If the engine type is articulated, forbid the vehicle from visiting regular stations
+		if(AIEngine.IsArticulated(engine)) {
+			stations[target.GetId()].Valuate(function (station) {
+				return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
+			});
+			stations[target.GetId()].RemoveValue(0);
+		}
+
+		// If the target has no stations then there is no point in building a 
+		// fleet - defer until stations have been built
+		if(stations[target.GetId()].Count() == 0) {
+			AILog.Warning("No stations at " + target.GetName());
+			return;
+		}
 	}
 
 	// Get the coverage radius of the stations	
@@ -644,112 +592,38 @@ function ServiceManager::UpdateOrders(service) {
 	local stationType = (truckStation) ? AIStation.STATION_TRUCK_STOP : AIStation.STATION_BUS_STOP;
 	local radius = AIStation.GetCoverageRadius(stationType);
 
-	// Prime the lists
-	local accValuator = function(station, cargo, radius) {
-		return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
-	}
+	// Find the acceptance list sums
+	local accSum = {};
 	
-	fromStations.Valuate(accValuator, service.GetCargo(), radius);
-	toStations.Valuate(accValuator, service.GetCargo(), radius);
+	foreach(target in service.GetTargets()) {
+		stations[target.GetId()].Valuate(function(station, cargo, radius) {
+			return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
+		}, cargo, radius);
 
-	local fromSum = ListSum(fromStations);
-	local toSum = ListSum(toStations);
-	local first = true;
-	
+		// Get the minimum acceptance of all targets
+		accSum[target.GetId()] <- ListSum(stations[target.GetId()]);
+	}
+
 	// Shuffle the vehicle orders between the stations
 	foreach(v, _ in service.GetVehicles()) {
-		//local fromTile = (fromStations.HasNext()) ? AIStation.GetLocation((first) ? fromStations.Begin() : fromStations.Next())
-		//										  : AIStation.GetLocation(RandomItemByWeight(fromStations, fromSum));
-		//local toTile = (toStations.HasNext()) ? AIStation.GetLocation((first) ? toStations.Begin() : toStations.Next())
-		//									  : AIStation.GetLocation(RandomItemByWeight(toStations, toSum));
-		//first = false;
-
-		// Choose stations to send the vechicles to
-		local fromTile = AIStation.GetLocation(RandomItemByWeight(fromStations, fromSum));
-		local toTile = AIStation.GetLocation(RandomItemByWeight(toStations, toSum));
-		
 		local currentOrder = AIOrder.ResolveOrderPosition(v, AIOrder.ORDER_CURRENT);
-		//local destination = AIOrder.GetOrderDestination(v, currentOrder);
-		
-		// Clear the order list i It would be nice to have an AIOrder.ClearOrders() function
-		AIOrder.RemoveOrder(v, 1);
-		AIOrder.RemoveOrder(v, 0);
-		
+
+		// Clear the order list
+		local ocount = AIOrder.GetOrderCount(v);
+		for(local i = 0; i < ocount; i++) {
+			AIOrder.RemoveOrder(v, i);
+		}
+
 		// Set the new orders
-		AIOrder.AppendOrder(v, fromTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);
-		AIOrder.AppendOrder(v, toTile, AIOrder.AIOF_NON_STOP_INTERMEDIATE);
-		
+		foreach(target in service.GetTargets()) {
+			local tile = AIStation.GetLocation(RandomItemByWeight(stations[target.GetId()], accSum[target.GetId()]));
+			local flags = AIOrder.AIOF_NON_STOP_INTERMEDIATE;
+			if(!target.IsTown() && target.IsProducer()) flags = flags & AIOrder.AIOF_FULL_LOAD;
+			AIOrder.AppendOrder(v, tile, flags);
+		}
+
 		// Ensure the vehicle is still heading to the same town it was before
 		AIVehicle.SkipToVehicleOrder(v, currentOrder);
-	}
-}
-
-/*
- * Build a depot int eh specified town if none exits
- */
-function ServiceManager::BuildDepotInTown(town, roadType) {
-	local strType = (roadType == AIRoad.ROADTYPE_ROAD) ? "road" : "tram";
-	AILog.Info("  Checking for a " + strType + " depot in " + AITown.GetName(town) + "...");
-
-	local townTile = AITown.GetLocation(town);
-	AIRoad.SetCurrentRoadType(roadType);
-
-	// Check for existing depots in the town
-	local depots = AIDepotList(AITile.TRANSPORT_ROAD);
-	depots.Valuate(function (depot, town, roadType) {
-		return AITown.IsWithinTownInfluence(town, depot) && AIRoad.HasRoadType(depot, roadType);
-	}, town, roadType);
-	depots.KeepValue(1);
-	
-	// If there aren't any we need to build one
-	if(depots.Count() == 0) {
-		AILog.Info("    Building a new depot...");
-
-		// Get a list of tiles to search in
-		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
-		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
-		local tileList = AITileList();
-		tileList.AddRectangle(townTile - offset, townTile + offset);
-		
-		// Rank those tiles by their suitability for a depot
-		tileList.Valuate(function(tile, roadType, town) {
-			// Find suitable roads adjacent to the tile
-			local adjRoads = LandManager.GetAdjacentTileList(tile);
-			adjRoads.Valuate(function (_tile, roadType) {
-				return (LandManager.IsLevel(_tile) && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
-			}, roadType);
-			adjRoads.KeepValue(1);
-			
-			local score = 0;
-			
-			if(!AITile.IsWaterTile(tile) && LandManager.IsLevel(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
-				 && !AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile) && !AIRoad.IsRoadDepotTile(tile)) {
-				score = AITown.GetDistanceManhattanToTile(town, tile);
-				if(adjRoads.Count() > 0) score += 10000;
-				if(AITile.IsBuildable(tile)) score += 100;
-				if(AITown.IsWithinTownInfluence(town, tile)) score += 1000;
-			}
-			
-			return score;
-		}, roadType, town);
-		
-		tileList.RemoveValue(0);
-		
-		foreach(depotTile, _ in tileList) {
-			local path = PathWrapper.FindPath(townTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
-			if(path != null) {
-				PathWrapper.BuildPath(path, roadType);
-				AITile.DemolishTile(depotTile);
-				AIRoad.BuildRoadDepot(depotTile, path.GetParent().GetTile());
-				break;
-			} else {
-				AILog.Warning("  Could not find path to depot!");
-			}
-		}
-		
-		PathZilla.Sleep(1);
-
-		AILog.Info("    Done building depot.");
 	}
 }
 
@@ -759,9 +633,9 @@ function ServiceManager::BuildDepotInTown(town, roadType) {
 function ServiceManager::Serialize() {
 	local data = {};
 	
-	data[SRLZ_TOWNS_UPDATED] <- ListToArray(this.townsUpdated); 
+	data[SRLZ_TARGETS_UPDATED] <- this.targetsUpdated.Serialize(); 
 	data[SRLZ_POTENTIAL_SERVICES] <- this.potentialServices.Serialize();
-	data[SRLZ_TOWNS_CONSIDERED] <- ListToArray(this.townsConsidered); 
+	data[SRLZ_TARGETS_CONSIDERED] <- this.targetsConsidered.Serialize(); 
 	data[SRLZ_SERVICE_LIST] <- this.serviceList.Serialize();
 	
 	return data;
@@ -771,8 +645,11 @@ function ServiceManager::Serialize() {
  * Loads data from a table.
  */
 function ServiceManager::Unserialize(data) {
-	this.townsUpdated = ArrayToList(data[SRLZ_TOWNS_UPDATED]); 
-	this.townsConsidered = ArrayToList(data[SRLZ_TOWNS_CONSIDERED]); 
+	this.targetsUpdated = SortedSet();
+	this.targetsUpdated.Unserialize(data[SRLZ_TARGETS_UPDATED]); 
+
+	this.targetsConsidered = SortedSet();
+	this.targetsConsidered.Unserialize(data[SRLZ_TARGETS_CONSIDERED]); 
 	
 	this.potentialServices = BinaryHeap();
 	this.potentialServices.Unserialize(data[SRLZ_POTENTIAL_SERVICES]);
