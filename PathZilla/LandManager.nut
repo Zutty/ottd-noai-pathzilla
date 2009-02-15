@@ -244,11 +244,6 @@ function LandManager::ChooseBridgeType(aTile, bTile) {
 	// Get a list of all bridge types
 	local list = AIBridgeList_Length(length);
 	
-	// Disregard those that haven't been invented yet
-	local thisYear = AIDate.GetYear(AIDate.GetCurrentDate());
-	list.Valuate(AIBridge.GetYearAvailable);
-	list.RemoveAboveValue(thisYear);
-	
 	// Disregard those which we can't afford
 	list.Valuate(AIBridge.GetPrice, length);
 	list.RemoveAboveValue(FinanceManager.GetAvailableFunds());

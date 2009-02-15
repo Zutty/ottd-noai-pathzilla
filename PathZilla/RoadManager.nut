@@ -396,7 +396,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	local dtrsOnTownRoads = (AIGameSettings.GetValue("construction.road_stop_on_town_road") == 1);
 
 	// Rank those tiles by their suitability for a station
-	tileList.Valuate(function (tile, target, cargo, radius, dtrsOnTownRoads, roadType) {
+	foreach(tile, _ in tileList) {
 		// Find roads that are connected to the tile
 		local adjRoadListRd = LandManager.GetAdjacentTileList(tile);
 		AIRoad.SetCurrentRoadType(AIRoad.ROADTYPE_ROAD);
@@ -469,8 +469,9 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		}
 
 		// If the spot is acceptable, return tile score
-		return (acceptable) ? score : 0;
-	}, target, cargo, radius, dtrsOnTownRoads, roadType);
+		tileList.SetValue(tile, ((acceptable) ? score : 0));
+	}
+	tileList.Sort(AIAbstractList.SORT_BY_VALUE, false);
 	
 	// Remove unacceptable tiles
 	tileList.RemoveValue(0);
@@ -554,7 +555,8 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 
 	// Finally, try to build the station
 	while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
-		success = AIRoad.BuildRoadStation(stationTile, roadTile, truckStation, true, false);
+		local rvType = (truckStation) ? AIRoad.ROADVEHTYPE_TRUCK : AIRoad.ROADVEHTYPE_BUS;
+		success = AIRoad.BuildDriveThroughRoadStation(stationTile, roadTile, rvType, AIStation.STATION_NEW);
 	
 		if(!success) {
 			switch(AIError.GetLastError()) {
