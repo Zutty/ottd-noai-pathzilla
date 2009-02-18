@@ -297,7 +297,8 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	// If the rating is low, take steps to improve it
 	if(rating < AITown.TOWN_RATING_GOOD) {
 		// See if we can bribe the town
-		if(rating < AITown.TOWN_RATING_POOR && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
+		local canBribe = (AIGameSettings.GetValue("economy.bribe") == 1);
+		if(canBribe && rating < AITown.TOWN_RATING_POOR && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
 			AITown.PerformTownAction(nearestTown, AITown.TOWN_ACTION_BRIBE);
 		}
 		
