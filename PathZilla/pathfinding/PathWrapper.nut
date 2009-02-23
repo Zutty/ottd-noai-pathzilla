@@ -50,9 +50,8 @@ class PathWrapper {
 }
 
 /*
- * Find a path between the two specified tiles and then attempts to build it up
- * to PathZilla.MAX_REPATH_TRIES times. All parameters are passed up to the 
- * FindPath method.
+ * Find a path between the two specified tiles and then attempt to build it. All
+ * parameters are passed up to the FindPath and TryBuldPath methods. 
  */
 function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
 	// First, try to find a path
@@ -64,12 +63,18 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 		return false;
 	}
 	
-	AILog.Info("      Done finding path.");
+	return PathWrapper.TryBuildPath(path, roadType);
+}
 	
+/*
+ * Try to build ithe speciofied path with the specified road type up to
+ * PathZilla.MAX_REPATH_TRIES timesm using the BuildPath method.
+ */
+function PathWrapper::TryBuildPath(path, roadType) {
 	local tries = 0;
 	local success = -1;
 	
-	// Try to build the road
+	// Try to build the path
 	do {
 		success = PathWrapper.BuildPath(path, roadType);
 		
@@ -234,6 +239,8 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 		path = pathfinder.FindPath(PathZilla.PROCESSING_PRIORITY);
 		PathZilla.Sleep(1);
 	}
+
+	AILog.Info("      Done finding path.");
 
 	// Return the finished path
 	return path;
