@@ -30,6 +30,13 @@ class RoadManager {
 	}
 }
 
+/*
+ * Build the required infrastructure for the specified service in the specified
+ * schema. Stations will be built if necessary, then a road found between the 
+ * stations, and finally depots will be built if necessary. The supplied set 
+ * targetsUpdated will be updated with targets that were modified in the 
+ * operation.
+ */
 function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	// Set the correcy road type before starting
 	AIRoad.SetCurrentRoadType(schema.GetSubType());
@@ -109,6 +116,10 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	return true;
 }
 
+/*
+ * Fix a buildable tile before station construction based on distance to  
+ * neighboring targets.
+ */
 function RoadManager::PreFixTarget(aTarget, bTarget, walk) {
 	local aTile = aTarget.GetLocation();
 	local bTile = bTarget.GetLocation();
@@ -144,6 +155,9 @@ function RoadManager::PreFixTarget(aTarget, bTarget, walk) {
 	bTarget.FixTile(tileList.Begin());
 }
 
+/*
+ * Fix a buildable tile after station construction based on a path.
+ */
 function RoadManager::PostFixTarget(target, path, rev) {
 	local ftile = target.GetTile();
 	while (path != null) {
@@ -155,6 +169,11 @@ function RoadManager::PostFixTarget(target, path, rev) {
 	target.FixTile(ftile);
 }
 
+/*
+ * Maintain the infrastructure for the specified service, by ensuring that 
+ * enough stations have been built. The supplied set targetsUpdated will be
+ * updated with targets that were modified in the operation.
+ */
 function RoadManager::MaintainInfrastructure(service, targetsTried, targetsUpdated) {
 	foreach(target in service.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
@@ -325,6 +344,10 @@ function RoadManager::BuildTownStations(target, cargo, roadType, coverageTarget,
 	return numStationsBuilt;
 }
 
+/*
+ * Check that a station has been built to serivce the specified industry and 
+ * cargo. If not one will be built and the target tile semi-fixed.
+ */
 function RoadManager::BuildIndustryStation(target, cargo, roadType) {
 	local stations = RoadManager.GetStations(target, cargo, roadType);
 	
