@@ -30,7 +30,7 @@ class Target {
 	TYPE_TOWN = 1;
 	TYPE_INDUSTRY = 2;
 	
-	TILE_UNFIXED = -2;
+	TILE_UNFIXED = -4194305; // 2048^2 + 1
 	
 	type = null;
 	id = null;
@@ -43,8 +43,8 @@ class Target {
 		if(type == Target.TYPE_TOWN) {
 			this.tile = AITown.GetLocation(id);
 		} else if(type == Target.TYPE_INDUSTRY) {
-			this.tile = AIIndustry.GetLocation(id) - 2;
-			//this.tile = TILE_UNFIXED;
+			//this.tile = AIIndustry.GetLocation(id) - 2;
+			this.tile = TILE_UNFIXED;
 		}
 	}
 }
@@ -54,21 +54,42 @@ class Target {
  * to the buildable.
  */
 function Target::GetTile() {
-	return this.tile;
+	return abs(this.tile);
 }
 
 /*
  * Returns true if the position of the buildable tile has been fixed yet.
  */
 function Target::IsTileFixed() {
+	return (this.tile > 0);
+}
+
+/*
+ * Check if the position has not yet been fixed.
+ */
+function Target::IsTileUnfixed() {
 	return (this.tile == Target.TILE_UNFIXED);
+}
+
+/*
+ * Check if the fixed tile can be refixed.
+ */
+function Target::IsTileSemiFixed() {
+	return (this.tile < 0 && this.tile != Target.TILE_UNFIXED);
 }
 
 /*
  * Fix the seed tile to be a specified tile.
  */
 function Target::FixTile(f) {
-	if(!this.IsTileFixed()) this.tile = f;
+	if(this.tile < 0) this.tile = f;
+}
+
+/*
+ * Fix the seed tile in a way that can be reapplied.
+ */
+function Target::SemiFixTile(f) {
+	if(this.tile == Target.TILE_UNFIXED) this.tile = -f;
 }
 
 /*
