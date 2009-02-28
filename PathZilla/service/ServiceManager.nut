@@ -465,8 +465,6 @@ function ServiceManager::CreateFleet(service, update = false) {
 		multiplier /= PathZilla.GetSetting("traffic");
 		
 		fleetSize = (waitingCargo / (capacity * multiplier)) * ((distance * 3) / speed)
-		fleetSize = min(fleetSize, PathZilla.MAX_VEHICLES_PER_SVC);
-		fleetSize = fleetSize - service.GetActualFleetSize();
 	}
 
 	// Find the minimum acceptance level
@@ -512,6 +510,12 @@ function ServiceManager::CreateFleet(service, update = false) {
 	
 	// If the service is industrial, apply a multiplier
 	if(isIndustry) fleetSize = fleetSize * PathZilla.INDUSTRY_FLEET_MULTI;
+
+	// Ensure we have no mare than the maximum number of vehicles
+	fleetSize = min(fleetSize, PathZilla.MAX_VEHICLES_PER_SVC);
+	
+	// If were updating, account for vehicles already built
+	if(update) fleetSize = fleetSize - service.GetActualFleetSize();
 
 	local engineName = AIEngine.GetName(engine);
 	AILog.Info(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + "s...");
