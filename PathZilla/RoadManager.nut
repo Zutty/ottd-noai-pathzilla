@@ -34,7 +34,7 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	// Set the correcy road type before starting
 	AIRoad.SetCurrentRoadType(schema.GetSubType());
 
-	// Ensre that roads and depots are available for each target
+	// Ensure that stations available for each target
 	foreach(target in service.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
 			// Ensure that the source town has stations
@@ -46,11 +46,8 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 			// Ensure there is a station at the target
 			RoadManager.BuildIndustryStation(target, service.GetCargo(), service.GetSubType());
 		}
-
-		// Also ensure it has at least one depot
-		RoadManager.BuildDepot(target, service.GetSubType());
 	}
-
+	
 	// Ensure the targets are connected by road
 	local prev = 0;
 	for(local next = 1; next < service.GetTargets().len(); next++) {
@@ -59,7 +56,7 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 
 		local path = schema.GetPlanGraph().FindPath(from.GetVertex(), to.GetVertex());
 		local success = true;
-	
+		
 		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
 			local a = walk.GetVertex();
 			local b = walk.GetParent().GetVertex();
@@ -69,13 +66,22 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 				// Get the towns on this edges
 				local aTarget = a.GetTarget();
 				local bTarget = b.GetTarget();
+				
+				// If the tile is not yet fixed, find one				
+				if(bTarget.IsTileUnfixed()) RoadManager.PreFixTarget(aTarget, bTarget, walk);
 	
 				// Ensure we can afford to do some construction				
 				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	
 				// Build a link between the towns
 				AILog.Info(" Building a road between " + aTarget.GetName() + " and " + bTarget.GetName() + "...");
-				success = PathWrapper.BuildRoad(aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT]);
+				local feat = [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT];
+				local path = PathWrapper.FindPath(aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
+
+				if(aTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(aTarget, clone path, false);
+				if(bTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(bTarget, clone path, true);
+
+				success = PathWrapper.TryBuildPath(path, aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
 				
 				// If we were able to build the link, add the edge to the actual graph
 				if(success) {
@@ -94,7 +100,59 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 		prev = next;
 	}
 
+	// Also ensure depots are available for each target
+	//  - We do this after for a reason!
+	foreach(target in service.GetTargets()) {
+		RoadManager.BuildDepot(target, service.GetSubType());
+	}
+
 	return true;
+}
+
+function RoadManager::PreFixTarget(aTarget, bTarget, walk) {
+	local aTile = aTarget.GetLocation();
+	local bTile = bTarget.GetLocation();
+	local cTile = (walk.GetParent().GetParent() != null) ? walk.GetParent().GetParent().GetVertex().GetTarget().GetLocation() : bTile;
+	
+	// Get a list of tiles around the target
+	local rad = PathZilla.TARGET_FIX_RADIUS;
+	local offset = AIMap.GetTileIndex(rad, rad);
+	local tileList = AITileList();
+	tileList.AddRectangle(bTile - offset, bTile + offset);
+		
+	// Initialise a few presets
+	offset = AIMap.GetTileIndex(rad/2, rad/2);
+	local aRef = max(1, AITile.GetDistanceSquareToTile(aTile, bTile));
+	local cRef = max(1, AITile.GetDistanceSquareToTile(cTile, bTile));
+	
+	// Find a tile that is roughly equidistant from the other 
+	// targets and has the most buildable tiles around it
+	tileList.Valuate(function (tile, offset, aTile, aRef, cTile, cRef, scoreRad) {
+		local aDist = AITile.GetDistanceSquareToTile(aTile, tile);
+		local cDist = AITile.GetDistanceSquareToTile(cTile, tile);
+		
+		local score = abs((100*aDist/aRef) - (100*cDist/cRef));
+		score = scoreRad - min(scoreRad, score);
+		
+		local tiles = AITileList();
+		tiles.AddRectangle(tile - offset, tile + offset)
+		tiles.Valuate(AITile.IsBuildable);
+		score += (ListSum(tiles) / 3);
+				
+		return (AITile.IsBuildable(tile)) ? score : 0;
+	}, offset, aTile, aRef, cTile, cRef, pow(rad/2, 2));
+	bTarget.FixTile(tileList.Begin());
+}
+
+function RoadManager::PostFixTarget(target, path, rev) {
+	local ftile = target.GetTile();
+	while (path != null) {
+		ftile = path.GetTile(); 
+		path = path.GetParent();
+		if(!rev && AITile.GetDistanceManhattanToTile(target.GetTile(), ftile) < 10) break;
+		if(rev && AITile.GetDistanceManhattanToTile(target.GetTile(), ftile) > 10) break;
+	}
+	target.FixTile(ftile);
 }
 
 function RoadManager::MaintainInfrastructure(service, targetsTried, targetsUpdated) {
@@ -271,7 +329,11 @@ function RoadManager::BuildIndustryStation(target, cargo, roadType) {
 	local stations = RoadManager.GetStations(target, cargo, roadType);
 	
 	if(stations.IsEmpty()) {
-		RoadManager.BuildStation(target, cargo, roadType);
+		local station = RoadManager.BuildStation(target, cargo, roadType);
+		if(!target.IsTileFixed()) {
+			local tile = AIRoad.GetRoadStationFrontTile(AIStation.GetLocation(station));
+			target.SemiFixTile(tile);
+		}
 	}
 }
 
@@ -281,15 +343,16 @@ function RoadManager::BuildIndustryStation(target, cargo, roadType) {
  * of acceptance.
  */
 function RoadManager::BuildStation(target, cargo, roadType) {
+	local targetLocation = target.GetLocation();
 	local targetTile = target.GetTile();
 
 	// Get a list of tiles to search in
-	local searchRadius = min(AIMap.DistanceFromEdge(targetTile) - 1, PathZilla.MAX_TOWN_RADIUS);
+	local searchRadius = min(AIMap.DistanceFromEdge(targetLocation) - 1, PathZilla.MAX_TOWN_RADIUS);
 	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 
 	// Before we do anything, check the local authority rating
 	local townList = AITownList();
-	townList.Valuate(AITown.GetDistanceManhattanToTile, targetTile);
+	townList.Valuate(AITown.GetDistanceManhattanToTile, targetLocation);
 	townList.Sort(AIAbstractList.SORT_BY_VALUE, true);
 	local nearestTown = townList.Begin()
 	local rating = AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
@@ -304,14 +367,14 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		
 		// After that, find places we can build trees
 		local tileList = AITileList();
-		tileList.AddRectangle(targetTile - offset, targetTile + offset);
+		tileList.AddRectangle(targetLocation - offset, targetLocation + offset);
 		tileList.Valuate(function (tile, nearestTown) {
 			return (!AITile.IsWithinTownInfluence(tile, nearestTown) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile)) ? 1 : 0;
 		}, nearestTown);
 		tileList.RemoveValue(0);
-		tileList.Valuate(function (tile, nearestTown, targetTile) {
-			return AITile.GetDistanceManhattanToTile(tile, targetTile) + AIBase.RandRange(6) - 3;
-		}, nearestTown, targetTile);
+		tileList.Valuate(function (tile, nearestTown, targetLocation) {
+			return AITile.GetDistanceManhattanToTile(tile, targetLocation) + AIBase.RandRange(6) - 3;
+		}, nearestTown, targetLocation);
 		tileList.Sort(AIAbstractList.SORT_BY_VALUE, true);
 		
 		// For the places that are available, build a "green belt" around the town
@@ -346,7 +409,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	// Get a list of tiles
 	local tileList = AITileList();
 	if(target.IsTown()) {
-		tileList.AddRectangle(targetTile - offset, targetTile + offset);
+		tileList.AddRectangle(targetLocation - offset, targetLocation + offset);
 	} else {
 		if(target.IsProducer()) {
 			tileList = AITileList_IndustryProducing(target.GetId(), radius);
@@ -494,13 +557,35 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	// Check each tile for valid paths that will connect it to the town.
 	foreach(stTile, _ in tileList) {
 		// Find a path from the town to the station
- 		local path = PathWrapper.FindPath(targetTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
+ 		local path = true;
+ 		
+ 		AILog.Warning(""+target.IsTileFixed());
+ 		AISign.BuildSign(targetTile, "targetTile");
+ 		
+ 		if(target.IsTileFixed()) {
+ 			path = PathWrapper.FindPath(targetTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
+ 		}
  		
 		if(path != null) {
 			// Find a loop back to the town
-			roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : targetTile;
+			if(target.IsTileFixed()) {
+				roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : targetTile;
+			} else {
+				local adj = LandManager.GetAdjacentTileList(stTile);
+				adj.Valuate(function (rtile, stTile) {
+					local otile = LandManager.GetApproachTile(stTile, rtile);
+					return AITile.IsBuildable(rtile) && AITile.IsBuildable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
+				}, stTile);
+				adj.RemoveValue(0);
+				if(adj.IsEmpty()) continue;
+				roadTile = adj.Begin();
+			}
 			otherSide = LandManager.GetApproachTile(stTile, roadTile);
-			local loopTile = (stTile != targetTile) ? targetTile : roadTile;
+			local loopTile = (target.IsTown() && stTile != targetTile) ? targetTile : roadTile;
+			
+			AISign.BuildSign(stTile, "s");
+			AISign.BuildSign(roadTile, "r");
+			AISign.BuildSign(otherSide, "o");
 			
 			local features = [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE];
 			if(target.IsTown()) features.append(PathWrapper.FEAT_ROAD_LOOP);
@@ -509,9 +594,12 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 			// Check that the loop exists and that it can connect to the station
 			if(loop != null && (AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetParent().GetTile()) != 0)) {
 				// Build everything
-				local pathed = PathWrapper.BuildPath(path, roadType) == 0;
+				local pathed = true;
+				if(target.IsTileFixed()) pathed = PathWrapper.BuildPath(path, roadType) == 0;
 				local looped = PathWrapper.BuildPath(loop, roadType) == 0;
+
 				if(pathed && looped) RoadManager.SafelyBuildRoad(otherSide, stTile);
+				if(!target.IsTileFixed()) RoadManager.SafelyBuildRoad(roadTile, stTile);
 				
 				stationTile = stTile;
 				break;
