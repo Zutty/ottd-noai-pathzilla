@@ -46,6 +46,17 @@ function sqrt(num) {
 }
 
 /*
+ * Raises num to the power p.
+ */
+function pow(num, p) {
+	local n = 1;
+	for(local i = 0; i < p; i++) {
+		n *= num;
+	}
+	return n;
+}
+
+/*
  * Returns true if the array arr contains the element item.
  */
 function arraycontains(arr, item) {
