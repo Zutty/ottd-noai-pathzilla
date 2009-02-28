@@ -442,7 +442,6 @@ function ServiceManager::CreateFleet(service, update = false) {
 	}
 
 	// Calculate the required fleet size
-	local minFleetSize = 0;
 	local fleetSize = 0;
 
 	// If we are updating the service, base the decision on waiting cargo
@@ -465,7 +464,6 @@ function ServiceManager::CreateFleet(service, update = false) {
 		local multiplier = (65 - (year - 1900)) / 2;
 		multiplier /= PathZilla.GetSetting("traffic");
 		
-		minFleetSize = 0;
 		fleetSize = (waitingCargo / (capacity * multiplier)) * ((distance * 3) / speed)
 		fleetSize = min(fleetSize, PathZilla.MAX_VEHICLES_PER_SVC);
 		fleetSize = fleetSize - service.GetActualFleetSize();
@@ -490,12 +488,6 @@ function ServiceManager::CreateFleet(service, update = false) {
 	// Estimate the amount that will be waiting and other details that will 
 	// influence our decision on fleet size.
 	if(!update) {
-		// Ensure there is at least one vehicle per station
-		minFleetSize = 0;
-		foreach(target in service.GetTargets()) {
-			minFleetSize += stations[target.GetId()].Count();
-		}
-		
 		// Estimate how many vehicles will be needed to cover the route
 		fleetSize = (PathZilla.GetSetting("traffic") * minAcceptance / (capacity * 2)) * ((distance * 3) / speed);
 	}
@@ -508,7 +500,11 @@ function ServiceManager::CreateFleet(service, update = false) {
 		fleetSize = (fleetSize * (year - 1900)) / 50;
 	}
 
-	// Ensure the fleet is not too small
+	// Ensure the fleet is not too small, there is at least one vehicle per station
+	local minFleetSize = 0;
+	foreach(target in service.GetTargets()) {
+		minFleetSize += stations[target.GetId()].Count();
+	}
 	fleetSize = max(minFleetSize, fleetSize);
 	
 	// If there is no fleet to build then just return now
