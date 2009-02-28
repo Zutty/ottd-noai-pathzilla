@@ -65,6 +65,7 @@ class PathZilla extends AIController {
 	MAX_REPATH_TRIES = 5		   // Maximum number a times path can be re-found due to construction problems
 	MAX_VEHICLES_PER_SVC = 100;	   // Maximum number of vehicles per service
 	INDUSTRY_FLEET_MULTI = 4;	   // Fleet size multiplier for industrial services
+	TARGET_FIX_RADIUS = 10;		   // Radius around a target we should look to fix a tile
 	
 	// Member variables
 	stop = false;
