@@ -70,7 +70,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
  * Try to build ithe speciofied path with the specified road type up to
  * PathZilla.MAX_REPATH_TRIES timesm using the BuildPath method.
  */
-function PathWrapper::TryBuildPath(path, roadType) {
+function PathWrapper::TryBuildPath(path, fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
 	local tries = 0;
 	local success = -1;
 	
