@@ -85,11 +85,11 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 				local feat = [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT];
 				local path = PathWrapper.FindPath(aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
 
+				success = PathWrapper.TryBuildPath(path, aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
+				
 				if(aTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(aTarget, clone path, false);
 				if(bTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(bTarget, clone path, true);
 
-				success = PathWrapper.TryBuildPath(path, aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
-				
 				// If we were able to build the link, add the edge to the actual graph
 				if(success) {
 					schema.GetActualGraph().AddEdge(edge);
@@ -579,58 +579,65 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	
 	// Check each tile for valid paths that will connect it to the town.
 	foreach(stTile, _ in tileList) {
-		// Find a path from the town to the station
  		local path = true;
  		
- 		AILog.Warning(""+target.IsTileFixed());
- 		AISign.BuildSign(targetTile, "targetTile");
- 		
+ 		// Find a path only if we know where were going
  		if(target.IsTileFixed()) {
  			path = PathWrapper.FindPath(targetTile, stTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE]);
  		}
  		
-		if(path != null) {
-			// Find a loop back to the town
-			if(target.IsTileFixed()) {
-				roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : targetTile;
-			} else {
-				local adj = LandManager.GetAdjacentTileList(stTile);
-				adj.Valuate(function (rtile, stTile) {
-					local otile = LandManager.GetApproachTile(stTile, rtile);
-					return AITile.IsBuildable(rtile) && AITile.IsBuildable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
-				}, stTile);
-				adj.RemoveValue(0);
-				if(adj.IsEmpty()) continue;
-				roadTile = adj.Begin();
-			}
-			otherSide = LandManager.GetApproachTile(stTile, roadTile);
-			local loopTile = (target.IsTown() && stTile != targetTile) ? targetTile : roadTile;
-			
-			AISign.BuildSign(stTile, "s");
-			AISign.BuildSign(roadTile, "r");
-			AISign.BuildSign(otherSide, "o");
-			
-			local features = [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE];
-			if(target.IsTown()) features.append(PathWrapper.FEAT_ROAD_LOOP);
-			local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, features);
-			
-			// Check that the loop exists and that it can connect to the station
-			if(loop != null && (AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetParent().GetTile()) != 0)) {
-				// Build everything
-				local pathed = true;
-				if(target.IsTileFixed()) pathed = PathWrapper.BuildPath(path, roadType) == 0;
-				local looped = PathWrapper.BuildPath(loop, roadType) == 0;
+ 		// If no path was found, try another tile 
+		if(path == null) continue;
 
-				if(pathed && looped) RoadManager.SafelyBuildRoad(otherSide, stTile);
-				if(!target.IsTileFixed()) RoadManager.SafelyBuildRoad(roadTile, stTile);
-				
-				stationTile = stTile;
-				break;
-			} else {
-				AILog.Warning("  Could not find loop to station!");
-			}
+		// Find and check the road and other side tiles
+		if(target.IsTileFixed()) {
+			roadTile = (path.GetParent() != null) ? path.GetParent().GetTile() : targetTile;
+			otherSide = LandManager.GetApproachTile(stTile, roadTile);
+			
+			// If the other side is unsuitable, try another tile
+			if(!(AITile.IsBuildable(otherSide) || AIRoad.IsRoadTile(otherSide))) continue;
 		} else {
-			AILog.Warning("  Could not find path to station!");
+			// Choose an orientation for the station
+			local adj = LandManager.GetAdjacentTileList(stTile);
+			adj.Valuate(function (rtile, stTile) {
+				local otile = LandManager.GetApproachTile(stTile, rtile);
+				return AITile.IsBuildable(rtile) && AITile.IsBuildable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
+			}, stTile);
+			adj.RemoveValue(0);
+			
+			// If it doesn't fit either way around, try another tile
+			if(adj.IsEmpty()) continue;
+			
+			// Set the road and other side tiles
+			roadTile = adj.Begin();
+			otherSide = LandManager.GetApproachTile(stTile, roadTile);
+		}
+		
+		// Choose a tile to loop to
+		local loopTile = (target.IsTown() && stTile != targetTile) ? targetTile : roadTile;
+		
+		// Find a loop back to the town
+		local features = [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE];
+		if(target.IsTown()) features.append(PathWrapper.FEAT_ROAD_LOOP);
+		local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, features);
+		
+		// Get the first tile in the loop
+		local firstTile = (loop != null) ? PathWrapper.GetFirstTile(loop) : -1;
+		
+		// Check that the loop exists and that it can connect to the station
+		if(loop != null && (AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetParent().GetTile()) != 0) && (AIRoad.CanBuildConnectedRoadPartsHere(loopTile, stTile, firstTile) != 0)) {
+			// Build everything
+			local pathed = true;
+			if(target.IsTileFixed()) pathed = (PathWrapper.BuildPath(path, roadType) == 0);
+			local looped = (PathWrapper.BuildPath(loop, roadType) == 0);
+			
+			if(pathed && looped) RoadManager.SafelyBuildRoad(otherSide, stTile);
+			if(!target.IsTileFixed()) RoadManager.SafelyBuildRoad(roadTile, stTile);
+			
+			stationTile = stTile;
+			break;
+		} else {
+			AILog.Warning("  Could not find loop to station!");
 		}
 	}
 	

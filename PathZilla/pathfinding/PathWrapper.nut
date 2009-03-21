@@ -105,13 +105,14 @@ function PathWrapper::TryBuildPath(path, fromTile, toTile, roadType, ignoreTiles
  * FEAT_GRID_LAYOUT - Snap roads to 2x2/3x3 town layouts
  * FEAT_DEPOT_ALIGN - Join a road to the entrace of a depot not its side
  * FEAT_SHORT_SCOPE - Avoid wasting time on paths that are known to be short
+ * FEAT_NO_WORMHOLES - Disallow bridges and tunnels
  */
 function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
 	// Initialise the pathfinder
 	local pathfinder = Road();
 	pathfinder.cost.allow_demolition = demolish;
 	pathfinder.cost.no_existing_road = 150;
-	pathfinder.cost.max_bridge_length  = PathZilla.MAX_BRIDGE_LENGTH;
+	pathfinder.cost.max_bridge_length = PathZilla.MAX_BRIDGE_LENGTH;
 	pathfinder.cost.bridge_per_tile = 350;
 	pathfinder.cost.tunnel_per_tile = 240;
 	pathfinder.InitializePath([fromTile], [toTile], ignoreTiles);
@@ -221,7 +222,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 		}
 	}
 
-	AILog.Info("    Trying find a path between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
+	AILog.Info("    Trying to find a path between [" + AIMap.GetTileX(fromTile) + ", " + AIMap.GetTileY(fromTile) + "] and [" + AIMap.GetTileX(toTile) + ", " + AIMap.GetTileY(toTile) + "]...");
 
 	// Make the necessary preparations
 	FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
@@ -349,4 +350,14 @@ function PathWrapper::BuildPath(path, roadType) {
 	AILog.Info("    Done building road.")
 
 	return 0;
+}
+
+function PathWrapper::GetFirstTile(path) {
+	local cpath = clone path;
+	local tile = null;
+	while (cpath != null) {
+		if(cpath.GetParent() != null) tile = cpath.GetTile(); 
+		cpath = cpath.GetParent();
+	}
+	return tile;
 }
