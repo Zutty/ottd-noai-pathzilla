@@ -98,6 +98,7 @@ class PathZilla extends AIController {
 		require("FinanceManager.nut");
 		require("LandManager.nut");
 		require("RoadManager.nut");
+		require("TownManager.nut");
 
 		this.loaded = false;
 		this.companyName = null;

@@ -374,52 +374,13 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 
 	// Before we do anything, check the local authority rating
-	local townList = AITownList();
-	townList.Valuate(AITown.GetDistanceManhattanToTile, targetLocation);
-	townList.Sort(AIAbstractList.SORT_BY_VALUE, true);
-	local nearestTown = townList.Begin()
-	local rating = AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
+	local nearestTown = TownManager.FindNearestTown(targetLocation)
 	
-	// If the rating is low, take steps to improve it
-	if(rating < AITown.TOWN_RATING_GOOD) {
-		// See if we can bribe the town
-		local canBribe = (AIGameSettings.GetValue("economy.bribe") == 1);
-		if(canBribe && rating < AITown.TOWN_RATING_POOR && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
-			AITown.PerformTownAction(nearestTown, AITown.TOWN_ACTION_BRIBE);
-		}
-		
-		// After that, find places we can build trees
-		local tileList = AITileList();
-		tileList.AddRectangle(targetLocation - offset, targetLocation + offset);
-		tileList.Valuate(function (tile, nearestTown) {
-			return (!AITile.IsWithinTownInfluence(tile, nearestTown) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile)) ? 1 : 0;
-		}, nearestTown);
-		tileList.RemoveValue(0);
-		tileList.Valuate(function (tile, nearestTown, targetLocation) {
-			return AITile.GetDistanceManhattanToTile(tile, targetLocation) + AIBase.RandRange(6) - 3;
-		}, nearestTown, targetLocation);
-		tileList.Sort(AIAbstractList.SORT_BY_VALUE, true);
-		
-		// For the places that are available, build a "green belt" around the town
-		if(!tileList.IsEmpty()) {
-			local expenditure = 0;
-			local tile = tileList.Begin();
-			
-			while(AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF)) < AITown.TOWN_RATING_GOOD && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
-				local acc = AIAccounting();
-				for(local i = 0; i < 4; i++) {
-					AITile.PlantTree(tile);
-				}
-				expenditure += acc.GetCosts();
-				tile = tileList.Next();
-			}
-		}
-	}
+	// Try to improve the local authority rating if necessary
+	TownManager.HandleRating(nearestTown);
 
-	// Check if we are now allowed to build in town
-	rating = AITown.GetRating(nearestTown, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
-	local allowed = (rating == AITown.TOWN_RATING_NONE || rating > AITown.TOWN_RATING_VERY_POOR);
-	if(!allowed) {
+	// Check if we are allowed to build in town
+	if(!TownManager.CanBuildInTown(nearestTown)) {
 		AILog.Error(AITown.GetName(nearestTown) + " local authority refuses construction");
 		return -1;
 	}
