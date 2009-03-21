@@ -303,8 +303,14 @@ function PathWrapper::BuildPath(path, roadType) {
 					switch(AIError.GetLastError()) {
 						case AIError.ERR_AREA_NOT_CLEAR:
 							// Something must have been built since we check the tile. Clear it.
-							if(!AITile.DemolishTile(ptile)) {
-								attempts = PathZilla.MAX_CONSTR_ATTEMPTS + 1;
+							if(!AITile.DemolishTile(tile)) {
+								if(AIError.GetLastError() == AIError.ERR_LOCAL_AUTHORITY_REFUSES) {
+									// Try to influence the local authority 
+									TownManager.HandleRating(TownManager.FindNearestTown(tile));
+								} else {
+									// Otherwise just give up
+									attempts = PathZilla.MAX_CONSTR_ATTEMPTS + 1;
+								}
 							}
 						break;
 						case AIError.ERR_NOT_ENOUGH_CASH:
