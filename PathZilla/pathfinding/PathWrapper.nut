@@ -278,7 +278,6 @@ function PathWrapper::BuildPath(path, roadType) {
 			
 			local success = false;
 			local attempts = 0;
-			local ignore = false;
 
 			// Try to build the next path segment
 			while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
@@ -324,20 +323,17 @@ function PathWrapper::BuildPath(path, roadType) {
 						break;
 						// Just don't worry about the rest of these cases!
 						case AIError.ERR_ALREADY_BUILT:
-							ignore = true;
+							success = true;
 						break;
 						case AIError.ERR_UNKNOWN:
-							ignore = true;
+							success = true;
 						break;
 					}
 				}
-				
-				// If its an error we can ignore then just break.
-				if(ignore) break;
 			}
 
 			// Check that we DID succeed
-			if(!success && !ignore) {
+			if(!success) {
 				AILog.Error("    Could not complete road!")
 				return (prevTile != null) ? prevTile : tile;
 			}
