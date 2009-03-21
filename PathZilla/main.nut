@@ -85,6 +85,10 @@ class PathZilla extends AIController {
 		require("graph/impl/MinimumSpanTree.nut");
 		require("graph/impl/ShortestPathTree.nut");
 		require("graph/impl/Triangulation.nut");
+		require("manager/FinanceManager.nut");
+		require("manager/LandManager.nut");
+		require("manager/RoadManager.nut");
+		require("manager/TownManager.nut");
 		require("pathfinding/PathWrapper.nut");
 		require("pathfinding/Road.nut");
 		require("schema/Schema.nut");
@@ -95,10 +99,6 @@ class PathZilla extends AIController {
 		require("struct/BinaryHeap.nut");
 		require("struct/SortedSet.nut");
 		require("common.nut");
-		require("FinanceManager.nut");
-		require("LandManager.nut");
-		require("RoadManager.nut");
-		require("TownManager.nut");
 
 		this.loaded = false;
 		this.companyName = null;
