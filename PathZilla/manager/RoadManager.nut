@@ -208,7 +208,7 @@ function RoadManager::GetStations(target, cargo, roadType) {
 		stationList.Valuate(AIStation.IsWithinTownInfluence, target.GetId());
 		stationList.RemoveValue(0);
 	} else {
-		local coveredTiles = (target.IsProducer()) ? AITileList_IndustryProducing(target.GetId(), radius) : AITileList_IndustryAccepting(target.GetId(), radius);
+		local coveredTiles = (target.ProducesCargo(cargo)) ? AITileList_IndustryProducing(target.GetId(), radius) : AITileList_IndustryAccepting(target.GetId(), radius);
 		foreach(tile, _ in coveredTiles) {
 			local st = AIStation.GetStationID(tile);
 			if(AIStation.IsValidStation(st)) {
@@ -395,7 +395,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	if(target.IsTown()) {
 		tileList.AddRectangle(targetLocation - offset, targetLocation + offset);
 	} else {
-		if(target.IsProducer()) {
+		if(target.ProducesCargo(cargo)) {
 			tileList = AITileList_IndustryProducing(target.GetId(), radius);
 		} else {
 			tileList = AITileList_IndustryAccepting(target.GetId(), radius);
@@ -409,7 +409,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		stationList.Valuate(AIStation.IsWithinTownInfluence, target.GetId());
 		stationList.RemoveValue(0);
 	} else {
-		local coveredTiles = (target.IsProducer()) ? AITileList_IndustryProducing(target.GetId(), radius) : AITileList_IndustryAccepting(target.GetId(), radius);
+		local coveredTiles = (target.ProducesCargo(cargo)) ? AITileList_IndustryProducing(target.GetId(), radius) : AITileList_IndustryAccepting(target.GetId(), radius);
 		foreach(tile, _ in coveredTiles) {
 			local st = AIStation.GetStationID(tile);
 			if(AIStation.IsValidStation(st)) stationList.AddItem(st, 0);
@@ -500,7 +500,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		// Get the cargo acceptance around the tile
 		local score = 0;
 		local threshold = 0;
-		if(!target.IsTown() && target.IsProducer()) {
+		if(!target.IsTown() && target.ProducesCargo(cargo)) {
 			score = AITile.GetCargoProduction(tile, cargo, 1, 1, radius);
 		} else {
 			score = AITile.GetCargoAcceptance(tile, cargo, 1, 1, radius);

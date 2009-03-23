@@ -100,12 +100,14 @@ function ServiceManager::FindNewServices() {
 	local transportType = schema.GetTransportType();
 	local subType = schema.GetSubType();
 
-	// Discard the towns that we have already been to, or that can't be reached
+	// Discard the targets that we have already been to, or that can't be reached
 	local targets = clone schema.GetPlanGraph().GetTargets();
 	targets.RemoveAll(this.targetsConsidered);
-	targets.Filter(function (target) {
-		return !target.IsProducer();
-	});
+	
+	// Discard those targets that don't produce anything
+	targets.Filter(function (target, cargo) {
+		return !target.ProducesCargo(cargo);
+	}, cargo);
 	
 	// Check that there are any towns left that we haven't considered
 	if(targets.Len() > 0) {
@@ -124,7 +126,7 @@ function ServiceManager::FindNewServices() {
 		// Iterate over each town to test each possible connection
 		local steps = 0;
 		foreach(bTarget in schema.GetPlanGraph().GetTargets()) {
-			if(!bTarget.IsAccepter()) continue;
+			if(!bTarget.AcceptsCargo(cargo)) continue;
 			
 			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
 				PathZilla.Sleep(1);
@@ -478,7 +480,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 
 		// Get the minimum acceptance of all targets
 		accSum[target.GetId()] <- ListSum(stations[target.GetId()]);
-		if(target.IsAccepter()) {
+		if(target.AcceptsCargo(cargo)) {
 			minAcceptance = min(minAcceptance, accSum[target.GetId()]);
 		}
 	}
@@ -548,7 +550,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 		foreach(target in service.GetTargets()) {
 			local tile = AIStation.GetLocation(RandomItemByWeight(stations[target.GetId()], accSum[target.GetId()]));
 			local flags = AIOrder.AIOF_NON_STOP_INTERMEDIATE;
-			if(!target.IsTown() && target.IsProducer()) flags = flags | AIOrder.AIOF_FULL_LOAD;
+			if(!target.IsTown() && target.ProducesCargo(cargo)) flags = flags | AIOrder.AIOF_FULL_LOAD;
 			AIOrder.AppendOrder(v, tile, flags);
 		}
 		
@@ -620,7 +622,7 @@ function ServiceManager::UpdateOrders(service) {
 		foreach(target in service.GetTargets()) {
 			local tile = AIStation.GetLocation(RandomItemByWeight(stations[target.GetId()], accSum[target.GetId()]));
 			local flags = AIOrder.AIOF_NON_STOP_INTERMEDIATE;
-			if(!target.IsTown() && target.IsProducer()) flags = flags & AIOrder.AIOF_FULL_LOAD;
+			if(!target.IsTown() && target.ProducesCargo(cargo)) flags = flags & AIOrder.AIOF_FULL_LOAD;
 			AIOrder.AppendOrder(v, tile, flags);
 		}
 

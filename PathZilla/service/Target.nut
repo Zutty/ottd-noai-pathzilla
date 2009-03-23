@@ -136,23 +136,27 @@ function Target::GetId() {
 }
 
 /*
- * Returns true if this target produces anything.
+ * Checks if the target produces the specified cargo.
  */
-function Target::IsProducer() {
-	if(this.type == Target.TYPE_TOWN) return true;
+function Target::ProducesCargo(cargo) {
+	if(this.type == Target.TYPE_TOWN) {
+		return ::townProducedCargo.HasItem(cargo);
+	}
 	
 	local indType = AIIndustry.GetIndustryType(this.id);
-	return !AIIndustryType.GetProducedCargo(indType).IsEmpty();
+	return AIIndustryType.GetProducedCargo(indType).HasItem(cargo);
 }
 
 /*
- * Returns true if this target accepts anything.
+ * Checks if the target accepts the specified cargo.
  */
-function Target::IsAccepter() {
-	if(this.type == Target.TYPE_TOWN) return true;
+function Target::AcceptsCargo(cargo) {
+	if(this.type == Target.TYPE_TOWN) {
+		return ::townAcceptedCargo.HasItem(cargo);
+	}
 	
 	local indType = AIIndustry.GetIndustryType(this.id);
-	return !AIIndustryType.GetAcceptedCargo(indType).IsEmpty();
+	return AIIndustryType.GetAcceptedCargo(indType).HasItem(cargo);
 }
 
 /*
