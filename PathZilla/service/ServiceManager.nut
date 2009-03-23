@@ -161,9 +161,10 @@ function ServiceManager::FindNewServices() {
 
 				// Project revenue and costs
 				local factor = 100; // Compensate for integer mathematics
-				local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * ((364 * factor) / travelTime);
+				local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * ((365 * factor) / travelTime);
 				local annualCost = AIEngine.GetRunningCost(engine) * factor;
 				local annualProfit = (annualRevenue - annualCost) / factor;
+				if(!bTarget.IsTown()) annualProfit *= PathZilla.INDUSTRY_FLEET_MULTI;
 				
 				// Decide on a limit for the target coverage level
 				local coverageLimit = PathZilla.MAX_TARGET_COVERAGE;
