@@ -153,10 +153,17 @@ function SortedSet::RemoveAll(set) {
  * function yeild a false return value. The filter should take one 
  * argument and return true if the item should be filtered from the set.
  */
-function SortedSet::Filter(filterFn) {
+function SortedSet::Filter(filterFn, ...) {
+	local argv = [];
+	for(local i = 0; i < vargc; i++) {
+		argv.append(vargv[i]);
+	}
+
 	local toRemove = [];
 	foreach(idx, i in this.data) {
-		if(filterFn(i)) {
+		local args = [this, i];
+		args.extend(argv);
+		if(filterFn.acall(args)) {
 			toRemove.append(idx);
 		}
 	}
