@@ -68,7 +68,7 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 			local a = walk.GetVertex();
 			local b = walk.GetParent().GetVertex();
 			local edge = Edge(a, b);
-	
+			
 			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
 				// Get the towns on this edges
 				local aTarget = a.GetTarget();
@@ -350,13 +350,17 @@ function RoadManager::BuildTownStations(target, cargo, roadType, coverageTarget,
  */
 function RoadManager::BuildIndustryStation(target, cargo, roadType) {
 	local stations = RoadManager.GetStations(target, cargo, roadType);
+	local station = null;
 	
 	if(stations.IsEmpty()) {
-		local station = RoadManager.BuildStation(target, cargo, roadType);
-		if(!target.IsTileFixed()) {
-			local tile = AIRoad.GetRoadStationFrontTile(AIStation.GetLocation(station));
-			target.SemiFixTile(tile);
-		}
+		station = RoadManager.BuildStation(target, cargo, roadType);
+	} else {
+		station = stations.Begin()
+	}
+
+	if(!target.IsTileFixed() && station != null) {
+		local tile = AIRoad.GetRoadStationFrontTile(AIStation.GetLocation(station));
+		target.SemiFixTile(tile);
 	}
 }
 
