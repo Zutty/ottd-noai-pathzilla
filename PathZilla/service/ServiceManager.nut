@@ -535,11 +535,12 @@ function ServiceManager::CreateFleet(service, update = false) {
 		// Wait some time to spread the vechiles out a bit.
 		PathZilla.Sleep(PathZilla.NEW_VEHICLE_SPREAD_DELAY);
 		
-		// Alternate between depots
-		local alt = (i + 1) % service.GetTargets().len();
-		local depot = depots[service.GetTargets()[alt].GetId()];
+		// Alternate between targets if they are towns 
+		local idx = 0; 
+		if(service.GetTargets()[idx].IsTown()) idx = (i + 1) % service.GetTargets().len();
 		
-		// Build a new vehicle at that depot
+		// Build a new vehicle at the nearest depot
+		local depot = depots[service.GetTargets()[idx].GetId()];
 		local v = AIVehicle.BuildVehicle(depot, engine);
 		
 		// Refit the vehicle if necessary
@@ -557,7 +558,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 		}
 		
 		// Send the vehicle to the destination nearest the depot we built it at
-		AIVehicle.SkipToVehicleOrder(v, alt);
+		AIVehicle.SkipToVehicleOrder(v, idx);
 		
 		// Add the vehicle to the service
 		service.AddVehicle(v);
