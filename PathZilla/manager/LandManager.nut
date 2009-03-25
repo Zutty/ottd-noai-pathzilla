@@ -232,6 +232,13 @@ function LandManager::IsRoadStationAny(tile) {
 	return isRoadStation;
 }
 
+/*
+ * Checks if the tile can have road or road station built on it.
+ */
+function LandManager::IsRoadable(tile) {
+	return AITile.IsBuildable(tile) || AIRoad.IsRoadTile(tile);
+}
+
 // --- Wormhole Management Functions ---
 
 /*

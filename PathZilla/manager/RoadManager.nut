@@ -560,13 +560,13 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 			otherSide = LandManager.GetApproachTile(stTile, roadTile);
 			
 			// If the other side is unsuitable, try another tile
-			if(!(AITile.IsBuildable(otherSide) || AIRoad.IsRoadTile(otherSide))) continue;
+			if(!LandManager.IsRoadable(otherSide)) continue;
 		} else {
 			// Choose an orientation for the station
 			local adj = LandManager.GetAdjacentTileList(stTile);
 			adj.Valuate(function (rtile, stTile) {
 				local otile = LandManager.GetApproachTile(stTile, rtile);
-				return AITile.IsBuildable(rtile) && AITile.IsBuildable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
+				return LandManager.IsRoadable(rtile) && LandManager.IsRoadable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
 			}, stTile);
 			adj.RemoveValue(0);
 			
