@@ -770,14 +770,29 @@ function RoadManager::BuildDepot(target, roadType) {
 	if(depots.Count() == 0) {
 		AILog.Info("    Building a new depot...");
 
+		// Get some details about the nearest town		
+		local nearestTown = -1;
+		if(target.IsTown()) {
+			nearestTown = target.GetId();
+		} else {
+			local towns = AITownList();
+			towns.Valuate(AITown.GetDistanceManhattanToTile, fromTile);
+			towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
+			nearestTown = towns.Begin();
+		}
+		local layoutType = AITown.GetRoadLayout(nearestTown);
+		local tlayout = (layoutType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((layoutType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
+		local tx = AIMap.GetTileX(AITown.GetLocation(nearestTown));
+		local ty = AIMap.GetTileY(AITown.GetLocation(nearestTown));
+		
 		// Get a list of tiles to search in
 		local searchRadius = min(AIMap.DistanceFromEdge(targetTile) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
 		tileList.AddRectangle(targetTile - offset, targetTile + offset);
-		
+
 		// Rank those tiles by their suitability for a depot
-		tileList.Valuate(function(tile, roadType, target, searchRadius) {
+		tileList.Valuate(function(tile, roadType, target, searchRadius, tlayout, tx, ty) {
 			// Find suitable roads adjacent to the tile
 			local adjRoads = LandManager.GetAdjacentTileList(tile);
 			adjRoads.Valuate(function (_tile, roadType) {
@@ -787,6 +802,7 @@ function RoadManager::BuildDepot(target, roadType) {
 			
 			local score = 0;
 			
+			// Only score tiles that can be built on
 			if(!AITile.IsWaterTile(tile) && LandManager.IsLevel(tile) && !AIRoad.IsRoadTile(tile) && !AIRoad.IsRoadStationTile(tile)
 				 && !AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile) && !AIRoad.IsRoadDepotTile(tile)) {
 				score = AITile.GetDistanceManhattanToTile(target.GetTile(), tile);
@@ -794,10 +810,17 @@ function RoadManager::BuildDepot(target, roadType) {
 				if(adjRoads.Count() > 0) score += 10000;
 				if(AITile.IsBuildable(tile)) score += 100;
 				if(target.IsTown() && AITown.IsWithinTownInfluence(target.GetId(), tile)) score += 1000;
+				
+				// If the town has a grid road layout, penalise tiles that fall on the grid
+				if(tlayout != 0) {
+					local dx = abs(AIMap.GetTileX(tile) - tx) % tlayout;
+					local dy = abs(AIMap.GetTileY(tile) - ty) % tlayout;
+					if(dx == 0 || dy == 0) score = AITile.GetDistanceManhattanToTile(target.GetTile(), tile); 
+				}				
 			}
 			
 			return score;
-		}, roadType, target, searchRadius);
+		}, roadType, target, searchRadius, tlayout, tx, ty);
 		
 		tileList.RemoveValue(0);
 		
