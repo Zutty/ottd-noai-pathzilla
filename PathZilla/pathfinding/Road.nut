@@ -26,6 +26,7 @@ class Road
 	_max_bridge_length = null;     ///< The maximum length of a bridge that will be build.
 	_max_tunnel_length = null;     ///< The maximum length of a tunnel that will be build.
 	_max_path_length = null;       ///< The maximum length in tiles of the total route.
+	_estimate_multiplier = null;   ///< Every estimate is multiplied by this value. Use 1 for a 'perfect' route, higher values for faster pathfinding.
 
 	_goal_estimate_tile = null;    ///< The tile we take as goal tile for the estimate function.
 	cost = null;                   ///< Used to change the costs.
@@ -47,6 +48,7 @@ class Road
 		this._allow_demolition = false;
 		this._max_bridge_length = 25;
 		this._max_tunnel_length = 20;
+		this._estimate_multiplier = 1;
 		this._pathfinder = this._aystar_class(this, this._Cost, this._Estimate, this._Neighbours, this._CheckDirection);
 
 		this.cost = this.Cost(this);
@@ -65,9 +67,10 @@ class Road
 	function InitializePath(sources, goals, max_length_multiplier = 0, max_length_offset = 10000, ignored_tiles = []);
 
 	/**
-	 * Register a new cost calback function that will be called with all args specified.
+	 * Register a new cost callback function that will be called with all args specified.
 	 * The callback function must return an integer or an error will be thrown.
-	 * @param callback The callback function
+	 * @param callback The callback function. This function will be called with
+	 * as parameters: new_tile, prev_tile, your extra arguments.
 	 */
 	function RegisterCostCallback(callback, ...);
 		
@@ -107,6 +110,7 @@ class Road.Cost
 			case "allow_demolition":  this._main._allow_demolition = val; break;
 			case "max_bridge_length": this._main._max_bridge_length = val; break;
 			case "max_tunnel_length": this._main._max_tunnel_length = val; break;
+			case "estimate_multiplier": this._main._estimate_multiplier = val; break;
 			default: throw("the index '" + idx + "' does not exist");
 		}
 
@@ -129,6 +133,7 @@ class Road.Cost
 			case "allow_demolition":  return this._main._allow_demolition;
 			case "max_bridge_length": return this._main._max_bridge_length;
 			case "max_tunnel_length": return this._main._max_tunnel_length;
+			case "estimate_multiplier": return this._main._estimate_multiplier;
 			default: throw("the index '" + idx + "' does not exist");
 		}
 	}
@@ -264,16 +269,15 @@ function Road::_Cost(path, new_tile, new_direction)
 		cost += this._cost_demolition;
 	}
 
+	/* Call all extra cost callbacks. */
 	foreach(item in this._cost_callbacks) {
 		local args = [this, new_tile, prev_tile];
 		args.extend(item[1]);
-		local value = item[0].acall(args);
+		local extra_cost = item[0].acall(args);
 		
-		if (typeof(value) != "integer") {
-			throw("Invalid return type from cost callback");
-		}
+		if (typeof(extra_cost) != "integer") throw("Cost callback didn't return an integer.");
 		
-		cost += value;
+		cost += extra_cost;
 	}
 
 	return path.GetCost() + cost;
@@ -283,7 +287,7 @@ function Road::_Estimate(cur_tile, cur_direction, goal_tiles)
 {
 	/* As estimate we multiply the lowest possible cost for a single tile with
 	 * with the minimum number of tiles we need to traverse. */
-	return AIMap.DistanceManhattan(cur_tile, this._goal_estimate_tile) * this._cost_tile;
+	return AIMap.DistanceManhattan(cur_tile, this._goal_estimate_tile) * this._cost_tile * this._estimate_multiplier;
 }
 
 function Road::_Neighbours(path, cur_node)
@@ -316,6 +320,8 @@ function Road::_Neighbours(path, cur_node)
 		foreach (offset in offsets) {
 			local next_tile = cur_node + offset;
 			local can_demolish = this._allow_demolition && !AICompany.IsMine(AITile.GetOwner(next_tile)) && AITile.DemolishTile(next_tile);
+			/* Make sure never to demolish road tiles. */
+			can_demolish = can_demolish && !AIRoad.IsRoadTile(next_tile);
 			/* We add them to the to the neighbours-list if one of the following applies:
 			 * 1) There already is a connections between the current tile and the next tile.
 			 * 2) We can build a road to the next tile.
