@@ -1,5 +1,3 @@
-/* $Id: main.nut 14571 2008-11-10 00:59:36Z truebrain $ */
-
 /**
  * A Road Pathfinder.
  *  This road pathfinder tries to find a buildable / existing route for
@@ -206,36 +204,36 @@ function Road::_Cost(path, new_tile, new_direction)
 	if (path == null) return 0;
 
 	local prev_tile = path.GetTile();
-	local new_cost = this._cost_tile;
+	local cost = this._cost_tile;
 
 	if (AITile.HasTransportType(new_tile, AITile.TRANSPORT_RAIL)) {
-		new_cost += this._cost_crossing;
+		cost += this._cost_crossing;
 	}
 
 	/* If the new tile is a bridge / tunnel tile, check whether we came from the other
 	 * end of the bridge / tunnel or if we just entered the bridge / tunnel. */
 	if (AIBridge.IsBridgeTile(new_tile)) {
 		if (AIBridge.GetOtherBridgeEnd(new_tile) == prev_tile) {
-			new_cost += (AIMap.DistanceManhattan(new_tile, prev_tile) - 1) * this._cost_tile
+			cost += (AIMap.DistanceManhattan(new_tile, prev_tile) - 1) * this._cost_tile
 					 + this._GetBridgeNumSlopes(new_tile, prev_tile) * this._cost_slope;
 		}
 	}
 	if (AITunnel.IsTunnelTile(new_tile)) {
 		if (AITunnel.GetOtherTunnelEnd(new_tile) == prev_tile) {
-			new_cost += (AIMap.DistanceManhattan(new_tile, prev_tile) - 1) * this._cost_tile;
+			cost += (AIMap.DistanceManhattan(new_tile, prev_tile) - 1) * this._cost_tile;
 		}
 	}
 
 	/* If the two tiles are more then 1 tile apart, the pathfinder wants a bridge or tunnel
 	 * to be build. It isn't an existing bridge / tunnel, as that case is already handled. */
 	if (AIMap.DistanceManhattan(new_tile, prev_tile) > 1) {
-		new_cost -= this._cost_tile;
+		cost -= this._cost_tile;
 
 		/* Check if we should build a bridge or a tunnel. */
 		if (AITunnel.GetOtherTunnelEnd(new_tile) == prev_tile) {
-			new_cost += AIMap.DistanceManhattan(new_tile, prev_tile) * (this._cost_tile + this._cost_tunnel_per_tile);
+			cost += AIMap.DistanceManhattan(new_tile, prev_tile) * (this._cost_tile + this._cost_tunnel_per_tile);
 		} else {
-			new_cost += AIMap.DistanceManhattan(new_tile, prev_tile) * (this._cost_tile + this._cost_bridge_per_tile) + this._GetBridgeNumSlopes(new_tile, prev_tile) * this._cost_slope;
+			cost += AIMap.DistanceManhattan(new_tile, prev_tile) * (this._cost_tile + this._cost_bridge_per_tile) + this._GetBridgeNumSlopes(new_tile, prev_tile) * this._cost_slope;
 		}
 	}
 
@@ -244,26 +242,26 @@ function Road::_Cost(path, new_tile, new_direction)
 	 * previous node and the node before that. */
 	if (path.GetParent() != null && (prev_tile - path.GetParent().GetTile()) != (new_tile - prev_tile) &&
 		AIMap.DistanceManhattan(path.GetParent().GetTile(), prev_tile) == 1) {
-		new_cost += this._cost_turn;
+		cost += this._cost_turn;
 	}
 
 	/* Check if the new tile is a coast tile. */
 	if (AITile.IsCoastTile(new_tile)) {
-		new_cost += this._cost_coast;
+		cost += this._cost_coast;
 	}
 
 	/* Check if the last tile was sloped. */
 	if (path.GetParent() != null && !AIBridge.IsBridgeTile(prev_tile) && !AITunnel.IsTunnelTile(prev_tile) &&
 	    this._IsSlopedRoad(path.GetParent().GetTile(), prev_tile, new_tile)) {
-		new_cost += this._cost_slope;
+		cost += this._cost_slope;
 	}
 	
 	if (!AIRoad.AreRoadTilesConnected(prev_tile, new_tile)) {
-		new_cost += this._cost_no_existing_road;
+		cost += this._cost_no_existing_road;
 	}
 
 	if (!AITile.IsBuildable(new_tile) && !AIRoad.IsRoadTile(new_tile)) {
-		new_cost += this._cost_demolition;
+		cost += this._cost_demolition;
 	}
 
 	foreach(item in this._cost_callbacks) {
@@ -275,10 +273,10 @@ function Road::_Cost(path, new_tile, new_direction)
 			throw("Invalid return type from cost callback");
 		}
 		
-		new_cost += value;
+		cost += value;
 	}
 
-	return path.GetCost() + new_cost;
+	return path.GetCost() + cost;
 }
 
 function Road::_Estimate(cur_tile, cur_direction, goal_tiles)
