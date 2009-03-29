@@ -98,6 +98,9 @@ function Target::SemiFixTile(f) {
  */
 function Target::GetLocation() {
 	local tile = -1;
+	
+	if(!this.IsValid()) return tile;
+	
 	if(this.type == Target.TYPE_TOWN) {
 		tile = AITown.GetLocation(this.id);
 	} else if(this.type == Target.TYPE_INDUSTRY) {
@@ -129,6 +132,14 @@ function Target::IsTown() {
 }
 
 /*
+ * Check if the target is still valid.
+ */
+function Target::IsValid() {
+	if(this.type == Target.TYPE_TOWN) return AITown.IsValidTown(this.id);
+	return AIIndustry.IsValidIndustry(this.id);
+}
+
+/*
  * Get the underlying Id of the town or industry this target points to.
  */
 function Target::GetId() {
@@ -139,10 +150,15 @@ function Target::GetId() {
  * Checks if the target produces the specified cargo.
  */
 function Target::ProducesCargo(cargo) {
+	// Pre-condition - Check that the target is still valid
+	if(!this.IsValid()) return false;
+	
+	// If the target is a town check the global list of accepted cargos
 	if(this.type == Target.TYPE_TOWN) {
 		return ::townProducedCargo.HasItem(cargo);
 	}
-	
+
+	// Otherwise check the list of cargos for the appropriate industry type
 	local indType = AIIndustry.GetIndustryType(this.id);
 	return AIIndustryType.GetProducedCargo(indType).HasItem(cargo);
 }
@@ -151,10 +167,15 @@ function Target::ProducesCargo(cargo) {
  * Checks if the target accepts the specified cargo.
  */
 function Target::AcceptsCargo(cargo) {
+	// Pre-condition - Check that the target is still valid
+	if(!this.IsValid()) return false;
+
+	// If the target is a town check the global list of accepted cargos
 	if(this.type == Target.TYPE_TOWN) {
 		return ::townAcceptedCargo.HasItem(cargo);
 	}
 	
+	// Otherwise check the list of cargos for the appropriate industry type
 	local indType = AIIndustry.GetIndustryType(this.id);
 	return AIIndustryType.GetAcceptedCargo(indType).HasItem(cargo);
 }
@@ -164,6 +185,8 @@ function Target::AcceptsCargo(cargo) {
  */
 function Target::GetName() {
 	local name = "Unknown";
+
+	if(!this.IsValid()) return name;
 	
 	if(type == Target.TYPE_TOWN) {
 		name = AITown.GetName(this.id);
