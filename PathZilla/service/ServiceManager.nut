@@ -235,7 +235,7 @@ function ServiceManager::ImplementService() {
 	local bestService = this.potentialServices.Peek();
 
 	// Check that we don't already provide this service
-	while(bestService != null && this.ProvidesThisService(bestService)) {
+	while(bestService != null && (this.ProvidesThisService(bestService) || !bestService.IsValid())) {
 		// If we already provide it then move on to the next one
 		this.potentialServices.Pop();
 		bestService = this.potentialServices.Peek();

@@ -159,6 +159,16 @@ function Service::GoesToAll(targets) {
 }
 
 /*
+ * Checks that all targets in this service are still valid.
+ */
+function Service::IsValid() {
+	foreach(target in targets) {
+		if(!target.IsValid()) return false;
+	}
+	return true;
+}
+
+/*
  * Add a vehicle to the service
  */
 function Service::AddVehicle(vehicleId) {
