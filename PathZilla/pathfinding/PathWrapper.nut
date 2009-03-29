@@ -26,7 +26,7 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 15/01/2009
- * Version: 1.1
+ * Version: 1.2
  */
 
 class PathWrapper {
@@ -152,8 +152,8 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 					// Get some details about this town
 					local fType = AITown.GetRoadLayout(towns.Begin());
 					local fn = (fType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((fType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
-					local fx = abs(fromTown % AIMap.GetMapSizeY());
-					local fy = abs(fromTown / AIMap.GetMapSizeY());
+					local fx = fromTown % AIMap.GetMapSizeY();
+					local fy = fromTown / AIMap.GetMapSizeY();
 
 					// Find the nearest town to the "to" tile
 					towns.Valuate(AITown.GetDistanceManhattanToTile, toTile);
@@ -163,26 +163,79 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 					// If both towns are the same then we only need to check one grid
 					if(fromTown == toTown && fn > 0) {
 						pathfinder.RegisterCostCallback(function (tile, prevTile, n, fx, fy) {
-							local dx = abs(tile % AIMap.GetMapSizeY());
-							local dy = abs(tile / AIMap.GetMapSizeY());
+							local x = tile % AIMap.GetMapSizeY();
+							local y = tile / AIMap.GetMapSizeY();
+							local dx = abs(x - fx) % n;
+							local dy = abs(y - fy) % n;
+							local len = AIMap.DistanceManhattan(tile, prevTile);
+							
+							if(len > 1) {
+								local px = prevTile % AIMap.GetMapSizeY();
+								local py = prevTile / AIMap.GetMapSizeY();
+								//local pdx = abs(px - fx) % n;
+								local pdy = abs(py - fy) % n;
+								
+								if((x == px && dx == 0) || (y == py && dy == 0)) return 0;
 
-							return ((dx - fx) % n == 0 || (dy - fy) % n == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+								local m = 0;
+								if(dy == pdy) {
+									m = ((dx == 0) ? 1 : 0) + (len / n);
+								} else {
+									m = ((dy == 0) ? 1 : 0) + (len / n);
+								}
+								
+								return PathWrapper.COST_GRID_LAYOUT * (len - m);
+							} else {
+								return (dx == 0 || dy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+							}
 						}, fn, fx, fy);
 					} else if(fromTown != toTown) {
 						// Otherwise get details about the other town
 						local tType = AITown.GetRoadLayout(towns.Begin());
 						local tn = (tType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((tType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
-						local tx = abs(toTown % AIMap.GetMapSizeY());
-						local ty = abs(toTown / AIMap.GetMapSizeY());
+						local tx = toTown % AIMap.GetMapSizeY();
+						local ty = toTown / AIMap.GetMapSizeY();
 						
 						// If either town has a grid road layout then interpolate between the two
 						if(fn > 0 && tn > 0) {
 							pathfinder.RegisterCostCallback(function (tile, prevTile, fromTown, fn, fx, fy, toTown, tn, tx, ty) {
-								local dx = abs(tile % AIMap.GetMapSizeY());
-								local dy = abs(tile / AIMap.GetMapSizeY());
+								local x = tile % AIMap.GetMapSizeY();
+								local y = tile / AIMap.GetMapSizeY();
+								local fdx = abs(x - fx) % fn;
+								local fdy = abs(y - fy) % fn;
+								local tdx = abs(x - tx) % tn;
+								local tdy = abs(y - ty) % tn;
+
+								local len = AIMap.DistanceManhattan(tile, prevTile);
+								local fCost = 0;
+								local tCost = 0;
 		
-								local fCost = (fn == 0 || (dx - fx) % fn == 0 || (dy - fy) % fn == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
-								local tCost = (tn == 0 || (dx - tx) % tn == 0 || (dy - ty) % tn == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+								if(len > 1) {
+									local px = prevTile % AIMap.GetMapSizeY();
+									local py = prevTile / AIMap.GetMapSizeY();
+									local fpdy = abs(py - fy) % fn;
+									local tpdy = abs(py - ty) % tn;
+									
+									local fm = 0;
+									if(fdy == fpdy) {
+										fm = ((fdx == 0) ? 1 : 0) + (len / fn);
+									} else {
+										fm = ((fdy == 0) ? 1 : 0) + (len / fn);
+									}
+
+									local tm = 0;
+									if(tdy == fpdy) {
+										tm = ((tdx == 0) ? 1 : 0) + (len / tn);
+									} else {
+										tm = ((tdy == 0) ? 1 : 0) + (len / tn);
+									}
+									
+									fCost = (fn == 0 || (x == px && fdx == 0) || (y == py && fdy == 0)) ? 0 : PathWrapper.COST_GRID_LAYOUT * (len - fm);
+									tCost = (tn == 0 || (x == px && tdx == 0) || (y == py && tdy == 0)) ? 0 : PathWrapper.COST_GRID_LAYOUT * (len - tm);
+								} else {
+									fCost = (fn == 0 || fdx == 0 || fdy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+									tCost = (tn == 0 || tdx == 0 || tdy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+								}
 		
 								local fDist = AITile.GetDistanceManhattanToTile(tile, fromTown);
 								local tDist = AITile.GetDistanceManhattanToTile(tile, toTown);
@@ -190,7 +243,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 								local fBal = max(0, ((100 * tDist) / total) - 40);
 								local tBal = max(0, ((100 * fDist) / total) - 40);
 		
-								return min(PathWrapper.COST_GRID_LAYOUT, ((fBal * fCost) + (tBal * tCost)) / 50);
+								return min(PathWrapper.COST_GRID_LAYOUT * (len), ((fBal * fCost) + (tBal * tCost)) / 50);
 							}, fromTown, fn, fx, fy, toTown, tn, tx, ty);
 						}
 					}
