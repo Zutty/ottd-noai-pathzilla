@@ -378,12 +378,6 @@ function ServiceManager::SelectEngine(targets, cargo, transportType, subType, ch
  * orders between the stations in both towns.
  */
 function ServiceManager::CreateFleet(service, update = false) {
-	if(!update) {
-		AILog.Info("  Creating a fleet of vehicles...");
-	} else {
-		AILog.Info("  Updating a fleet of vehicles...");
-	}
-
 	// Initialise
 	local cargo = service.GetCargo();
 	local isIndustry = false;
@@ -509,9 +503,6 @@ function ServiceManager::CreateFleet(service, update = false) {
 	}
 	fleetSize = max(minFleetSize, fleetSize);
 	
-	// If there is no fleet to build then just return now
-	if(fleetSize == 0) return;
-	
 	// If the service is industrial, apply a multiplier
 	if(isIndustry) fleetSize = fleetSize * PathZilla.INDUSTRY_FLEET_MULTI;
 
@@ -519,12 +510,20 @@ function ServiceManager::CreateFleet(service, update = false) {
 	fleetSize = min(fleetSize, PathZilla.MAX_VEHICLES_PER_SVC);
 	
 	// If were updating, account for vehicles already built
-	if(update) fleetSize = fleetSize - service.GetActualFleetSize();
+	if(update) fleetSize = max(0, fleetSize - service.GetActualFleetSize());
+	
+	// Do not attempt to build more than we can actually afford
+	local funds = max(0, FinanceManager.GetAvailableFunds() - PathZilla.FLOAT);
+	local maxFleetSize = funds / AIEngine.GetPrice(engine);
+	fleetSize = min(maxFleetSize, fleetSize);
+
+	// If there is no fleet to build then just return now
+	if(fleetSize <= 0) return;
 
 	local engineName = AIEngine.GetName(engine);
 	AILog.Info(((update) ? "  Updating a fleet with " : "  Building a fleet of ") + fleetSize + " " + engineName + "s...");
 	
-	// Borrow enough to buy whole fleet of vehicles
+	// Borrow enough to buy the whole fleet of vehicles
 	FinanceManager.EnsureFundsAvailable(AIEngine.GetPrice(engine) * (fleetSize + 1));
 	
 	// Check if the vehicles will need to be refitted
