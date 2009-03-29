@@ -776,7 +776,7 @@ function RoadManager::BuildDepot(target, roadType) {
 			nearestTown = target.GetId();
 		} else {
 			local towns = AITownList();
-			towns.Valuate(AITown.GetDistanceManhattanToTile, fromTile);
+			towns.Valuate(AITown.GetDistanceManhattanToTile, targetTile);
 			towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
 			nearestTown = towns.Begin();
 		}
