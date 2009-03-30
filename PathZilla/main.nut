@@ -151,15 +151,20 @@ function PathZilla::Start() {
 		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_MAIL);
 		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
 		
-		// Add coal - this is for development purposes
-		local coal = null;
+		// Add raw industry cargos
 		foreach(cargo, _ in AICargoList()) {
-			if(AICargo.GetCargoLabel(cargo) == "COAL") coal = cargo;
-		}
-		
-		if(coal != null) {
-			this.AddSchema(Schema(this.homeTown, coal, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-		}
+			local raw = false;
+			foreach(type, _ in AIIndustryTypeList()) {
+				if(AIIndustryType.GetProducedCargo(type).HasItem(cargo)) {
+					raw = AIIndustryType.IsRawIndustry(type);
+					if(raw) break;
+				}
+			}
+	
+			if(raw) {
+				this.AddSchema(Schema(this.homeTown, cargo, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+			}
+		}		
 		
 	} else {
 		// Load the vehicles into their groups
