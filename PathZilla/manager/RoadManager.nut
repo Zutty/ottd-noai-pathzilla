@@ -51,7 +51,10 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 			}
 		} else {
 			// Ensure there is a station at the target
-			RoadManager.BuildIndustryStation(target, service.GetCargo(), service.GetSubType());
+			if(!RoadManager.BuildIndustryStation(target, service.GetCargo(), service.GetSubType())) {
+				AILog.Error("Could not complete infrastructure");
+				return false;
+			}
 		}
 	}
 	
@@ -61,14 +64,22 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 		local from = service.GetTargets()[prev];
 		local to = service.GetTargets()[next];
 
+		// Find a path through the graph
 		local path = schema.GetPlanGraph().FindPath(from.GetVertex(), to.GetVertex());
+		if(path == null) {
+			AILog.Error("No path could be found");
+			return false;
+		} 
+		
 		local success = true;
 		
+		// Walk along the path and ensure the nodes are connected by roads
 		for(local walk = path; walk.GetParent() != null; walk = walk.GetParent()) {
 			local a = walk.GetVertex();
 			local b = walk.GetParent().GetVertex();
 			local edge = Edge(a, b);
 			
+			// If the nodes are not connected in the actual graph a road needs to be built
 			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
 				// Get the towns on this edges
 				local aTarget = a.GetTarget();
@@ -80,13 +91,14 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 				// Ensure we can afford to do some construction				
 				FinanceManager.EnsureFundsAvailable(PathZilla.FLOAT);
 	
-				// Build a link between the towns
+				// Try to build a link between the towns
 				AILog.Info(" Building a road between " + aTarget.GetName() + " and " + bTarget.GetName() + "...");
 				local feat = [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT];
 				local path = PathWrapper.FindPath(aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
-
+	
 				success = PathWrapper.TryBuildPath(path, aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
 				
+				// Firmly fix tiles to better suit what has been built
 				if(aTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(aTarget, clone path, false);
 				if(bTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(bTarget, clone path, true);
 
@@ -358,10 +370,12 @@ function RoadManager::BuildIndustryStation(target, cargo, roadType) {
 		station = stations.Begin()
 	}
 
-	if(!target.IsTileFixed() && station != null) {
+	if(!target.IsTileFixed() && station != null && station >= 0) {
 		local tile = AIRoad.GetRoadStationFrontTile(AIStation.GetLocation(station));
 		target.SemiFixTile(tile);
 	}
+	
+	return (station >= 0);
 }
 
 /*
