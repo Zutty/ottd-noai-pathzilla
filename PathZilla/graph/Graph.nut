@@ -117,7 +117,8 @@ function Graph::GetEdges() {
  * Get a list of neightboring vertices to specified one.
  */
 function Graph::GetNeighbours(vertex) {
-	return this.data[vertex.ToTile()];
+	local t = vertex.ToTile();
+	return (t in this.data) ? this.data[t] : SortedSet();
 }
 
 /*
