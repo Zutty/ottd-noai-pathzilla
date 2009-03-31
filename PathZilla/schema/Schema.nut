@@ -41,24 +41,25 @@ class Schema {
 	// Member variables
 	id = 0;
 	sourceNode = null;
-	cargo = null;
+	cargos = null;
 	transportType = null;
 	subType = null;
 	planGraph = null;
 	actualGraph = null;
 
-	constructor(sourceNode, cargo, transportType, subType) {
+	constructor(sourceNode, cargos, transportType, subType) {
 		this.id = 0;
 		this.sourceNode = sourceNode;
-		this.cargo = cargo;
+		this.cargos = cargos;
 		this.transportType = transportType;
 		this.subType = subType;
 		this.planGraph = null;
 		this.actualGraph = null;
 		
 		local targets = [];
-		local noEffect = (AICargo.GetTownEffect(cargo) == AICargo.TE_NONE);
-		if(!AICargo.IsFreight(cargo) && !noEffect) {
+		local sampleCargo = cargos.Begin();
+		local noEffect = (AICargo.GetTownEffect(sampleCargo) == AICargo.TE_NONE);
+		if(!AICargo.IsFreight(sampleCargo) && !noEffect) {
 			// Towns 
 			targets = this.GetTownTargets();
 		} else if(noEffect) {
@@ -87,10 +88,10 @@ function Schema::SetId(schemaId) {
 }
 
 /*
- * Get the cargo ID.
+ * Get the list of cargo IDs.
  */
-function Schema::GetCargo() {
-	return this.cargo;
+function Schema::GetCargos() {
+	return this.cargos;
 }
 
 /*
@@ -152,8 +153,12 @@ function Schema::GetTownTargets() {
  */
 function Schema::GetIndustryTargets() {
 	// Get a list of all industries that handle the appropriate cargo
-	local indList = AIIndustryList_CargoAccepting(this.cargo);
-	indList.AddList(AIIndustryList_CargoProducing(this.cargo));
+	local indList = AIList();
+	
+	foreach(cargo, _ in this.cargos) {
+		indList.AddList(AIIndustryList_CargoAccepting(cargo));
+		indList.AddList(AIIndustryList_CargoProducing(cargo));
+	}
 	
 	// The source node is currently a town, which is no good!
 	indList.Valuate(AIIndustry.GetDistanceManhattanToTile, AITown.GetLocation(this.sourceNode));

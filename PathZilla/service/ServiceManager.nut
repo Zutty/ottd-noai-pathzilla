@@ -96,106 +96,107 @@ function ServiceManager::MaintainServices() {
  */
 function ServiceManager::FindNewServices() {
 	local schema = pz.GetNextSchema();
-	local cargo = schema.GetCargo();
 	local transportType = schema.GetTransportType();
 	local subType = schema.GetSubType();
 
-	// Discard the targets that we have already been to, or that can't be reached
-	local targets = clone schema.GetPlanGraph().GetTargets();
-	targets.RemoveAll(this.targetsConsidered);
-	
-	// Discard those targets that don't produce anything
-	targets.Filter(function (target, cargo) {
-		return !target.ProducesCargo(cargo);
-	}, cargo);
-	
-	// Check that there are any towns left that we haven't considered
-	if(targets.Len() > 0) {
-		// Order the remaining towns by populations, placing the home town first
-		targets.SortBy(Target.SortByPotential(pz.homeTown, cargo));
+	foreach(cargo, _ in schema.GetCargos()) {
+		// Discard the targets that we have already been to, or that can't be reached
+		local targets = clone schema.GetPlanGraph().GetTargets();
+		targets.RemoveAll(this.targetsConsidered);
 		
-		// Choose the first town and save it 
-		local aTarget = targets.Begin();
-		this.targetsConsidered.Insert(aTarget);
+		// Discard those targets that don't produce anything
+		targets.Filter(function (target, cargo) {
+			return !target.ProducesCargo(cargo);
+		}, cargo);
 		
-		AILog.Info("  Looking for potential services from " + aTarget.GetName() + "...");
-
-		// Get the shortest distances accross the network
-		local netDist = schema.GetPlanGraph().GetShortestDistances(aTarget.GetVertex());
-
-		// Iterate over each town to test each possible connection
-		local steps = 0;
-		foreach(bTarget in schema.GetPlanGraph().GetTargets()) {
-			if(!bTarget.AcceptsCargo(cargo)) continue;
+		// Check that there are any targets left that we haven't considered
+		if(targets.Len() > 0) {
+			// Order the remaining towns by populations, placing the home town first
+			targets.SortBy(Target.SortByPotential(pz.homeTown, cargo));
 			
-			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
-				PathZilla.Sleep(1);
+			// Choose the first town and save it 
+			local aTarget = targets.Begin();
+			this.targetsConsidered.Insert(aTarget);
+			
+			AILog.Info("  Looking for potential services from " + aTarget.GetName() + "...");
+	
+			// Get the shortest distances accross the network
+			local netDist = schema.GetPlanGraph().GetShortestDistances(aTarget.GetVertex());
+	
+			// Iterate over each town to test each possible connection
+			local steps = 0;
+			foreach(bTarget in schema.GetPlanGraph().GetTargets()) {
+				if(!bTarget.AcceptsCargo(cargo)) continue;
+				
+				if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
+					PathZilla.Sleep(1);
+				}
+	
+				// Build a list of targets
+				local targets = [aTarget, bTarget];
+	
+				// Ensure that its possible to connect to the town, and that we 
+				// don't already provide this service
+				if(bTarget != aTarget && !this.ProvidesService(targets, cargo, transportType, subType)) {
+					local bTile = bTarget.GetLocation();
+	
+					// Select an engine
+					local engine = this.SelectEngine(targets, cargo, transportType, subType, false);
+					if(engine == null) {
+						AILog.Error("    There are no suitable vehicles for this route! [" + aTarget.GetName() + " to " + bTarget.GetName()+ "]");
+						continue;
+					}
+					
+					if(netDist[bTile] < 0) {
+						AILog.Error("    There is no possible path between " + aTarget.GetName() + " and " + bTarget.GetName());
+						continue;
+					}
+					
+					local crowDist = AITile.GetDistanceManhattanToTile(aTarget.GetLocation(), bTile);
+					local travelTime = (179 * netDist[bTile]) / (10 * AIEngine.GetMaxSpeed(engine)); // in days
+					travelTime = max(1, travelTime); // Compensate for ultra-fast vehicles
+	
+					// Get the base income for one trip				
+					local rawIncome = AICargo.GetCargoIncome(cargo, crowDist, travelTime);
+	
+					// Project revenue and costs
+					local factor = 100; // Compensate for integer mathematics
+					local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * ((365 * factor) / travelTime);
+					local annualCost = AIEngine.GetRunningCost(engine) * factor;
+					local annualProfit = (annualRevenue - annualCost) / factor;
+					if(!bTarget.IsTown()) annualProfit *= PathZilla.INDUSTRY_FLEET_MULTI;
+					
+					// Decide on a limit for the target coverage level
+					local coverageLimit = PathZilla.MAX_TARGET_COVERAGE;
+					local year = AIDate.GetYear(AIDate.GetCurrentDate());
+					if(year < 1950) {
+						year = max(year, 1910);
+						coverageLimit = ((year - 1900) * 16 / 10);
+					}
+	
+					// Decide on the coverage level itself
+					// TODO: Move this code into the schema and make it more general
+					local maxCoverage = PathZilla.MAX_TARGET_COVERAGE;
+					local coverageTarget = maxCoverage;
+					if(subType == AIRoad.ROADTYPE_TRAM) coverageTarget = maxCoverage / 2; // Penalise trams to prevent sprawl
+					if(AICargo.HasCargoClass(cargo, AICargo.CC_MAIL)) coverageTarget = maxCoverage / 4; // Penalise mail to prevent over-servicing
+					
+					// Ensure the target does not exceed the limit
+					coverageTarget = min(coverageTarget, coverageLimit);
+					
+					// Only consider the service if it is more profitable than it is costly
+					if(annualProfit > (annualCost/factor)) {
+						this.potentialServices.Insert(Service(schema.GetId(), targets, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget));
+					}
+				}
 			}
-
-			// Build a list of targets
-			local targets = [aTarget, bTarget];
-
-			// Ensure that its possible to connect to the town, and that we 
-			// don't already provide this service
-			if(bTarget != aTarget && !this.ProvidesService(targets, cargo, transportType, subType)) {
-				local bTile = bTarget.GetLocation();
-
-				// Select an engine
-				local engine = this.SelectEngine(targets, cargo, transportType, subType, false);
-				if(engine == null) {
-					AILog.Error("    There are no suitable vehicles for this route! [" + aTarget.GetName() + " to " + bTarget.GetName()+ "]");
-					continue;
-				}
-				
-				if(netDist[bTile] < 0) {
-					AILog.Error("    There is no possible path between " + aTarget.GetName() + " and " + bTarget.GetName());
-					continue;
-				}
-				
-				local crowDist = AITile.GetDistanceManhattanToTile(aTarget.GetLocation(), bTile);
-				local travelTime = (179 * netDist[bTile]) / (10 * AIEngine.GetMaxSpeed(engine)); // in days
-				travelTime = max(1, travelTime); // Compensate for ultra-fast vehicles
-
-				// Get the base income for one trip				
-				local rawIncome = AICargo.GetCargoIncome(cargo, crowDist, travelTime);
-
-				// Project revenue and costs
-				local factor = 100; // Compensate for integer mathematics
-				local annualRevenue = (rawIncome * AIEngine.GetCapacity(engine)) * ((365 * factor) / travelTime);
-				local annualCost = AIEngine.GetRunningCost(engine) * factor;
-				local annualProfit = (annualRevenue - annualCost) / factor;
-				if(!bTarget.IsTown()) annualProfit *= PathZilla.INDUSTRY_FLEET_MULTI;
-				
-				// Decide on a limit for the target coverage level
-				local coverageLimit = PathZilla.MAX_TARGET_COVERAGE;
-				local year = AIDate.GetYear(AIDate.GetCurrentDate());
-				if(year < 1950) {
-					year = max(year, 1910);
-					coverageLimit = ((year - 1900) * 16 / 10);
-				}
-
-				// Decide on the coverage level itself
-				// TODO: Move this code into the schema and make it more general
-				local maxCoverage = PathZilla.MAX_TARGET_COVERAGE;
-				local coverageTarget = maxCoverage;
-				if(subType == AIRoad.ROADTYPE_TRAM) coverageTarget = maxCoverage / 2; // Penalise trams to prevent sprawl
-				if(AICargo.HasCargoClass(cargo, AICargo.CC_MAIL)) coverageTarget = maxCoverage / 4; // Penalise mail to prevent over-servicing
-				
-				// Ensure the target does not exceed the limit
-				coverageTarget = min(coverageTarget, coverageLimit);
-				
-				// Only consider the service if it is more profitable than it is costly
-				if(annualProfit > (annualCost/factor)) {
-					this.potentialServices.Insert(Service(schema.GetId(), targets, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget));
-				}
-			}
+	
+			// To prevent an exponential buildup of descriptors, keep only the top 
+			// MAX_POTENTIAL_SERVICES most profitable ones
+			this.potentialServices.Prune(PathZilla.MAX_POTENTIAL_SERVICES);
+	
+			AILog.Info("    Done.");
 		}
-
-		// To prevent an exponential buildup of descriptors, keep only the top 
-		// MAX_POTENTIAL_SERVICES most profitable ones
-		this.potentialServices.Prune(PathZilla.MAX_POTENTIAL_SERVICES);
-
-		AILog.Info("    Done.");
 	}
 }
 

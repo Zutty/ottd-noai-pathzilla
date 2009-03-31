@@ -140,32 +140,49 @@ function PathZilla::Start() {
 	// Initialse other data, based on load status
 	if(!this.loaded) {
 		// Add passenger schemas by road and tram
-		local cargoList = AICargoList();
-		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_PASSENGERS);
-		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-		
-		// Check that trams are supported before adding the schema
-		if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
+		local townList = AIList();
+		local tramList = AIList();
 
-		// Add a mail schema by road
-		cargoList.Valuate(AICargo.HasCargoClass, AICargo.CC_MAIL);
-		this.AddSchema(Schema(this.homeTown, cargoList.Begin(), AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-		
-		// Add raw industry cargos
 		foreach(cargo, _ in AICargoList()) {
-			local raw = false;
-			foreach(type, _ in AIIndustryTypeList()) {
-				if(AIIndustryType.GetProducedCargo(type).HasItem(cargo)) {
-					raw = AIIndustryType.IsRawIndustry(type);
-					if(raw) break;
-				}
+			local townprod = 0;
+			foreach(town, _ in AITownList()) {
+				townprod += AITown.GetMaxProduction(town, cargo);
 			}
 	
-			if(raw) {
-				this.AddSchema(Schema(this.homeTown, cargo, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+			local tramable = false;
+			foreach(engine, _ in AIEngineList(AIVehicle.VT_ROAD)) {
+				if(AIEngine.GetRoadType(engine) == AIRoad.ROADTYPE_TRAM && AIEngine.CanRefitCargo(engine, cargo)) {
+					tramable = true;
+					break;
+				}
 			}
-		}		
+			
+			if(townprod > 0 && AICargo.GetTownEffect(cargo) != AICargo.TE_NONE) {
+				townList.AddItem(cargo, 0);
+			}
+	
+			if(tramable && AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS)) {
+				tramList.AddItem(cargo, 0);
+			}
+		}
+	
+
+		// Add the town schema
+		this.AddSchema(Schema(this.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
 		
+		// Add the tram schema, if they are supported
+		if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
+
+		// Add raw industry cargos
+		foreach(type, _ in AIIndustryTypeList()) {
+			if(AIIndustryType.IsRawIndustry(type)) {
+				local cargos = AIIndustryType.GetProducedCargo(type);
+				cargos.Valuate(AICargo.GetTownEffect);
+				cargos.KeepValue(AICargo.TE_NONE);
+				
+				this.AddSchema(Schema(this.homeTown, cargos, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+			}
+		}
 	} else {
 		// Load the vehicles into their groups
 		this.serviceManager.PostLoad();
