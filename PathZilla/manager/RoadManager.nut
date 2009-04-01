@@ -596,9 +596,12 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		// Choose a tile to loop to
 		local loopTile = (target.IsTown() && stTile != targetTile) ? targetTile : roadTile;
 		
-		// Find a loop back to the town
-		local features = [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_SHORT_SCOPE];
+		// Set the list of RPF features for the loop
+		local features = [PathWrapper.FEAT_SHORT_SCOPE];
+		if(target.IsTown() || AITown.IsWithinTownInfluence(nearestTown, stTile)) features.append(PathWrapper.FEAT_GRID_LAYOUT);
 		if(target.IsTown()) features.append(PathWrapper.FEAT_ROAD_LOOP);
+
+		// Find a loop back to the town
 		local loop = PathWrapper.FindPath(loopTile, otherSide, roadType, [stTile], true, features);
 		
 		// Get the first tile in the loop
