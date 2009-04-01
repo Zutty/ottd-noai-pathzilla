@@ -311,6 +311,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 function PathWrapper::BuildPath(path, roadType) {	
 	AIRoad.SetCurrentRoadType(roadType);
 	local prevTile = null;
+	local stopList = AIList();
 
 	AILog.Info("      Building a road...")
 
@@ -378,7 +379,43 @@ function PathWrapper::BuildPath(path, roadType) {
 							}
 						break;
 						case AIError.ERR_VEHICLE_IN_THE_WAY:
-							// Theres a vehicle in the way... just wait a bit.
+							// Theres a vehicle in the way...
+							if(attempts == 2) {
+								// If we've already tried once, try to clear 
+								// any of our own vehicles out of the way
+
+								// First, find those vehicles that are blocking
+								// the tile to be built on
+								local blockers = AIVehicleList();
+								outliers.Valuate(AIVehicle.GetVehicleType)
+								outliers.KeepValue(AIVehicle.VT_ROAD);
+								blockers.Valuate(AIVehicle.GetLocation);
+								blockers.KeepValue(ptile);
+
+								// Then find those vehicles that lie just outside
+								// the tile to be built on
+								local outliers = AIVehicleList();
+								outliers.Valuate(AIVehicle.GetVehicleType)
+								outliers.KeepValue(AIVehicle.VT_ROAD);
+								outliers.Valuate(function (v, ptile) {
+									return AITile.GetDistanceManhattanToTile(ptile, AIVehicle.GetLocation(v));
+								}, ptile);
+								outliers.KeepValue(1);
+								
+								// Stop the outliers from moving into the tile
+								foreach(v, _ in outliers) {
+									if(AIVehicle.GetState(v) != AIVehicle.VS_STOPPED) AIVehicle.StartStopVehicle(v);
+									stopList.AddItem(v, 0);
+								}
+
+								// Move the blockers out of the way
+								foreach(v, _ in blockers) AIVehicle.ReverseVehicle(v);
+							} else if(attempts == PathZilla.MAX_CONSTR_ATTEMPTS) {
+								// If we STILL can't build due to traffic, remember the spot
+								::trafficBlackSpots.AddItem(ptile);
+							}
+
+							// Just try waiting a bit
 							PathZilla.Sleep(50);
 						break;
 						// Just don't worry about the rest of these cases!
@@ -394,6 +431,11 @@ function PathWrapper::BuildPath(path, roadType) {
 
 			// Check that we DID succeed
 			if(!success) {
+				// Restart any stopped vehicles
+				foreach(v, _ in stopList) {
+					if(AIVehicle.GetState(v) == AIVehicle.VS_STOPPED) AIVehicle.StartStopVehicle(v);
+				}
+
 				AILog.Error("    Could not complete road!")
 				return (prevTile != null) ? prevTile : tile;
 			}
@@ -402,7 +444,12 @@ function PathWrapper::BuildPath(path, roadType) {
 		prevTile = tile;
 		path = par;
 	}
-	
+
+	// Restart any stopped vehicles
+	foreach(v, _ in stopList) { 
+		if(AIVehicle.GetState(v) == AIVehicle.VS_STOPPED) AIVehicle.StartStopVehicle(v);
+	}
+
 	AILog.Info("    Done building road.")
 
 	return 0;
