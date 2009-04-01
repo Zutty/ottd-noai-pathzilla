@@ -393,8 +393,8 @@ function PathWrapper::BuildPath(path, roadType) {
 								// First, find those vehicles that are blocking
 								// the tile to be built on
 								local blockers = AIVehicleList();
-								outliers.Valuate(AIVehicle.GetVehicleType)
-								outliers.KeepValue(AIVehicle.VT_ROAD);
+								blockers.Valuate(AIVehicle.GetVehicleType)
+								blockers.KeepValue(AIVehicle.VT_ROAD);
 								blockers.Valuate(AIVehicle.GetLocation);
 								blockers.KeepValue(ptile);
 
