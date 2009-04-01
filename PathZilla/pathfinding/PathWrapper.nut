@@ -337,7 +337,11 @@ function PathWrapper::BuildPath(path, roadType) {
 			// Try to build the next path segment
 			while(!success && attempts++ < PathZilla.MAX_CONSTR_ATTEMPTS) {
 				if(distance == 1) {
-					success = AIRoad.BuildRoad(tile, ptile);
+					if(!(AIRoad.IsRoadTile(ptile) && AIRoad.AreRoadTilesConnected(tile, ptile))) {
+						success = AIRoad.BuildRoad(tile, ptile);
+					} else {
+						success = true;
+					}
 				} else {
 					// Build a bridge or tunnel.
 					if(!AIBridge.IsBridgeTile(tile) && !AITunnel.IsTunnelTile(tile)) {
@@ -428,7 +432,6 @@ function PathWrapper::BuildPath(path, roadType) {
 							success = true;
 						break;
 					}
-					AISign.BuildSign(tile, "problem");
 				}
 			}
 
