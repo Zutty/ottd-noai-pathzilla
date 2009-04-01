@@ -606,14 +606,18 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		
 		// Check that the loop exists and that it can connect to the station
 		if(loop != null && loop.GetParent() != null && (AIRoad.CanBuildConnectedRoadPartsHere(otherSide, stTile, loop.GetParent().GetTile()) != 0) && (AIRoad.CanBuildConnectedRoadPartsHere(loopTile, stTile, firstTile) != 0)) {
-			// Build everything
+			// Build the path. If it fails try another tile.
 			local pathed = true;
 			if(target.IsTileFixed()) pathed = (PathWrapper.BuildPath(path, roadType) == 0);
+			if(!pathed) continue;
+
+			// Build the loop. If it fails try another tile.
 			local looped = (PathWrapper.BuildPath(loop, roadType) == 0);
+			if(!looped) continue;
 			
-			if(pathed && looped) RoadManager.SafelyBuildRoad(otherSide, stTile);
-			if(!target.IsTileFixed()) RoadManager.SafelyBuildRoad(roadTile, stTile);
-			
+			// Join the path and the loop to the station tile
+			RoadManager.SafelyBuildRoad(otherSide, stTile);
+			RoadManager.SafelyBuildRoad(roadTile, stTile);
 			stationTile = stTile;
 			break;
 		} else {
