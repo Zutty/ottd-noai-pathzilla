@@ -418,7 +418,7 @@ function PathWrapper::BuildPath(path, roadType) {
 								foreach(v, _ in blockers) AIVehicle.ReverseVehicle(v);
 							} else if(attempts == PathZilla.MAX_CONSTR_ATTEMPTS) {
 								// If we STILL can't build due to traffic, remember the spot
-								::trafficBlackSpots.AddItem(ptile);
+								::trafficBlackSpots.AddItem(ptile, 0);
 							}
 
 							// Just try waiting a bit
