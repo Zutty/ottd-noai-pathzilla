@@ -247,6 +247,9 @@ function PathZilla::SetGlobals() {
 		if(townprod > 0) ::townProducedCargo.AddItem(c, 0);
 		if(AICargo.GetTownEffect(c) != AICargo.TE_NONE) ::townAcceptedCargo.AddItem(c, 0);
 	}
+	
+	// Traffic management
+	::trafficBlackSpots <- AIList();
 }
 
 /*
