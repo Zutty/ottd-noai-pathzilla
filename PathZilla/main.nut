@@ -415,10 +415,16 @@ function PathZilla::AddSchema(schema) {
 	return schemaId;
 }
 
-
 /*
  * Get whether or not the AI should play aggressively.
  */
 function PathZilla::IsAggressive() {
 	return (PathZilla.GetSetting("aggressive") == 1);
+}
+
+/*
+ * Get whether industrial cargo should be routed through towns.
+ */
+function PathZilla::RouteCargoThroughTowns() {
+	return (PathZilla.GetSetting("rt_cargo_towns") == 1);
 }

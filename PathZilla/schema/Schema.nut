@@ -46,6 +46,7 @@ class Schema {
 	subType = null;
 	planGraph = null;
 	actualGraph = null;
+	industrial = null;
 
 	constructor(sourceNode, cargos, transportType, subType) {
 		this.id = 0;
@@ -62,9 +63,11 @@ class Schema {
 		if(!AICargo.IsFreight(sampleCargo) && !noEffect) {
 			// Towns 
 			targets = this.GetTownTargets();
+			industrial = false;
 		} else if(noEffect) {
 			// Industry 
 			targets = this.GetIndustryTargets();
+			industrial = true;
 		} else {
 			// TODO - Heterogenous services
 		}
@@ -120,6 +123,14 @@ function Schema::GetPlanGraph() {
  */
 function Schema::GetActualGraph() {
 	return this.actualGraph;
+}
+
+/*
+ * Check if the schema is industrial, i.e. that it services industries rather
+ * than towns.
+ */
+function Schema::IsIndustrial() {
+	return this.industrial;
 }
 
 /*
@@ -179,9 +190,13 @@ function Schema::GetIndustryTargets() {
  * list of targets.
  */
 function Schema::InitialiseGraphs(targets) {
+	if(this.industrial && PathZilla.RouteCargoThroughTowns()) {
+		targets.extend(Schema.GetTownTargets());
+	}
+	
 	// Get the master graph for the whole map
 	local masterGraph = Triangulation(targets);
-	
+
 	// For the plan graph use a combination of the shortest path from the home 
 	// town and the minimum spanning tree.
 	this.planGraph = ShortestPathTree(masterGraph, AITown.GetLocation(this.sourceNode));

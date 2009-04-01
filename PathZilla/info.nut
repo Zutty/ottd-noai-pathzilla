@@ -37,6 +37,7 @@ class PathZilla extends AIInfo {
 		AddSetting({name = "latency", description = "Planning Speed - Lower value makes AI faster", min_value = 0, max_value = 5, easy_value = 4, medium_value = 2, hard_value = 0, custom_value = 1, flags = 0});
 		AddSetting({name = "aggressive", description = "Aggressive - Value 1 makes AI build near competitor's stations", min_value = 0, max_value = 1, easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = 0});
 		AddSetting({name = "traffic", description = "Traffic level - Higher value makes AI build more road vehicles", min_value = 1, max_value = 4, easy_value = 1, medium_value = 2, hard_value = 3, custom_value = 3, flags = 0});
+		AddSetting({name = "rt_cargo_towns", description = "Route all cargo through towns", easy_value = 1, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
 	}
 	function CanLoadFromVersion(version) {
 		return (version == 5);
