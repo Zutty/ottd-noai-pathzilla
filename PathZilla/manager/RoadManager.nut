@@ -98,12 +98,13 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	
 				success = PathWrapper.TryBuildPath(path, aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
 				
-				// Firmly fix tiles to better suit what has been built
-				if(aTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(aTarget, clone path, false);
-				if(bTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(bTarget, clone path, true);
-
-				// If we were able to build the link, add the edge to the actual graph
+				// Only proceed if we were able to build the link
 				if(success) {
+					// Firmly fix tiles to better suit what has been built
+					if(aTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(aTarget, clone path, false);
+					if(bTarget.IsTileSemiFixed()) RoadManager.PostFixTarget(bTarget, clone path, true);
+
+					// Add the edge to the actual graph
 					schema.GetActualGraph().AddEdge(edge);
 				} else {
 					break;
