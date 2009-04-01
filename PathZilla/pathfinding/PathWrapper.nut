@@ -350,6 +350,8 @@ function PathWrapper::BuildPath(path, roadType) {
 							local bridgeType = LandManager.ChooseBridgeType(tile, ptile);
 							success = AIBridge.BuildBridge(AIVehicle.VT_ROAD, bridgeType, tile, ptile);
 						}
+					} else {
+						success = true;
 					}
 				}
 				
@@ -426,6 +428,7 @@ function PathWrapper::BuildPath(path, roadType) {
 							success = true;
 						break;
 					}
+					AISign.BuildSign(tile, "problem");
 				}
 			}
 
