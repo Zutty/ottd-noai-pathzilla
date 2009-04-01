@@ -160,6 +160,7 @@ function Target::ProducesCargo(cargo) {
 
 	// Otherwise check the list of cargos for the appropriate industry type
 	local indType = AIIndustry.GetIndustryType(this.id);
+	if(!AIIndustryType.IsValidIndustryType(indType)) return false;
 	return AIIndustryType.GetProducedCargo(indType).HasItem(cargo);
 }
 
@@ -177,6 +178,7 @@ function Target::AcceptsCargo(cargo) {
 	
 	// Otherwise check the list of cargos for the appropriate industry type
 	local indType = AIIndustry.GetIndustryType(this.id);
+	if(!AIIndustryType.IsValidIndustryType(indType)) return false;
 	return AIIndustryType.GetAcceptedCargo(indType).HasItem(cargo);
 }
 
