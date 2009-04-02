@@ -462,6 +462,12 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	// Check if the game allows us to build DTRSes on town roads and get the road type
 	local dtrsOnTownRoads = (AIGameSettings.GetValue("construction.road_stop_on_town_road") == 1);
 
+	// Get some information about the nearest town's road layout
+	local layoutType = AITown.GetRoadLayout(nearestTown);
+	local tlayout = (layoutType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((layoutType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
+	local tx = AIMap.GetTileX(AITown.GetLocation(nearestTown));
+	local ty = AIMap.GetTileY(AITown.GetLocation(nearestTown));
+
 	// Rank those tiles by their suitability for a station
 	foreach(tile, _ in tileList) {
 		// Find roads that are connected to the tile
@@ -516,6 +522,13 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		local acceptable = LandManager.IsLevel(tile) && cl;
 		if(target.IsTown()) acceptable = acceptable && AITown.IsWithinTownInfluence(target.GetId(), tile);
 		
+		// Do not allow stations on the junctions in a town with a grid layout
+		if(target.IsTown() && tlayout != 0) {
+			local dx = abs(AIMap.GetTileX(tile) - tx) % tlayout;
+			local dy = abs(AIMap.GetTileY(tile) - ty) % tlayout;
+			if(dx == 0 && dy == 0) acceptable = false; 
+		}				
+
 		// Get the cargo acceptance around the tile
 		local score = 0;
 		local threshold = 0;
