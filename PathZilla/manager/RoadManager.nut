@@ -594,7 +594,8 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 			local adj = LandManager.GetAdjacentTileList(stTile);
 			adj.Valuate(function (rtile, stTile) {
 				local otile = LandManager.GetApproachTile(stTile, rtile);
-				return LandManager.IsRoadable(rtile) && LandManager.IsRoadable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
+				local acc = LandManager.IsRoadable(rtile) && LandManager.IsRoadable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
+				return ((acc) ? 1 : 0) + ((AIRoad.IsRoadTile(rtile)) ? 1 : 0) + ((AIRoad.IsRoadTile(otile)) ? 1 : 0);
 			}, stTile);
 			adj.RemoveValue(0);
 			
