@@ -79,6 +79,33 @@ class Triangulation extends Graph {
 			
 			AILog.Info("     Done.");
 			return;
+		} else if(targets.len() == 3) {
+			local a = targets[0].GetVertex();
+			local b = targets[1].GetVertex();
+			local c = targets[2].GetVertex();
+			
+			this.vertices.RawInsert(a);
+			this.vertices.RawInsert(b);
+			this.vertices.RawInsert(c);
+
+			this.edges.RawInsert(Edge(a, b));
+			this.edges.RawInsert(Edge(b, c));
+			this.edges.RawInsert(Edge(c, a));
+
+			this.data[a.ToTile()] <- SortedSet(); 
+			this.data[a.ToTile()].RawInsert(b);
+			this.data[a.ToTile()].RawInsert(c);
+
+			this.data[b.ToTile()] <- SortedSet(); 
+			this.data[b.ToTile()].RawInsert(a);
+			this.data[b.ToTile()].RawInsert(c);
+			
+			this.data[c.ToTile()] <- SortedSet(); 
+			this.data[c.ToTile()].RawInsert(a);
+			this.data[c.ToTile()].RawInsert(b);
+
+			AILog.Info("     Done.");
+			return;
 		}
 		
 		// Get the corners of the map
@@ -202,6 +229,11 @@ class Triangulation extends Graph {
 
 		// Remove duplicate vertices
 		this.vertices.RemoveDuplicates();
+		
+		if(this.vertices.Len() < targets.len()) {
+			AILog.Warning("Some targets were not captured in triangulation.");
+			// TODO - Handle this in a way that wont break adding vertices at a later time
+		}
 
 		AILog.Info("     Done.");
 	}
