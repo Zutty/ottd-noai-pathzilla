@@ -432,7 +432,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	}
 
 	// Calculate the station spacing
-	local comptSpacing = (PathZilla.IsAggressive() || stationList.Count() == 0) ? 1 : stationSpacing;
+	local comptSpacing = (target.IsTown() && (PathZilla.IsAggressive() || stationList.Count() == 0)) ? 1 : stationSpacing;
 
 	// Find a list of tiles that are controlled by competitors
 	foreach(tile, _ in tileList) {
@@ -820,7 +820,7 @@ function RoadManager::BuildDepot(target, roadType) {
 			// Find suitable roads adjacent to the tile
 			local adjRoads = LandManager.GetAdjacentTileList(tile);
 			adjRoads.Valuate(function (_tile, roadType) {
-				return (LandManager.IsLevel(_tile) && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
+				return (AITile.GetSlope(_tile) == AITile.SLOPE_FLAT && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
 			}, roadType);
 			adjRoads.KeepValue(1);
 			
