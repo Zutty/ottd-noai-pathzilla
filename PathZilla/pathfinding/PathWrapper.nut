@@ -147,21 +147,24 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 					// Find the nearest town to the "from" tile
 					towns.Valuate(AITown.GetDistanceManhattanToTile, fromTile);
 					towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
-					local fromTown = AITown.GetLocation(towns.Begin());
+					local fTown = towns.Begin();
+					local fTile = AITown.GetLocation(fTown);
 					
 					// Get some details about this town
-					local fType = AITown.GetRoadLayout(towns.Begin());
+					local fType = AITown.GetRoadLayout(fTown);
+					local fSize = AITown.GetPopulation(fTown).tofloat(); 
 					local fn = (fType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((fType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
-					local fx = fromTown % AIMap.GetMapSizeY();
-					local fy = fromTown / AIMap.GetMapSizeY();
+					local fx = fTile % AIMap.GetMapSizeY();
+					local fy = fTile / AIMap.GetMapSizeY();
 
 					// Find the nearest town to the "to" tile
 					towns.Valuate(AITown.GetDistanceManhattanToTile, toTile);
 					towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
-					local toTown = AITown.GetLocation(towns.Begin());
+					local tTown = towns.Begin();
+					local tTile = AITown.GetLocation(tTown);
 					
 					// If both towns are the same then we only need to check one grid
-					if(fromTown == toTown && fn > 0) {
+					if(fTown == tTown && fn > 0) {
 						pathfinder.RegisterCostCallback(function (tile, prevTile, n, fx, fy) {
 							local x = tile % AIMap.GetMapSizeY();
 							local y = tile / AIMap.GetMapSizeY();
@@ -189,62 +192,114 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 								return (dx == 0 || dy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
 							}
 						}, fn, fx, fy);
-					} else if(fromTown != toTown) {
+					} else if(fTown != fTown) {
 						// Otherwise get details about the other town
-						local tType = AITown.GetRoadLayout(towns.Begin());
+						local tType = AITown.GetRoadLayout(tTown);
+						local tSize = AITown.GetPopulation(tTown).tofloat(); 
 						local tn = (tType == AITown.ROAD_LAYOUT_2x2) ? 3 : ((tType == AITown.ROAD_LAYOUT_3x3) ? 4 : 0);
-						local tx = toTown % AIMap.GetMapSizeY();
-						local ty = toTown / AIMap.GetMapSizeY();
+						local tx = tTile % AIMap.GetMapSizeY();
+						local ty = tTile / AIMap.GetMapSizeY();
 						
+						// Calculate grid weights for each town based on population
+						local fWeight = min(0.8, max(0.2, fSize / (fSize + tSize))); 
+						local tWeight = min(0.8, max(0.2, tSize / (fSize + tSize))); 
+
+						// Calculate the distance between towns and initialise
+						local totalDist = AITile.GetDistanceManhattanToTile(fTile, tTile).tofloat();
+						local stx = (tx - fx).tofloat() / totalDist;
+						local sty = (ty - fy).tofloat() / totalDist;
+						local fRad = null;
+						local tRad = null;
+						
+						// Find the "radii" of the two towns, by plotting a line between them
+						for(local i = 0; i < totalDist; i++) {
+							local tile = (fx + (stx * i.tofloat()) +  ((fy + (sty * i.tofloat())).tointeger() * AIMap.GetMapSizeY())).tointeger();
+				
+							if(!AITown.IsWithinTownInfluence(fTown, tile) && fRad == null) {
+								fRad = i - 1;
+								if(tRad != null) break;
+							}
+							if(AITown.IsWithinTownInfluence(tTown, tile) && tRad == null) {
+								tRad = totalDist - i;
+								if(fRad != null) break;
+							}
+						}
+						if(fRad == null) fRad = totalDist;
+
 						// If either town has a grid road layout then interpolate between the two
-						if(fn > 0 && tn > 0) {
-							pathfinder.RegisterCostCallback(function (tile, prevTile, fromTown, fn, fx, fy, toTown, tn, tx, ty) {
+						if(fn > 0 || tn > 0) {
+							pathfinder.RegisterCostCallback(function (tile, prevTile, fTile, fWeight, fRad, fn, fx, fy, tTile, tWeight, tRad, tn, tx, ty) {
 								local x = tile % AIMap.GetMapSizeY();
 								local y = tile / AIMap.GetMapSizeY();
-								local fdx = abs(x - fx) % fn;
-								local fdy = abs(y - fy) % fn;
-								local tdx = abs(x - tx) % tn;
-								local tdy = abs(y - ty) % tn;
+								local fdx, fdy, tdx, tdy;
+								if(fn > 0) {
+									fdx = abs(x - fx) % fn;
+									fdy = abs(y - fy) % fn;
+								}
+								if(tn > 0) {
+									tdx = abs(x - tx) % tn;
+									tdy = abs(y - ty) % tn;
+								}
 
 								local len = AIMap.DistanceManhattan(tile, prevTile);
 								local fCost = 0;
 								local tCost = 0;
 		
+								// Account for bridges and tunnels
 								if(len > 1) {
 									local px = prevTile % AIMap.GetMapSizeY();
 									local py = prevTile / AIMap.GetMapSizeY();
-									local fpdy = abs(py - fy) % fn;
-									local tpdy = abs(py - ty) % tn;
+									local fpdy = (fn > 0) ? abs(py - fy) % fn : 0;
+									local tpdy = (tn > 0) ? abs(py - ty) % tn : 0;
 									
 									local fm = 0;
-									if(fdy == fpdy) {
-										fm = ((fdx == 0) ? 1 : 0) + (len / fn);
-									} else {
-										fm = ((fdy == 0) ? 1 : 0) + (len / fn);
+									if(fn > 0) {
+										if(fdy == fpdy) {
+											fm = ((fdx == 0) ? 1 : 0) + (len / fn);
+										} else {
+											fm = ((fdy == 0) ? 1 : 0) + (len / fn);
+										}
 									}
 
 									local tm = 0;
-									if(tdy == fpdy) {
-										tm = ((tdx == 0) ? 1 : 0) + (len / tn);
-									} else {
-										tm = ((tdy == 0) ? 1 : 0) + (len / tn);
+									if(tn > 0) {
+										if(tdy == fpdy) {
+											tm = ((tdx == 0) ? 1 : 0) + (len / tn);
+										} else {
+											tm = ((tdy == 0) ? 1 : 0) + (len / tn);
+										}
 									}
 									
-									fCost = (fn == 0 || (x == px && fdx == 0) || (y == py && fdy == 0)) ? 0 : PathWrapper.COST_GRID_LAYOUT * (len - fm);
-									tCost = (tn == 0 || (x == px && tdx == 0) || (y == py && tdy == 0)) ? 0 : PathWrapper.COST_GRID_LAYOUT * (len - tm);
+									fCost = (fn == 0 || (x == px && fdx == 0) || (y == py && fdy == 0)) ? 0.0 : PathWrapper.COST_GRID_LAYOUT * (len - fm - 0.0);
+									tCost = (tn == 0 || (x == px && tdx == 0) || (y == py && tdy == 0)) ? 0.0 : PathWrapper.COST_GRID_LAYOUT * (len - tm - 0.0);
 								} else {
-									fCost = (fn == 0 || fdx == 0 || fdy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
-									tCost = (tn == 0 || tdx == 0 || tdy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
+									fCost = (fn == 0 || fdx == 0 || fdy == 0) ? 0.0 : PathWrapper.COST_GRID_LAYOUT.tofloat();
+									tCost = (tn == 0 || tdx == 0 || tdy == 0) ? 0.0 : PathWrapper.COST_GRID_LAYOUT.tofloat();
 								}
 		
-								local fDist = AITile.GetDistanceManhattanToTile(tile, fromTown);
-								local tDist = AITile.GetDistanceManhattanToTile(tile, toTown);
-								local total = fDist + tDist;
-								local fBal = max(0, ((100 * tDist) / total) - 40);
-								local tBal = max(0, ((100 * fDist) / total) - 40);
-		
-								return min(PathWrapper.COST_GRID_LAYOUT * (len), ((fBal * fCost) + (tBal * tCost)) / 50);
-							}, fromTown, fn, fx, fy, toTown, tn, tx, ty);
+								local fDist = AITile.GetDistanceManhattanToTile(tile, fTile).tofloat();
+								local tDist = AITile.GetDistanceManhattanToTile(tile, tTile).tofloat();
+								local total = (fDist + tDist) - (fRad + tRad);
+								local GRID_MIX_DEAD_SPOT = 0.05;
+
+								// Calculate the balancing weights based on our location within either town
+								local fBal, tBal;
+								if(fDist < fRad) {
+									// If inside the "from" town, only apply the "from" grid
+									fBal = 1.0;
+									tBal = 0.0;
+								} else if(tDist < tRad){
+									// If inside the "to" town, only apply the "to" grid
+									fBal = 0.0;
+									tBal = 1.0;
+								} else {
+									// Otherwise mix the two grids based on a weighted distance
+									fBal = max(0.0, ((tDist - tRad) / (total * (fWeight + GRID_MIX_DEAD_SPOT))) - ((1 / (fWeight + GRID_MIX_DEAD_SPOT)) - 1));
+									tBal = max(0.0, ((fDist - fRad) / (total * (tWeight + GRID_MIX_DEAD_SPOT))) - ((1 / (tWeight + GRID_MIX_DEAD_SPOT)) - 1));
+								}
+
+								return ((fBal * fCost) + (tBal * tCost)).tointeger();
+							}, fTile, fWeight, fRad, fn, fx, fy, tTile, tWeight, tRad, tn, tx, ty);
 						}
 					}
 				}
