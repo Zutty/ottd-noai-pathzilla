@@ -49,12 +49,39 @@ function sqrt(num) {
  * Raises num to the power p.
  */
 function pow(num, p) {
-	local n = 1;
-	for(local i = 0; i < p; i++) {
-		n *= num;
-	}
-	return n;
+	return (p <= 0) ? 1 : num * pow(num, p - 1);
 }
+
+/*
+ * Get the maximum of two values. This is type agnostic.
+ */
+function max(a, b) {
+	if(a >= b) return a;
+	return b;
+}
+
+/*
+ * Get the minimum of two values. This is type agnostic.
+ */
+function min(a, b) {
+	if(a <= b) return a;
+	return b;
+}
+
+/*
+ * Taylor series approximation is sine.
+ */
+function sin(x) {
+	return x - (pow(x, 3) / 6.0) + (pow(x, 5) / 120.0) - (pow(x, 7) / 5040.0);
+}
+
+/*
+ * Taylor series approximation is cosine.
+ */
+function cos(x) {
+	return x - (pow(x, 2) / 2.0) + (pow(x, 4) / 24.0) - (pow(x, 6) / 720.0);
+}
+
 
 /*
  * Returns true if the array arr contains the element item.
