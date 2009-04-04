@@ -143,28 +143,16 @@ function RoadManager::PreFixTarget(aTarget, bTarget, walk) {
 	local offset = AIMap.GetTileIndex(rad, rad);
 	local tileList = AITileList();
 	tileList.AddRectangle(bTile - offset, bTile + offset);
-		
-	// Initialise a few presets
-	offset = AIMap.GetTileIndex(rad/2, rad/2);
-	local aRef = max(1, AITile.GetDistanceSquareToTile(aTile, bTile));
-	local cRef = max(1, AITile.GetDistanceSquareToTile(cTile, bTile));
-	
+
 	// Find a tile that is roughly equidistant from the other 
 	// targets and has the most buildable tiles around it
-	tileList.Valuate(function (tile, offset, aTile, aRef, cTile, cRef, scoreRad) {
-		local aDist = AITile.GetDistanceSquareToTile(aTile, tile);
+	tileList.Valuate(function (tile, sqDist, cTile) {
 		local cDist = AITile.GetDistanceSquareToTile(cTile, tile);
+		local score = sqDist - sqrt(cDist);
 		
-		local score = abs((100*aDist/aRef) - (100*cDist/cRef));
-		score = scoreRad - min(scoreRad, score);
-		
-		local tiles = AITileList();
-		tiles.AddRectangle(tile - offset, tile + offset)
-		tiles.Valuate(AITile.IsBuildable);
-		score += (ListSum(tiles) / 3);
-				
-		return (AITile.IsBuildable(tile)) ? score : 0;
-	}, offset, aTile, aRef, cTile, cRef, pow(rad/2, 2));
+		return (AITile.IsBuildable(tile)) ? score.tointeger() : 0;
+	}, sqrt(AITile.GetDistanceSquareToTile(aTile, cTile)), cTile);
+	
 	bTarget.FixTile(tileList.Begin());
 }
 
