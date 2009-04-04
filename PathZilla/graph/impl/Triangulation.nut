@@ -46,6 +46,14 @@ class Triangulation extends Graph {
 	constructor(targets) {
 		Graph.constructor();
 		
+		targets.sort(function (a, b) {
+			local al = a.GetLocation();
+			local bl = b.GetLocation();
+			//AILog.Info(" "+al+" <-> "+bl); 
+			if(al == bl) return 0;
+			return (al < bl) ? 1 : -1;
+		});
+		
 		AILog.Info("  Computing triangulation over " + targets.len() + " targets...");
 
 		// If there are fewer than three targets then use a special case
@@ -129,7 +137,7 @@ class Triangulation extends Graph {
 			foreach(i, tri in liveTriangles) {
 				// If the circumcircle is non-empty, mark the triangle for removal 
 				// and add the edges to the edge buffer.
-				if(tri.u.GetDistance(vertex) <= (tri.r - 2)) {
+				if(tri.u.GetDistance(vertex) <= tri.r) {
 					this.HandleEdge(tri.a, tri.b);
 					this.HandleEdge(tri.b, tri.c);
 					this.HandleEdge(tri.c, tri.a);

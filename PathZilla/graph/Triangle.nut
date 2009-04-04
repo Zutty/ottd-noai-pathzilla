@@ -46,9 +46,6 @@ class Triangle {
  * Get the triangle's circumscribed circle. This is defined by the unique 
  * circle that fits on all three vertices of the triangle.
  *
- * To account for the limitations in integer mathematics, some calculations 
- * include a large multiplication factor to prevent underruns.
- *
  * Adapted from C++ example Copyright © 2005, Sjaak Priester, Amsterdam.
  */
 function Triangle::GetCircumCircle() {
@@ -66,60 +63,54 @@ function Triangle::GetCircumCircle() {
 	local abY = bY - aY;
 	local cbY = cY - bY;
 	
-	local uX = 0;
-	local uY = 0;
+	local uX = 0.0;
+	local uY = 0.0;
 
-	if (abY == 0) {
-		if (cbY == 0) { // All three vertices are on one horizontal line.
+	if (abY == 0.0) {
+		if (cbY == 0.0) { // All three vertices are on one horizontal line.
 			//AILog.Info("      Block 1...");
 			if (bX > aX) {
 				if (cX > bX) bX = cX;
 			} else {
 				if (cX < aX) aX = cX;
 			}
-			uX = (aX + bX) / 2;
+			uX = (aX + bX) / 2.0;
 			uY = aY;
 		} else { // A and B are on one horizontal line.
 			//AILog.Info("      Block 2...");
-			local factor = 100;
+			local m1 = - ((cX - bX) / cbY);
 
-			local m1 = - ((cX - bX)*factor / cbY);
+			local mx1 = (bX + cX) / 2.0;
+			local my1 = (bY + cY) / 2.0;
 
-			local mx1 = (bX + cX) / 2;
-			local my1 = (bY + cY) / 2;
-
-			uX = (aX + bX) / 2;
-			uY = (m1 * (uX - mx1))/factor + my1;
+			uX = (aX + bX) / 2.0;
+			uY = (m1 * (uX - mx1)) + my1;
 		}
-	} else if (cbY == 0) { // B and C are on one horizontal line.
+	} else if (cbY == 0.0) { // B and C are on one horizontal line.
 		//AILog.Info("      Block 3...");
-		local factor = 100;
+		local m0 = - ((bX - aX) / abY);
 
-		local m0 = - ((bX - aX)*factor / abY);
-
-		local mx0 = (aX + bX) / 2;
-		local my0 = (aY + bY) / 2;
+		local mx0 = (aX + bX) / 2.0;
+		local my0 = (aY + bY) / 2.0;
 
 		uX = (bX + cX) / 2;
-		uY = (m0 * (uX - mx0))/factor + my0;
+		uY = (m0 * (uX - mx0)) + my0;
 	} else { // 'Common' cases, no multiple vertices are on one horizontal line.
 		//AILog.Info("      Block 4...");
-		local factor = 100;
-		
-		local m0 = -((bX - aX)*factor / abY);
-		local m1 = -((cX - bX)*factor / cbY);
+		local m0 = -((bX - aX) / abY);
+		local m1 = -((cX - bX) / cbY);
 
-		local mx0 = (aX + bX)*factor / 2;
-		local my0 = (aY + bY)*factor / 2;
+		local mx0 = (aX + bX) / 2.0;
+		local my0 = (aY + bY) / 2.0;
 
-		local mx1 = (bX + cX)*factor / 2;
-		local my1 = (bY + cY)*factor / 2;
+		local mx1 = (bX + cX) / 2.0;
+		local my1 = (bY + cY) / 2.0;
 
 		local denom = (m0 - m1);
 		denom = (denom == 0) ? 1 : denom;
-		uX = ((m0 * mx0/factor) - (m1 * mx1/factor) + my1 - my0) / denom; // Possible divide by zero
+		uX = ((m0 * mx0) - (m1 * mx1) + my1 - my0) / denom; // Possible divide by zero
 		//uY = m0 * (uX - mx0) + my0;
-		uY = (m0 * uX - (m0 * mx0/factor) + my0) / factor;
+		uY = m0 * uX - (m0 * mx0) + my0;
 	}
 	
 	this.u = Vertex(uX, uY);
@@ -134,7 +125,7 @@ function Triangle::GetCircumCircle() {
  * Checks if this triangle is entirely to the south of the specified point.
  */
 function Triangle::IsSouthOf(vertex) {
-	return (vertex.y < this.u.y - (this.r + 2));
+	return (vertex.y < this.u.y - (this.r + 2.0));
 }
 
 /*

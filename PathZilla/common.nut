@@ -168,7 +168,7 @@ function DrawLine(a, b, ...) {
 		for(local i = 0; i < len; i++) {
 			offX = (stepX * i) / factor;
 			offY = (stepY * i) / factor;
-			currentPos = AIMap.GetTileIndex(AIMap.GetTileX(a) + offX, AIMap.GetTileY(a) + offY);
+			currentPos = AIMap.GetTileIndex((AIMap.GetTileX(a) + offX).tointeger(), (AIMap.GetTileY(a) + offY).tointeger());
 			local signId = AISign.BuildSign(currentPos, "   ");
 			if(collate) vargv[0].append(signId);
 		}

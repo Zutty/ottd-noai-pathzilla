@@ -32,8 +32,8 @@ class Vertex {
 	target = null;
 	
 	constructor(x, y, target = null) {
-		this.x = x;
-		this.y = y;
+		this.x = x.tofloat();
+		this.y = y.tofloat();
 		this.target = target;
 	}
 }
@@ -84,7 +84,7 @@ function Vertex::GetDistance(v) {
  * Convert the vertex into a tile index for the current map.
  */
 function Vertex::ToTile() {
-	return AIMap.GetTileIndex(this.x, this.y);
+	return AIMap.GetTileIndex(this.x.tointeger(), this.y.tointeger());
 }
 
 /*
