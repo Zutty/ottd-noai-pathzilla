@@ -26,23 +26,26 @@
  */
  
 /*
- * Integer square root. This function was converted from the C++ version found 
- * at codecodex.com.
+ * Square root using Newton-Raphson method.
  */
-function sqrt(num) {
-    if (0 == num) {
-    	return 0;
+::sqrtlut <- [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000];
+function sqrt(d) {
+    if (d == 0.0) {
+    	return 0.0;
     }
     
-    local n = (num / 2) + 1;
-    local n1 = (n + (num / n)) / 2;
+    local nd = 0;
+    for(nd = 7; nd >= 0; nd--) {
+    	if(nd <= ::sqrtlut[nd]) break;
+    }
+    nd++;
+    local x = pow(2.0, nd);
     
-    while (n1 < n) {
-		n = n1;
-		n1 = (n + (num / n)) / 2;
+    for(local i = 0; i < 5; i++) {
+    	x = x - (x*x - d) / (2*x);
     }
     
-    return n;
+	return x;
 }
 
 /*
