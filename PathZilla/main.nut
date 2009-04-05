@@ -66,6 +66,7 @@ class PathZilla extends AIController {
 	MAX_VEHICLES_PER_SVC = 100;	   // Maximum number of vehicles per service
 	INDUSTRY_FLEET_MULTI = 4;	   // Fleet size multiplier for industrial services
 	TARGET_FIX_RADIUS = 4;		   // Radius around a target we should look to fix a tile
+	MAX_INITIAL_STATIONS = 3;	   // Maximum number of stations to start a service with
 	
 	// Member variables
 	stop = false;

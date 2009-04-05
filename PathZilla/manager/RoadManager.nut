@@ -45,7 +45,7 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	foreach(target in service.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
 			// Ensure that the source town has stations
-			local added = RoadManager.BuildTownStations(target, service.GetCargo(), service.GetSubType(), service.GetCoverageTarget());
+			local added = RoadManager.BuildTownStations(target, service.GetCargo(), service.GetSubType(), service.GetCoverageTarget(), PathZilla.MAX_INITIAL_STATIONS);
 			if(added > 0) {
 				targetsUpdated.Insert(target);
 			}
