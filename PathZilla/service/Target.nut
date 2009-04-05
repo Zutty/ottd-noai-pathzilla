@@ -155,6 +155,8 @@ function Target::ProducesCargo(cargo) {
 	
 	// If the target is a town check each tile in its influence for production
 	if(this.type == Target.TYPE_TOWN) {
+		if(AICargo.GetTownEffect(cargo) == AICargo.TE_NONE) return false;
+		
 		local searchRadius = min(AIMap.DistanceFromEdge(this.tile) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
@@ -164,10 +166,10 @@ function Target::ProducesCargo(cargo) {
 		}, this.id);
 		tileList.KeepValue(1);
 		tileList.Valuate(function(tile, cargo) {
-			return AITile.GetCargoProduction(tile, cargo, 1, 1, 1);
+			return AITile.GetCargoProduction(tile, cargo, 1, 1, 0);
 		}, cargo);
-		
-		return ListSum(tileList);
+
+		return ListSum(tileList) > 0;
 	}
 
 	// Otherwise check the list of cargos for the appropriate industry type
@@ -185,6 +187,8 @@ function Target::AcceptsCargo(cargo) {
 
 	// If the target is a town check each tile in its influence for acceptance
 	if(this.type == Target.TYPE_TOWN) {
+		if(AICargo.GetTownEffect(cargo) == AICargo.TE_NONE) return false;
+
 		local searchRadius = min(AIMap.DistanceFromEdge(this.tile) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
@@ -194,10 +198,10 @@ function Target::AcceptsCargo(cargo) {
 		}, this.id);
 		tileList.KeepValue(1);
 		tileList.Valuate(function(tile, cargo) {
-			return AITile.GetCargoAcceptance(tile, cargo, 1, 1, 1);
+			return AITile.GetCargoAcceptance(tile, cargo, 1, 1, 0);
 		}, cargo);
 		
-		return ListSum(tileList);
+		return ListSum(tileList) > 0;
 	}
 	
 	// Otherwise check the list of cargos for the appropriate industry type
