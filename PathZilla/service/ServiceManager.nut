@@ -99,12 +99,15 @@ function ServiceManager::FindNewServices() {
 	local transportType = schema.GetTransportType();
 	local subType = schema.GetSubType();
 
+	// Discard the targets that we have already been to, or that can't be reached
+	local targetList = clone schema.GetPlanGraph().GetTargets();
+	targetList.RemoveAll(this.targetsConsidered);
+
 	foreach(cargo, _ in schema.GetCargos()) {
-		// Discard the targets that we have already been to, or that can't be reached
-		local targets = clone schema.GetPlanGraph().GetTargets();
-		targets.RemoveAll(this.targetsConsidered);
-		
-		// Discard those targets that don't produce anything
+		AILog.Info("  Looking for potential " + AICargo.GetCargoLabel(cargo) + " services...");
+
+		// Discard those targets that don't produce this cargo
+		local targets = clone targetList;
 		targets.Filter(function (target, cargo) {
 			return !target.ProducesCargo(cargo);
 		}, cargo);
@@ -118,7 +121,7 @@ function ServiceManager::FindNewServices() {
 			local aTarget = targets.Begin();
 			this.targetsConsidered.Insert(aTarget);
 			
-			AILog.Info("  Looking for potential services from " + aTarget.GetName() + "...");
+			AILog.Info("    Looking for potential services from " + aTarget.GetName() + "...");
 	
 			// Get the shortest distances accross the network
 			local netDist = schema.GetPlanGraph().GetShortestDistances(aTarget.GetVertex());
