@@ -190,7 +190,7 @@ function Schema::GetIndustryTargets() {
  * list of targets.
  */
 function Schema::InitialiseGraphs(targets) {
-	if(this.industrial && PathZilla.RouteCargoThroughTowns()) {
+	if(this.industrial && Settings.RouteCargoThroughTowns()) {
 		targets.extend(Schema.GetTownTargets());
 	}
 	

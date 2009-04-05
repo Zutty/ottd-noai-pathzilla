@@ -260,7 +260,7 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 	}
 	
 	// Include competitors stations if we are not agressive
-	if(!PathZilla.IsAggressive()) {
+	if(!Settings.IsAggressive()) {
 		// Get a large area around the town
 		local townTile = AITown.GetLocation(town);
 		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
@@ -432,7 +432,7 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 	}
 
 	// Calculate the station spacing
-	local comptSpacing = (target.IsTown() && (PathZilla.IsAggressive() || stationList.Count() == 0)) ? 1 : stationSpacing;
+	local comptSpacing = (target.IsTown() && (Settings.IsAggressive() || stationList.Count() == 0)) ? 1 : stationSpacing;
 
 	// Find a list of tiles that are controlled by competitors
 	foreach(tile, _ in tileList) {

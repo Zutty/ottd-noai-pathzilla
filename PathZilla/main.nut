@@ -98,6 +98,7 @@ class PathZilla extends AIController {
 		require("struct/Collection.nut");
 		require("struct/BinaryHeap.nut");
 		require("struct/SortedSet.nut");
+		require("Settings.nut");
 		require("common.nut");
 
 		this.loaded = false;
@@ -389,18 +390,4 @@ function PathZilla::AddSchema(schema) {
 	schema.SetId(schemaId);
 	return this.schemas[schemaId] <- schema;
 	return schemaId;
-}
-
-/*
- * Get whether or not the AI should play aggressively.
- */
-function PathZilla::IsAggressive() {
-	return (PathZilla.GetSetting("aggressive") == 1);
-}
-
-/*
- * Get whether industrial cargo should be routed through towns.
- */
-function PathZilla::RouteCargoThroughTowns() {
-	return (PathZilla.GetSetting("rt_cargo_towns") == 1);
 }
