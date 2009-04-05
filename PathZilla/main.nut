@@ -118,7 +118,7 @@ function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
 	// Set some global variables
-	this.SetGlobals();
+	::trafficBlackSpots <- AIList();
 	
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
@@ -226,30 +226,6 @@ function PathZilla::Start() {
 		ticker += workInterval;
 		this.Sleep(workInterval);
 	}
-}
-
-/*
- * Set some global varaibles that are not specific toa ny aspect of the AI. 
- * These can be thought of as "decorators" to the API, i.e. bits that should
- * exist but don't.
- */
-function PathZilla::SetGlobals() {
-	// Find the cargos that are produced and accepted by towns
-	::townProducedCargo <- AIList();
-	::townAcceptedCargo <- AIList();
-	
-	foreach(c, _ in AICargoList()) {
-		local townprod = 0;
-		foreach(t, _ in AITownList()) {
-			townprod += AITown.GetMaxProduction(t, c);
-		}
-		
-		if(townprod > 0) ::townProducedCargo.AddItem(c, 0);
-		if(AICargo.GetTownEffect(c) != AICargo.TE_NONE) ::townAcceptedCargo.AddItem(c, 0);
-	}
-	
-	// Traffic management
-	::trafficBlackSpots <- AIList();
 }
 
 /*

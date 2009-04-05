@@ -153,9 +153,21 @@ function Target::ProducesCargo(cargo) {
 	// Pre-condition - Check that the target is still valid
 	if(!this.IsValid()) return false;
 	
-	// If the target is a town check the global list of accepted cargos
+	// If the target is a town check each tile in its influence for production
 	if(this.type == Target.TYPE_TOWN) {
-		return ::townProducedCargo.HasItem(cargo);
+		local searchRadius = min(AIMap.DistanceFromEdge(this.tile) - 1, PathZilla.MAX_TOWN_RADIUS);
+		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
+		local tileList = AITileList();
+		tileList.AddRectangle(this.tile - offset, this.tile + offset);
+		tileList.Valuate(function(tile, id) {
+			return AITown.IsWithinTownInfluence(id, tile);
+		}, this.id);
+		tileList.KeepValue(1);
+		tileList.Valuate(function(tile, cargo) {
+			return AITile.GetCargoProduction(tile, cargo, 1, 1, 1);
+		}, cargo);
+		
+		return ListSum(tileList);
 	}
 
 	// Otherwise check the list of cargos for the appropriate industry type
@@ -171,9 +183,21 @@ function Target::AcceptsCargo(cargo) {
 	// Pre-condition - Check that the target is still valid
 	if(!this.IsValid()) return false;
 
-	// If the target is a town check the global list of accepted cargos
+	// If the target is a town check each tile in its influence for acceptance
 	if(this.type == Target.TYPE_TOWN) {
-		return ::townAcceptedCargo.HasItem(cargo);
+		local searchRadius = min(AIMap.DistanceFromEdge(this.tile) - 1, PathZilla.MAX_TOWN_RADIUS);
+		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
+		local tileList = AITileList();
+		tileList.AddRectangle(this.tile - offset, this.tile + offset);
+		tileList.Valuate(function(tile, id) {
+			return AITown.IsWithinTownInfluence(id, tile);
+		}, this.id);
+		tileList.KeepValue(1);
+		tileList.Valuate(function(tile, cargo) {
+			return AITile.GetCargoAcceptance(tile, cargo, 1, 1, 1);
+		}, cargo);
+		
+		return ListSum(tileList);
 	}
 	
 	// Otherwise check the list of cargos for the appropriate industry type
