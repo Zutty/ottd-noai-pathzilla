@@ -37,6 +37,7 @@ class PathWrapper {
 	FEAT_DEPOT_ALIGN = 4;
 	FEAT_SHORT_SCOPE = 5;
 	FEAT_NO_WORMHOLES = 6;
+	FEAT_COUNTRY_LANE = 7;
 	
 	// Costs
 	COST_ROAD_LOOP = 3000;
@@ -44,6 +45,7 @@ class PathWrapper {
 	COST_PARALLEL_BONUS = 100;
 	COST_GRID_LAYOUT = 1000;
 	COST_DEPOT_ALIGN = 3000;
+	COST_COUNTRY_LANE = 1250;
 	
 	constructor() {
 	}
@@ -117,7 +119,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 	pathfinder.cost.bridge_per_tile = 350;
 	pathfinder.cost.tunnel_per_tile = 240;
 	pathfinder.InitializePath([fromTile], [toTile], 2, 20, ignoreTiles);
-
+	
 	// Add on any additional features
 	foreach(feat in features) {
 		switch(feat) {
@@ -327,6 +329,41 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 			case PathWrapper.FEAT_NO_WORMHOLES:
 				pathfinder.cost.max_tunnel_length = 1;
 				pathfinder.cost.max_bridge_length = 1;
+			break;
+			case PathWrapper.FEAT_COUNTRY_LANE:
+				if(Settings.EnableCountryLanes() && roadType == AIRoad.ROADTYPE_ROAD) {
+					local towns = AITownList();
+					
+					// Find the nearest town to the "from" tile
+					towns.Valuate(AITown.GetDistanceManhattanToTile, fromTile);
+					towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
+					local fSize = AITown.GetPopulation(towns.Begin());
+					local fType = AITown.GetRoadLayout(towns.Begin());
+					local fGrid = (fType == AITown.ROAD_LAYOUT_2x2 || fType == AITown.ROAD_LAYOUT_3x3);
+					
+					// Find the nearest town to the "to" tile
+					towns.Valuate(AITown.GetDistanceManhattanToTile, toTile);
+					towns.Sort(AIAbstractList.SORT_BY_VALUE, true);
+					local tSize = AITown.GetPopulation(towns.Begin());
+					local tType = AITown.GetRoadLayout(towns.Begin());
+					local tGrid = (tType == AITown.ROAD_LAYOUT_2x2 || tType == AITown.ROAD_LAYOUT_3x3);
+					
+					// Get the year
+					local year = AIDate.GetYear(AIDate.GetCurrentDate());
+					local LATE_YEAR = 1990;
+					local EARLY_YEAR = 1950;
+					
+					// If the towns are small and simple eough, add cost for trees and rough terrain, to make the road "windy"
+					if(year < LATE_YEAR && ((year >= EARLY_YEAR && !fGrid && !tGrid) || year < EARLY_YEAR) && fSize < 1000 && tSize < 1000) {
+						pathfinder.RegisterCostCallback(function (tile, prevTile) {
+							local len = AIMap.DistanceManhattan(tile, prevTile);
+							if(len > 1) return PathWrapper.COST_COUNTRY_LANE * len;
+							local slope = AITile.GetSlope(tile);
+							local unevenTerrain = !(slope == AITile.SLOPE_FLAT || slope == AITile.SLOPE_NW || slope == AITile.SLOPE_SW || slope == AITile.SLOPE_NE || slope == AITile.SLOPE_SE);
+							return (unevenTerrain || AITile.HasTreeOnTile(tile) || AITile.IsFarmTile(tile) || AITile.IsRockTile(tile) || AITile.IsRoughTile(tile)) ? PathWrapper.COST_COUNTRY_LANE : 0;
+						});
+					}
+				}
 			break;
 		}
 	}

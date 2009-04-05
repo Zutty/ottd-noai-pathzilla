@@ -41,3 +41,11 @@ function Settings::IsAggressive() {
 function Settings::RouteCargoThroughTowns() {
 	return (PathZilla.GetSetting("rt_cargo_towns") == 1);
 }
+
+
+/*
+ * Get whether industrial cargo should be routed through towns.
+ */
+function Settings::EnableCountryLanes() {
+	return (PathZilla.GetSetting("country_lanes") == 1);
+}
