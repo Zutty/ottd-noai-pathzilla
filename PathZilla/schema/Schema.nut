@@ -56,23 +56,18 @@ class Schema {
 		this.subType = subType;
 		this.planGraph = null;
 		this.actualGraph = null;
-		
-		local targets = [];
+
+		// Decide if this is an industrial service or not		
 		local sampleCargo = cargos.Begin();
 		local noEffect = (AICargo.GetTownEffect(sampleCargo) == AICargo.TE_NONE);
+
 		if(!AICargo.IsFreight(sampleCargo) && !noEffect) {
-			// Towns 
-			targets = this.GetTownTargets();
 			industrial = false;
 		} else if(noEffect) {
-			// Industry 
-			targets = this.GetIndustryTargets();
 			industrial = true;
 		} else {
 			// TODO - Heterogenous services
 		}
-		
-		this.InitialiseGraphs(targets);
 	}
 }
 
@@ -115,6 +110,8 @@ function Schema::GetSubType() {
  * Get a graph showing which links we plan to build.
  */
 function Schema::GetPlanGraph() {
+	if(this.planGraph == null) this.InitialiseGraphs();
+	
 	return this.planGraph;
 }
 
@@ -122,6 +119,8 @@ function Schema::GetPlanGraph() {
  * Get a graph showing which links we have already built.
  */
 function Schema::GetActualGraph() {
+	if(this.actualGraph == null) this.InitialiseGraphs();
+
 	return this.actualGraph;
 }
 
@@ -186,12 +185,22 @@ function Schema::GetIndustryTargets() {
 }
 
 /*
- * Create the plan and actual graphs based on a triangulation over the supplied
- * list of targets.
+ * Create the plan and actual graphs based on a triangulation over a list of
+ * targets, chosen based on the type of schema and global settings.
  */
-function Schema::InitialiseGraphs(targets) {
-	if(this.industrial && Settings.RouteCargoThroughTowns()) {
-		targets.extend(Schema.GetTownTargets());
+function Schema::InitialiseGraphs() {
+	local targets = [];
+	
+	// Start with either industries or towns
+	if(this.industrial) {
+		targets = this.GetIndustryTargets();
+
+		// Add towns if we need to route cargo through them
+		if(Settings.RouteCargoThroughTowns()) {
+			targets.extend(this.GetTownTargets());
+		}
+	} else {
+		targets = this.GetTownTargets();
 	}
 	
 	// Get the master graph for the whole map
