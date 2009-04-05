@@ -851,7 +851,7 @@ function RoadManager::BuildDepot(target, roadType) {
 		foreach(depotTile, _ in tileList) {
 			local path = PathWrapper.FindPath(targetTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE, PathWrapper.FEAT_NO_WORMHOLES]);
 			if(path != null) {
-				PathWrapper.BuildPath(path, roadType);
+				if(PathWrapper.BuildPath(path, roadType) != 0) continue;
 				AITile.DemolishTile(depotTile);
 				AIRoad.BuildRoadDepot(depotTile, path.GetParent().GetTile());
 				break;
