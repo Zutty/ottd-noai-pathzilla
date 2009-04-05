@@ -192,7 +192,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 								return (dx == 0 || dy == 0) ? 0 : PathWrapper.COST_GRID_LAYOUT;
 							}
 						}, fn, fx, fy);
-					} else if(fTown != fTown) {
+					} else if(fTown != tTown) {
 						// Otherwise get details about the other town
 						local tType = AITown.GetRoadLayout(tTown);
 						local tSize = AITown.GetPopulation(tTown).tofloat(); 
