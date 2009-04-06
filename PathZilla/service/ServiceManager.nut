@@ -252,11 +252,18 @@ function ServiceManager::ImplementService() {
 		
 		AILog.Info("Best service takes " + bestService);
 		
+		// Build infrastructure for the service
 		if(bestService.GetTransportType() == AITile.TRANSPORT_ROAD) {
 			success = RoadManager.BuildInfrastructure(bestService, schema, this.targetsUpdated);
 		}
 		
-		if(!success) return false;
+		// If the service implementation failed then move it from the top 
+		// position in the list to allow other services to be implemented
+		if(!success) {
+			AILog.Warning("  Demoting service...");
+			this.potentialServices.Swap(0, 1);
+			return false;
+		}
 
 		// Create a fleet of vehicles to operate this service
 		bestService.Create();
