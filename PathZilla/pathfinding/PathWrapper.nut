@@ -110,6 +110,9 @@ function PathWrapper::TryBuildPath(path, fromTile, toTile, roadType, ignoreTiles
  * FEAT_NO_WORMHOLES - Disallow bridges and tunnels
  */
 function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], demolish = false, features = []) {
+	// Ignore traffic black spots
+	ignoreTiles.extend(ListToArray(::trafficBlackSpots));
+
 	// Initialise the pathfinder
 	local pathfinder = Road();
 	pathfinder.cost.allow_demolition = demolish;
@@ -514,7 +517,7 @@ function PathWrapper::BuildPath(path, roadType) {
 							}
 
 							// Just try waiting a bit
-							PathZilla.Sleep(50);
+							PathZilla.Sleep(30);
 						break;
 						// Just don't worry about the rest of these cases!
 						case AIError.ERR_ALREADY_BUILT:
