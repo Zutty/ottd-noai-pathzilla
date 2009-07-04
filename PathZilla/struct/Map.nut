@@ -84,7 +84,15 @@ function Map::RebuildKeys() {
  * array. This is guaranteed to be stable.
  */
 function Map::Begin() {
-	return (this.data.len() > 0) ? this.data[this.keys[0]] : null;
+	return this.GetI(0);
+}
+
+/*
+ * Get the specified item in the map as determined by the sorted order of the 
+ * key array. This is guaranteed to be stable.
+ */
+function Map::GetI(idx) {
+	return (this.data.len() > idx) ? this.data[this.keys[idx]] : null;
 }
 
 /*
