@@ -681,9 +681,9 @@ function ServiceManager::Unserialize(data) {
  */
 function ServiceManager::PostLoad() {
 	foreach(service in this.serviceList) {
-		local allVehicles = AIVehicleList();
-		allVehicles.Valuate(AIVehicle.GetGroupID);
-		allVehicles.KeepValue(service.group);
-		service.vehicles.AddList(allVehicles);
+		local vehicles = AIVehicleList();
+		vehicles.Valuate(AIVehicle.GetGroupID);
+		vehicles.KeepValue(service.group);
+		if(vehicles.Count() > 0) service.vehicles.AddList(vehicles);
 	}
 }
