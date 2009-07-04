@@ -221,9 +221,7 @@ function SortedSet::Merge(set) {
  * Make a shallow copy of the set.
  */
 function SortedSet::_cloned(original) {
-	local new = ::SortedSet();
-	new.data = clone original.data;
-	return new;
+	this.data = clone original.data;
 }
 
 /*
