@@ -98,6 +98,7 @@ class PathZilla extends AIController {
 		require("service/Target.nut");
 		require("struct/Collection.nut");
 		require("struct/BinaryHeap.nut");
+		require("struct/Map.nut");
 		require("struct/SortedSet.nut");
 		require("Settings.nut");
 		require("common.nut");
