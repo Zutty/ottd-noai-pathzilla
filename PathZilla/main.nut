@@ -104,9 +104,12 @@ class PathZilla extends AIController {
 
 		this.loaded = false;
 		this.companyName = null;
-		this.serviceManager = ServiceManager(this);
+		this.serviceManager = ServiceManager();
 		this.schemaIndex = -1;
 		this.schemas = {};
+		
+		// Set this as the singleton instance
+		::pz <- this;
 	}
 }
 

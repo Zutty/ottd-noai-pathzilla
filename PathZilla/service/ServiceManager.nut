@@ -34,15 +34,12 @@ class ServiceManager {
 	SRLZ_TARGETS_CONSIDERED = 3;
 	
 	// Member variables
-	pz = null;
 	potentialServices = null;
 	targetsConsidered = null;
 	serviceList = null;
 	targetsUpdated = null;
 	
-	constructor(pathzilla) {
-		this.pz = pathzilla;
-		
+	constructor() {
 		this.targetsConsidered = SortedSet();
 		this.targetsUpdated = SortedSet();
 		
@@ -95,7 +92,7 @@ function ServiceManager::MaintainServices() {
  * profit, and ranks them by their profitability.
  */
 function ServiceManager::FindNewServices() {
-	local schema = pz.GetNextSchema();
+	local schema = ::pz.GetNextSchema();
 	local transportType = schema.GetTransportType();
 	local subType = schema.GetSubType();
 
@@ -115,7 +112,7 @@ function ServiceManager::FindNewServices() {
 		// Check that there are any targets left that we haven't considered
 		if(targets.Len() > 0) {
 			// Order the remaining towns by populations, placing the home town first
-			targets.SortBy(Target.SortByPotential(pz.homeTown, cargo));
+			targets.SortBy(Target.SortByPotential(::pz.homeTown, cargo));
 			
 			// Choose the first town and save it 
 			local aTarget = targets.Begin();
@@ -248,7 +245,7 @@ function ServiceManager::ImplementService() {
 	// Only proceed if there are any services left to implement
 	if(bestService != null) {
 		local success = false;
-		local schema = pz.GetSchema(bestService.GetSchemaId());
+		local schema = ::pz.GetSchema(bestService.GetSchemaId());
 		
 		AILog.Info("Best service takes " + bestService);
 		
