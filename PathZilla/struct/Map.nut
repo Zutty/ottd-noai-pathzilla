@@ -165,17 +165,26 @@ function Map::RemoveAll(items) {
  * argument and return true if the item should be filtered from the map.
  */
 function Map::Filter(filterFn, ...) {
+	// Build an array of arguments for the filter function
 	local argv = [];
 	for(local i = 0; i < vargc; i++) {
 		argv.append(vargv[i]);
 	}
 
+	// Select the keys for items to be removed
+	local toRemove = [];
 	foreach(key, item in this.data) {
 		local args = [this, item];
 		args.extend(argv);
-		if(!filterFn.acall(args)) {
-			this.RemoveKey(key);
+
+		if(filterFn.acall(args)) {
+			toRemove.append(key);
 		}
+	}
+
+	// Remove them
+	foreach(r in toRemove) {
+		this.RemoveKey(r);
 	}
 }
 
