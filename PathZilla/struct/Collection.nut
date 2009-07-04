@@ -36,10 +36,35 @@ class Collection {
 }
 
 /*
+ * Get the raw data in this collection.
+ */
+function Collection::GetData() {
+	return this.data;
+}
+
+/*
  * Get the number of items in the collection.
  */
 function Collection::Len() {
 	return this.data.len();
+}
+
+/*
+ * Saves an array to a table.
+ */
+function Collection::SerializeArray(arr) {
+	local c = Collection();
+	c.data = arr;
+	return c.Serialize();
+}
+
+/*
+ * Loads an array from a table.
+ */
+function Collection::UnserializeArray(saveData) {
+	local c = Collection();
+	c.Unserialize(saveData);
+	return c.data;
 }
 
 /*
@@ -69,7 +94,7 @@ function Collection::Unserialize(saveData) {
 		local className = saveData.pop();
 		
 		foreach(item in saveData) {
-			local newItem = ::getroottable()[className].instance();
+			local newItem = ::load_class(className).instance();
 			//newItem.constructor();
 			newItem.Unserialize(item);
 			this.data.append(newItem);
