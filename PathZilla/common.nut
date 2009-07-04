@@ -258,3 +258,60 @@ function trnc(str) {
 function abs(val) {
 	return (val < 0) ? -val : val;
 }
+
+class dummy {
+	function load(idx) {
+		return this[idx];
+	}
+}
+function load_class(classname) {
+	return ::dummy.instance().load(classname);
+}
+
+function show(var) {
+	foreach(line in split(_show(var, 0), "|")) {
+		if(line != "") AILog.Info(line);
+	}
+}
+	
+function _show(var, depth) {
+	if(var == null) {
+		return "null";
+	} else if(typeof var == "table" || typeof var == "instance") {
+		local indent = "";
+		for(local i = 0; i < depth; i++) indent += "  ";
+		local indent2 = indent + "  ";
+		local str = "{|";
+		AILog.Warning(" _-_ "+var + " ("+var.CLASS_NAME+")");
+		foreach(name, member in var) {
+			str += indent2 + name + " = " + _show(member, depth + 1) + "|";
+		}
+		str += indent + "}|";
+			//AILog.Info(""+str);
+		return str;
+	} else if(typeof var == "array") {
+		local indent = "";
+		for(local i = 0; i < depth; i++) indent += "  ";
+		local indent2 = indent + "  ";
+		local str = "[|";
+		for(local i = 0; i < depth; i++) indent2 += "  ";
+		foreach(member in var) {
+			str += indent + _show(member, depth + 1) + "|";
+		}
+		str += indent + "]|";
+		return str;
+	} else {
+		return ""+var;
+	}
+}
+
+function split(str, delim) {
+	if(str == null) return [];
+	if(delim == null) return [str];
+	local idx = str.find(delim);
+	local ret = [str.slice(0, (idx != null) ? idx : str.len())];
+	if(idx != null) {
+		ret.extend(split(str.slice(idx+1), delim));
+	}
+	return ret;
+}
