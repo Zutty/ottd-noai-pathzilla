@@ -282,7 +282,6 @@ function _show(var, depth) {
 		for(local i = 0; i < depth; i++) indent += "  ";
 		local indent2 = indent + "  ";
 		local str = "{|";
-		AILog.Warning(" _-_ "+var + " ("+var.CLASS_NAME+")");
 		foreach(name, member in var) {
 			str += indent2 + name + " = " + _show(member, depth + 1) + "|";
 		}
