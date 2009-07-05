@@ -47,6 +47,7 @@ class Schema {
 	planGraph = null;
 	actualGraph = null;
 	industrial = null;
+	targets = null;
 
 	constructor(sourceNode, cargos, transportType, subType) {
 		this.id = 0;
@@ -56,6 +57,7 @@ class Schema {
 		this.subType = subType;
 		this.planGraph = null;
 		this.actualGraph = null;
+		this.targets = null;
 
 		// Decide if this is an industrial service or not		
 		local sampleCargo = cargos.Begin();
@@ -110,7 +112,7 @@ function Schema::GetSubType() {
  * Get a graph showing which links we plan to build.
  */
 function Schema::GetPlanGraph() {
-	if(this.planGraph == null) this.InitialiseGraphs();
+	if(this.planGraph == null) this.Initialise();
 	
 	return this.planGraph;
 }
@@ -119,7 +121,7 @@ function Schema::GetPlanGraph() {
  * Get a graph showing which links we have already built.
  */
 function Schema::GetActualGraph() {
-	if(this.actualGraph == null) this.InitialiseGraphs();
+	if(this.actualGraph == null) this.Initialise();
 
 	return this.actualGraph;
 }
@@ -130,6 +132,18 @@ function Schema::GetActualGraph() {
  */
 function Schema::IsIndustrial() {
 	return this.industrial;
+}
+
+function Schema::GetTargets() {
+	if(this.targets == null) this.InitialiseTargets();
+
+	return this.targets;
+}
+
+function Schema::GetTarget(id) {
+	if(this.targets == null) this.InitialiseTargets();
+
+	return this.targets[id];
 }
 
 /*
@@ -149,9 +163,9 @@ function Schema::GetTownTargets() {
 	}
 	
 	// Build a list of targets
-	local targets = [];
+	local targets = Map();
 	foreach(town, _ in allTowns) {
-		targets.append(Target(Target.TYPE_TOWN, town));
+		targets.Insert(Target(Target.TYPE_TOWN, town));
 	}
 	
 	return targets;
@@ -176,35 +190,41 @@ function Schema::GetIndustryTargets() {
 	this.sourceNode = indList.Begin();
 	
 	// Build a list of targets
-	local targets = [];
+	local targets = Map();
 	foreach(industry, _ in indList) {
-		targets.append(Target(Target.TYPE_INDUSTRY, industry));
+		targets.Insert(Target(Target.TYPE_INDUSTRY, industry));
 	}
-	
+
 	return targets;
+}
+
+/*
+ * Create the list of targets that can be serviced in this schema.
+ */
+function Schema::InitialiseTargets() {
+	// Start with either industries or towns
+	if(this.industrial) {
+		this.targets = this.GetIndustryTargets();
+
+		// Add towns if we need to route cargo through them
+		if(Settings.RouteCargoThroughTowns()) {
+			this.targets.Extend(this.GetTownTargets());
+		}
+	} else {
+		this.targets = this.GetTownTargets();
+	}
 }
 
 /*
  * Create the plan and actual graphs based on a triangulation over a list of
  * targets, chosen based on the type of schema and global settings.
  */
-function Schema::InitialiseGraphs() {
-	local targets = [];
-	
-	// Start with either industries or towns
-	if(this.industrial) {
-		targets = this.GetIndustryTargets();
+function Schema::Initialise() {
+	// Ensure the list of targets has been initialised
+	if(this.targets == null) this.InitialiseTargets();
 
-		// Add towns if we need to route cargo through them
-		if(Settings.RouteCargoThroughTowns()) {
-			targets.extend(this.GetTownTargets());
-		}
-	} else {
-		targets = this.GetTownTargets();
-	}
-	
 	// Get the master graph for the whole map
-	local masterGraph = Triangulation(targets);
+	local masterGraph = Triangulation(this.targets);
 
 	// For the plan graph use a combination of the shortest path from the home 
 	// town and the minimum spanning tree.

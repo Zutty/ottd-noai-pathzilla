@@ -40,8 +40,8 @@ class ServiceManager {
 	targetsUpdated = null;
 	
 	constructor() {
-		this.targetsConsidered = SortedSet();
-		this.targetsUpdated = SortedSet();
+		this.targetsConsidered = Map();
+		this.targetsUpdated = Map();
 		
 		this.serviceList = SortedSet();		
 		this.potentialServices = BinaryHeap();
@@ -83,7 +83,7 @@ function ServiceManager::MaintainServices() {
 		}
 	}
 
-	this.targetsUpdated = SortedSet();
+	this.targetsUpdated = Map();
 }
 
 /*
@@ -96,10 +96,17 @@ function ServiceManager::FindNewServices() {
 	local transportType = schema.GetTransportType();
 	local subType = schema.GetSubType();
 
-	// Discard the targets that we have already been to, or that can't be reached
-	local targetList = clone schema.GetPlanGraph().GetTargets();
-	targetList.RemoveAll(this.targetsConsidered);
+	// If there are no targets then just move on
+	if(schema.GetTargets().Len() == 0) return;
 
+	// Discard the targets that we have already been to, or that can't be reached
+	local targetList = clone schema.GetTargets();
+	targetList.RemoveAll(this.targetsConsidered);
+	
+	// If all targets have already been considered then just move on
+	if(targetList.Len() == 0) return;
+
+	// Look for possible services for each cargo type in the current schema
 	foreach(cargo, _ in schema.GetCargos()) {
 		AILog.Info("  Looking for potential " + AICargo.GetCargoLabel(cargo) + " services...");
 
@@ -125,7 +132,7 @@ function ServiceManager::FindNewServices() {
 	
 			// Iterate over each town to test each possible connection
 			local steps = 0;
-			foreach(bTarget in schema.GetPlanGraph().GetTargets()) {
+			foreach(bTarget in schema.GetTargets()) {
 				if(!bTarget.AcceptsCargo(cargo)) continue;
 				
 				if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
@@ -133,15 +140,16 @@ function ServiceManager::FindNewServices() {
 				}
 	
 				// Build a list of targets
-				local targets = [aTarget, bTarget];
+				local targetIds = [aTarget._hashkey(), bTarget._hashkey()];
+				local targetList = [aTarget, bTarget];
 	
 				// Ensure that its possible to connect to the town, and that we 
 				// don't already provide this service
-				if(bTarget != aTarget && !this.ProvidesService(targets, cargo, transportType, subType)) {
+				if(bTarget != aTarget && !this.ProvidesService(targetIds, cargo, transportType, subType)) {
 					local bTile = bTarget.GetLocation();
 	
 					// Select an engine
-					local engine = this.SelectEngine(targets, cargo, transportType, subType, false);
+					local engine = this.SelectEngine(targetList, cargo, transportType, subType, false);
 					if(engine == null) {
 						AILog.Error("    There are no suitable vehicles for this route! [" + aTarget.GetName() + " to " + bTarget.GetName()+ "]");
 						continue;
@@ -186,7 +194,8 @@ function ServiceManager::FindNewServices() {
 					
 					// Only consider the service if it is more profitable than it is costly
 					if(annualProfit > (annualCost/factor)) {
-						this.potentialServices.Insert(Service(schema.GetId(), targets, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget));
+						local svc = Service(schema.GetId(), targetIds, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget);
+						this.potentialServices.Insert(svc);
 					}
 				}
 			}
@@ -204,9 +213,9 @@ function ServiceManager::FindNewServices() {
  * Checks to see if the company provides a service from a to b for the
  * specified cargo and road type.
  */
-function ServiceManager::ProvidesService(targets, cargo, transportType, subType) {
+function ServiceManager::ProvidesService(targetIds, cargo, transportType, subType) {
 	foreach(service in this.serviceList) {
-		if(service.GetCargo() == cargo && service.GoesToAll(targets) && service.GetTransportType() == transportType && service.GetSubType() == subType) {
+		if(service.GetCargo() == cargo && service.GoesToAll(targetIds) && service.GetTransportType() == transportType && service.GetSubType() == subType) {
 			return true;
 		}
 	}
@@ -218,7 +227,7 @@ function ServiceManager::ProvidesService(targets, cargo, transportType, subType)
  * Checks to see if the company already provides the specified service.
  */
 function ServiceManager::ProvidesThisService(svc) {
-	return this.ProvidesService(svc.GetTargets(), svc.GetCargo(), svc.GetTransportType(), svc.GetSubType());
+	return this.ProvidesService(svc.GetTargetIds(), svc.GetCargo(), svc.GetTransportType(), svc.GetSubType());
 }
 
 /*
@@ -659,10 +668,10 @@ function ServiceManager::Serialize() {
  * Loads data from a table.
  */
 function ServiceManager::Unserialize(data) {
-	this.targetsUpdated = SortedSet();
+	this.targetsUpdated = Map();
 	this.targetsUpdated.Unserialize(data[SRLZ_TARGETS_UPDATED]); 
 
-	this.targetsConsidered = SortedSet();
+	this.targetsConsidered = Map();
 	this.targetsConsidered.Unserialize(data[SRLZ_TARGETS_CONSIDERED]); 
 	
 	this.potentialServices = BinaryHeap();

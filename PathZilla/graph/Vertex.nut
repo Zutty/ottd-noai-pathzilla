@@ -29,20 +29,20 @@
 class Vertex {
 	x = 0;
 	y = 0;
-	target = null;
+	targetId = null;
 	
-	constructor(x, y, target = null) {
+	constructor(x, y, targetId = null) {
 		this.x = x.tofloat();
 		this.y = y.tofloat();
-		this.target = target;
+		this.targetId = targetId;
 	}
 }
 
 /*
  * Get the underlying target for this vertex
  */
-function Vertex::GetTarget() {
-	return this.target;
+function Vertex::GetTargetId() {
+	return this.targetId;
 }
 
 /*

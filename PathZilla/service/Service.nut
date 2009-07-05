@@ -37,7 +37,7 @@ class Service {
 	SRLZ_COVERAGE_TARGET = 6;
 	
 	schemaId = null;
-	targets = null;
+	targetIds = null;
 	cargo = 0;
 	transportType = null;
 	subType = null;
@@ -49,9 +49,9 @@ class Service {
 	rawIncome = 0;
 	coverageTarget = 0;
 	
-	constructor(schemaId, targets, cargo, transportType, subType, engine, distance, rawIncome, coverageTarget) {
+	constructor(schemaId, targetIds, cargo, transportType, subType, engine, distance, rawIncome, coverageTarget) {
 		this.schemaId = schemaId;
-		this.targets = targets;
+		this.targetIds = targetIds;
 		this.cargo = cargo;
 		this.transportType = transportType;
 		this.subType = subType;
@@ -63,9 +63,15 @@ class Service {
 }
 
 function Service::Create() {
+	// Create a group for the vehicles
 	this.vehicles = AIList();
 	this.group = AIGroup.CreateGroup(AIVehicle.VT_ROAD);
-	AIGroup.SetName(this.group, trnc(this.targets[0].GetName() + " to " + this.targets[1].GetName()));
+	
+	// Name the group
+	local schema = ::pz.GetSchema(this.schemaId);
+	local last = this.targetIds.len() - 1;
+	local strName = schema.GetTarget(this.targetIds[0]).GetName() + " to " + schema.GetTarget(this.targetIds[last]).GetName();
+	AIGroup.SetName(this.group, trnc(strName));
 }
 
 /*
@@ -76,10 +82,24 @@ function Service::GetSchemaId() {
 }
 
 /*
+ * Get the ids of the targets this service visits.
+ */
+function Service::GetTargetIds() {
+	return this.targetIds;
+}
+
+/*
  * Get the targets this service visits.
  */
 function Service::GetTargets() {
-	return this.targets;
+	local schema = ::pz.GetSchema(this.schemaId);
+	local targets = [];
+
+	foreach(id in this.targetIds) {
+		targets.append(schema.GetTarget(id));
+	}
+	
+	return targets;
 }
 
 /*
@@ -141,9 +161,9 @@ function Service::GetCoverageTarget() {
 /*
  * Check if the service visits a target with specified Id.
  */
-function Service::GoesTo(tgt) {
-	foreach(target in this.targets) {
-		if(target.GetId() == tgt.GetId()) return true;
+function Service::GoesTo(tgtId) {
+	foreach(targetId in this.targetIds) {
+		if(targetId == tgtId) return true;
 	}
 	return false;
 }
@@ -151,9 +171,9 @@ function Service::GoesTo(tgt) {
 /*
  * Check if the service visits all in a list of targets
  */
-function Service::GoesToAll(targets) {
-	foreach(target in targets) {
-		if(!this.GoesTo(target)) return false;
+function Service::GoesToAll(tgtIds) {
+	foreach(tgtId in tgtIds) {
+		if(!this.GoesTo(tgtId)) return false;
 	}
 	return true;
 }
@@ -162,7 +182,8 @@ function Service::GoesToAll(targets) {
  * Checks that all targets in this service are still valid.
  */
 function Service::IsValid() {
-	foreach(target in targets) {
+	foreach(targetId in this.targetIds) {
+		local target = ::pz.GetSchema(this.schemaId).GetTarget(targetId);
 		if(!target.IsValid()) return false;
 	}
 	return true;
@@ -201,9 +222,13 @@ function Service::_tostring() {
 		strType = "air";
 	}
 
+	local schema = ::pz.GetSchema(this.schemaId);
+	local last = this.targetIds.len() - 1;
+	local strTgts = schema.GetTarget(this.targetIds[0]).GetName() + " to " + schema.GetTarget(this.targetIds[last]).GetName();
+
 	local str = "";
-	if(this.targets.len() == 2) {
-		str = AICargo.GetCargoLabel(this.cargo) + " from " + this.targets[0].GetName() + " to " + this.targets[1].GetName() + " by " + strType;
+	if(this.targetIds.len() == 2) {
+		str = AICargo.GetCargoLabel(this.cargo) + " from " + strTgts + " by " + strType;
 	}
 	return str;
 }
@@ -247,8 +272,8 @@ function Service::_cmp(svc) {
 	same = same && this.transportType == svc.transportType;
 	same = same && this.subType == svc.subType;
 	if(same) {
-		foreach(target in this.targets) {
-			same = same && svc.GoesTo(target);
+		foreach(targetId in this.GetTargetIds()) {
+			same = same && svc.GoesTo(targetId);
 		}
 	}
 	if(same) return 0; 
@@ -263,7 +288,7 @@ function Service::_cmp(svc) {
 	local sMinPop = 10000000;
 	local sAllTowns = true;
 	
-	foreach(target in this.targets) {
+	foreach(target in this.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
 			tMaxPop = max(tMaxPop, AITown.GetPopulation(target.GetId()));
 			tMinPop = min(tMinPop, AITown.GetPopulation(target.GetId()));
@@ -271,7 +296,7 @@ function Service::_cmp(svc) {
 			tAllTowns = false;
 		}
 	}
-	foreach(target in svc.targets) {
+	foreach(target in svc.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
 			sMaxPop = max(sMaxPop, AITown.GetPopulation(target.GetId()));
 			sMinPop = min(sMinPop, AITown.GetPopulation(target.GetId()));

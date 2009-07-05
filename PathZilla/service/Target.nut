@@ -114,7 +114,7 @@ function Target::GetLocation() {
  */
 function Target::GetVertex() {
 	local tile = this.GetLocation();
-	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), this);
+	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), this._hashkey());
 }
 
 /*
@@ -228,6 +228,13 @@ function Target::GetName() {
 }
 
 /*
+ * Get a unique key for this instance.
+ */
+function Target::_hashkey() {
+	return this.GetLocation();
+}
+
+/*
  * A static method to be used to sort Targets by their profit making potential.
  */
 function Target::SortByPotential(homeTown, cargo) {
@@ -236,12 +243,12 @@ function Target::SortByPotential(homeTown, cargo) {
 		local bval = 0;
 		
 		if(a.type == b.type) {
-			if(a.type == Target.TYPE_TOWN) {
-				aval = (a.id == homeTown) ? 1000000 : AITown.GetPopulation.call(a, a.id);
-				bval = (b.id == homeTown) ? 1000000 : AITown.GetPopulation.call(b, b.id);
+			if(a.type == ::Target.TYPE_TOWN) {
+				aval = (a.id == homeTown) ? 1000000 : ::AITown.GetPopulation.call(a, a.id);
+				bval = (b.id == homeTown) ? 1000000 : ::AITown.GetPopulation.call(b, b.id);
 			} else {
-				aval = AIIndustry.GetLastMonthProduction.call(a, a.id, cargo);
-				bval = AIIndustry.GetLastMonthProduction.call(b, b.id, cargo);
+				aval = ::AIIndustry.GetLastMonthProduction.call(a, a.id, cargo);
+				bval = ::AIIndustry.GetLastMonthProduction.call(b, b.id, cargo);
 			}
 		} else {
 			// TODO - Heterogenous services

@@ -46,25 +46,24 @@ class Triangulation extends Graph {
 	constructor(targets) {
 		Graph.constructor();
 		
-		targets.sort(function (a, b) {
+		targets.SortBy(function (a, b) {
 			local al = a.GetLocation();
 			local bl = b.GetLocation();
-			//AILog.Info(" "+al+" <-> "+bl); 
 			if(al == bl) return 0;
 			return (al < bl) ? 1 : -1;
 		});
 		
-		AILog.Info("  Computing triangulation over " + targets.len() + " targets...");
+		AILog.Info("  Computing triangulation over " + targets.Len() + " targets...");
 
 		// If there are fewer than three targets then use a special case
-		if(targets.len() == 1) {
-			this.vertices.RawInsert(targets[0].GetVertex());
+		if(targets.Len() == 1) {
+			this.vertices.RawInsert(targets.GetI(0).GetVertex());
 
 			AILog.Info("     Done.");
 			return;
-		} else if(targets.len() == 2) {
-			local a = targets[0].GetVertex();
-			local b = targets[1].GetVertex();
+		} else if(targets.Len() == 2) {
+			local a = targets.GetI(0).GetVertex();
+			local b = targets.GetI(1).GetVertex();
 			
 			this.vertices.RawInsert(a);
 			this.vertices.RawInsert(b);
@@ -79,10 +78,10 @@ class Triangulation extends Graph {
 			
 			AILog.Info("     Done.");
 			return;
-		} else if(targets.len() == 3) {
-			local a = targets[0].GetVertex();
-			local b = targets[1].GetVertex();
-			local c = targets[2].GetVertex();
+		} else if(targets.Len() == 3) {
+			local a = targets.GetI(0).GetVertex();
+			local b = targets.GetI(1).GetVertex();
+			local c = targets.GetI(2).GetVertex();
 			
 			this.vertices.RawInsert(a);
 			this.vertices.RawInsert(b);
@@ -230,7 +229,7 @@ class Triangulation extends Graph {
 		// Remove duplicate vertices
 		this.vertices.RemoveDuplicates();
 		
-		if(this.vertices.Len() < targets.len()) {
+		if(this.vertices.Len() < targets.Len()) {
 			AILog.Warning("Some targets were not captured in triangulation.");
 			// TODO - Handle this in a way that wont break adding vertices at a later time
 		}
