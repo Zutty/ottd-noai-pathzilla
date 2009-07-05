@@ -200,7 +200,7 @@ function PathZilla::Start() {
 	local noServices = true;
 	
 	// Load settings for loop latency
-	local latency = this.GetSetting("latency");
+	local latency = Settings.GetLatency();
 	local workInterval = max(100, latency * 200);
 	local maintenanceInterval = max(100, workInterval * latency * 2);
 	local expansionInterval = max(100, workInterval * latency * 3);

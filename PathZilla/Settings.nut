@@ -29,6 +29,13 @@ class Settings {
 }
 
 /*
+ * Get the level of latency.
+ */
+function Settings::GetLatency() {
+	return (5 - PathZilla.GetSetting("latency"));
+}
+
+/*
  * Get whether or not the AI should play aggressively.
  */
 function Settings::IsAggressive() {
