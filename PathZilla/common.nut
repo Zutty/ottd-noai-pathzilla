@@ -314,3 +314,15 @@ function split(str, delim) {
 	}
 	return ret;
 }
+
+function chopstr(str, len) {
+	local tokens = split(str, " ");
+	local newStr = "";
+	local l = min(len, str.len());
+	local i = 0;
+	while(newStr.len() < l) {
+		if(newStr.len() > 0) newStr += " ";
+		newStr += tokens[i++];
+	}
+	return newStr;
+}

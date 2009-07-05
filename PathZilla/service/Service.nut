@@ -74,7 +74,9 @@ function Service::Create() {
 	// Name the group
 	local schema = ::pz.GetSchema(this.schemaId);
 	local last = this.targetIds.len() - 1;
-	local strName = schema.GetTarget(this.targetIds[0]).GetName() + " to " + schema.GetTarget(this.targetIds[last]).GetName();
+	local fstr = chopstr(schema.GetTarget(this.targetIds[0]).GetName(), 7);
+	local tstr = chopstr(schema.GetTarget(this.targetIds[last]).GetName(), 7);
+	local strName = AICargo.GetCargoLabel(this.cargo) + " " + fstr + " to " + tstr;
 	AIGroup.SetName(this.group, trnc(strName));
 }
 
