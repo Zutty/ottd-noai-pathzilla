@@ -28,13 +28,17 @@
 class Service {
 	// Serialization constants
 	CLASS_NAME = "Service";
-	SRLZ_FROM_TOWN = 0;
-	SRLZ_TO_TOWN = 1;
+	SRLZ_SCHEMA_ID = 0;
+	SRLZ_TARGET_IDS = 1;
 	SRLZ_CARGO = 2;
-	SRLZ_ROAD_TYPE = 5;
-	SRLZ_ENGINE = 3;
-	SRLZ_GROUP = 4;
-	SRLZ_COVERAGE_TARGET = 6;
+	SRLZ_TRANSPORT_TYPE = 3;
+	SRLZ_SUB_TYPE = 4;
+	SRLZ_ENGINE = 5;
+	SRLZ_PROFITABILITY = 6;
+	SRLZ_GROUP = 7;
+	SRLZ_DISTANCE = 8;
+	SRLZ_RAW_INCOME = 9;
+	SRLZ_COVERAGE_TARGET = 10;
 	
 	schemaId = null;
 	targetIds = null;
@@ -238,13 +242,19 @@ function Service::_tostring() {
  */
 function Service::Serialize() {
 	local data = {};
-	//data[SRLZ_FROM_TOWN] <- this.fromTown;
-	//data[SRLZ_TO_TOWN] <- this.toTown;
-	//data[SRLZ_CARGO] <- this.cargo;
-	//data[SRLZ_ROAD_TYPE] <- this.roadType;
-	//data[SRLZ_ENGINE] <- this.engine;
-	//data[SRLZ_GROUP] <- this.group;
-	//data[SRLZ_COVERAGE_TARGET] <- this.coverageTarget;
+	
+	data[SRLZ_SCHEMA_ID] <- this.schemaId;
+	data[SRLZ_TARGET_IDS] <- this.targetIds;
+	data[SRLZ_CARGO] <- this.cargo;
+	data[SRLZ_TRANSPORT_TYPE] <- this.transportType;
+	data[SRLZ_SUB_TYPE] <- this.subType;
+	data[SRLZ_ENGINE] <- this.engine;
+	data[SRLZ_PROFITABILITY] <- this.profitability;
+	data[SRLZ_GROUP] <- this.group;
+	data[SRLZ_DISTANCE] <- this.distance;
+	data[SRLZ_RAW_INCOME] <- this.rawIncome;
+	data[SRLZ_COVERAGE_TARGET] <- this.coverageTarget;
+	
 	return data;
 }
 
@@ -252,14 +262,18 @@ function Service::Serialize() {
  * Loads data from a table.
  */
 function Service::Unserialize(data) {
-	//this.fromTown = data[SRLZ_FROM_TOWN];
-	//this.toTown = data[SRLZ_TO_TOWN];
-	//this.cargo = data[SRLZ_CARGO];
-	//this.roadType = data[SRLZ_ROAD_TYPE];
-	//this.engine = data[SRLZ_ENGINE];
-	//this.vehicles = AIList();
-	//this.group = data[SRLZ_GROUP];
-	//this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
+	this.schemaId = data[SRLZ_SCHEMA_ID];
+	this.targetIds = data[SRLZ_TARGET_IDS];
+	this.cargo = data[SRLZ_CARGO];
+	this.transportType = data[SRLZ_TRANSPORT_TYPE];
+	this.subType = data[SRLZ_SUB_TYPE];
+	this.engine = data[SRLZ_ENGINE];
+	this.profitability = data[SRLZ_PROFITABILITY];
+	this.group = data[SRLZ_GROUP];
+	this.distance = data[SRLZ_DISTANCE];
+	this.rawIncome = data[SRLZ_RAW_INCOME];
+	this.coverageTarget = data[SRLZ_COVERAGE_TARGET];
+	this.vehicles = AIList();
 }
 
 /*

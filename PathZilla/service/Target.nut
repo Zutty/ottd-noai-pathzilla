@@ -27,9 +27,15 @@
  */
 
 class Target {
+	// Serialization constants
+	CLASS_NAME = "Target";
+	SRLZ_TYPE = 0;
+	SRLZ_ID = 1;
+	SRLZ_TILE = 2;
+
+	// Other constants
 	TYPE_TOWN = 1;
 	TYPE_INDUSTRY = 2;
-	
 	TILE_UNFIXED = -4194305; // 2048^2 + 1
 	
 	type = null;
@@ -43,7 +49,6 @@ class Target {
 		if(type == Target.TYPE_TOWN) {
 			this.tile = AITown.GetLocation(id);
 		} else if(type == Target.TYPE_INDUSTRY) {
-			//this.tile = AIIndustry.GetLocation(id) - 2;
 			this.tile = TILE_UNFIXED;
 		}
 	}
@@ -232,6 +237,28 @@ function Target::GetName() {
  */
 function Target::_hashkey() {
 	return this.GetLocation();
+}
+
+/*
+ * Saves data to a table.
+ */
+function Target::Serialize() {
+	local data = {};
+
+	data[SRLZ_TYPE] <- this.type;
+	data[SRLZ_ID] <- this.id;
+	data[SRLZ_TILE] <- this.tile;
+	
+	return data;
+}
+
+/*
+ * Loads data from a table.
+ */
+function Target::Unserialize(data) {
+	this.type = data[SRLZ_TYPE];
+	this.id = data[SRLZ_ID];
+	this.tile = data[SRLZ_TILE];
 }
 
 /*

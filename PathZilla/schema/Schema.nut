@@ -33,10 +33,13 @@ class Schema {
 	CLASS_NAME = "Schema";
 	SRLZ_SCHEMA_ID = 0;
 	SRLZ_SOURCE_NODE = 1;
-	SRLZ_CARGO = 2;
-	SRLZ_ROAD_TYPE = 3;
-	SRLZ_PLAN_GRAPH = 4;
-	SRLZ_ACTUAL_GRAPH = 5;
+	SRLZ_CARGOS = 2;
+	SRLZ_TRANSPORT_TYPE = 3;
+	SRLZ_SUB_TYPE = 4;
+	SRLZ_PLAN_GRAPH = 5;
+	SRLZ_ACTUAL_GRAPH = 6;
+	SRLZ_INDUSTRIAL = 7;
+	SRLZ_TARGETS = 8;
 	
 	// Member variables
 	id = 0;
@@ -243,10 +246,15 @@ function Schema::Serialize() {
 
 	data[SRLZ_SCHEMA_ID] <- this.id;
 	data[SRLZ_SOURCE_NODE] <- this.sourceNode;
-	data[SRLZ_CARGO] <- this.cargo;
-	data[SRLZ_ROAD_TYPE] <- this.roadType;
-	data[SRLZ_PLAN_GRAPH] <- this.planGraph.Serialize();
-	data[SRLZ_ACTUAL_GRAPH] <- this.actualGraph.Serialize();
+	data[SRLZ_CARGOS] <- ListToArray(this.cargos);
+	data[SRLZ_TRANSPORT_TYPE] <- this.transportType;
+	data[SRLZ_SUB_TYPE] <- this.subType;
+	data[SRLZ_INDUSTRIAL] <- this.industrial;
+
+	if(this.planGraph != null) data[SRLZ_PLAN_GRAPH] <- this.planGraph.Serialize();
+	if(this.actualGraph != null) data[SRLZ_ACTUAL_GRAPH] <- this.actualGraph.Serialize();
+	
+	if(this.targets != null) data[SRLZ_TARGETS] <- this.targets.Serialize();
 	
 	return data;
 }
@@ -257,12 +265,23 @@ function Schema::Serialize() {
 function Schema::Unserialize(data) {
 	this.id = data[SRLZ_SCHEMA_ID];
 	this.sourceNode = data[SRLZ_SOURCE_NODE];
-	this.cargo = data[SRLZ_CARGO];
-	this.roadType = data[SRLZ_ROAD_TYPE];
+	this.cargos = ArrayToList(data[SRLZ_CARGOS]);
+	this.transportType = data[SRLZ_TRANSPORT_TYPE];
+	this.subType = data[SRLZ_SUB_TYPE];
+	this.industrial = data[SRLZ_INDUSTRIAL];
 	
-	this.planGraph = Graph();
-	this.planGraph.Unserialize(data[SRLZ_PLAN_GRAPH]);
+	if(SRLZ_PLAN_GRAPH in data) {
+		this.planGraph = Graph();
+		this.planGraph.Unserialize(data[SRLZ_PLAN_GRAPH]);
+	}
 	
-	this.actualGraph = Graph();
-	this.actualGraph.Unserialize(data[SRLZ_ACTUAL_GRAPH]);
+	if(SRLZ_ACTUAL_GRAPH in data) {
+		this.actualGraph = Graph();
+		this.actualGraph.Unserialize(data[SRLZ_ACTUAL_GRAPH]);
+	}
+	
+	if(SRLZ_TARGETS in data) {
+		this.targets = Map();
+		this.targets.Unserialize(data[SRLZ_TARGETS]);
+	}
 }

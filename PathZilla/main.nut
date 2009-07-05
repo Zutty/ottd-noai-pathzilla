@@ -40,13 +40,13 @@ class PathZilla extends AIController {
 	
 	// Serialisation constants
 	SRLZ_IDENT = 0;
-	SRLZ_VERSION = 1;
-	SRLZ_COMPANY_NAME = 6;
-	SRLZ_HOME_TOWN = 2;
-	SRLZ_PLAN_GRAPH = 3;
-	SRLZ_ACTUAL_GRAPH = 4;
-	SRLZ_SRVC_MANAGER = 5;
-	SRLZ_SCHEMAS = 7;
+	SRLZ_STOP = 1;
+	SRLZ_COMPANY_NAME = 2;
+	SRLZ_HOME_TOWN = 3;
+	SRLZ_SCHEMA_IDX = 4;
+	SRLZ_SCHEMAS = 5;
+	SRLZ_SRVC_MANAGER = 6;
+	SRLZ_TRAFFIC_BLACKSPOTS = 7;
 			
 	// Configurable constants
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
@@ -103,6 +103,7 @@ class PathZilla extends AIController {
 		require("Settings.nut");
 		require("common.nut");
 
+		this.stop = false;
 		this.loaded = false;
 		this.companyName = null;
 		this.serviceManager = ServiceManager();
@@ -244,31 +245,37 @@ function PathZilla::Load(version, data) {
 	local dataValid = false;
 	
 	// First check that the data is for this AI, and this verion
-	if(data.rawin(PathZilla.SRLZ_IDENT)) {
-		if(typeof data[PathZilla.SRLZ_IDENT] == typeof PathZilla.PZ_IDENT) {
-			dataValid = (data[PathZilla.SRLZ_IDENT] == PathZilla.PZ_IDENT)
-					     && (version == PathZilla.PZ_VERSION);
+	if(SRLZ_IDENT in data) {
+		if(typeof data[SRLZ_IDENT] == typeof PZ_IDENT) {
+			dataValid = (data[SRLZ_IDENT] == PZ_IDENT) && (version == PZ_VERSION);
 		}
 	}
 	
-	// If we have found the right data, start loading it
-	if(dataValid) { 
-		this.companyName = data[PathZilla.SRLZ_COMPANY_NAME];
-		this.homeTown = data[PathZilla.SRLZ_HOME_TOWN];
-		
-		foreach(idx, schemaData in data[PathZilla.SRLZ_SCHEMAS]) {
-			this.schemas[idx] <- Schema.instance();
-			this.schemas[idx].Unserialize(schemaData);
-		}
-		
-		if(data.rawin(PathZilla.SRLZ_SRVC_MANAGER)) {
-			this.serviceManager.Unserialize(data[PathZilla.SRLZ_SRVC_MANAGER]);
-		}
-		
-		this.loaded = true;
-	} else {
+	// If the data is not valid, do not try to load
+	if(!dataValid) {
 		AILog.Error("Got invalid save data");
+		return false;
 	}
+
+	// Load the basic data	
+	this.stop = data[SRLZ_STOP];
+	this.companyName = data[SRLZ_COMPANY_NAME];
+	this.homeTown = data[SRLZ_HOME_TOWN];
+	this.schemaIndex = data[SRLZ_SCHEMA_IDX];
+	::trafficBlackSpots <- ArrayToList(data[SRLZ_TRAFFIC_BLACKSPOTS]); 
+	
+	// Load the schemas
+	foreach(idx, schemaData in data[SRLZ_SCHEMAS]) {
+		this.schemas[idx] <- Schema.instance();
+		this.schemas[idx].Unserialize(schemaData);
+	}
+	
+	// Load the service manager if it was saved
+	if(SRLZ_SRVC_MANAGER in data) {
+		this.serviceManager.Unserialize(data[SRLZ_SRVC_MANAGER]);
+	}
+	
+	this.loaded = true;
 }
 
 /*
@@ -280,20 +287,23 @@ function PathZilla::Save() {
 	local data = {};
 	
 	// Store the ident
-	data[PathZilla.SRLZ_IDENT] <- PathZilla.PZ_IDENT;
+	data[SRLZ_IDENT] <- PZ_IDENT;
 
 	// Store the basic data
-	data[PathZilla.SRLZ_COMPANY_NAME] <- this.companyName;
-	data[PathZilla.SRLZ_HOME_TOWN] <- this.homeTown;
+	data[SRLZ_STOP] <- this.stop;
+	data[SRLZ_COMPANY_NAME] <- this.companyName;
+	data[SRLZ_HOME_TOWN] <- this.homeTown;
+	data[SRLZ_SCHEMA_IDX] <- this.schemaIndex;
+	data[SRLZ_TRAFFIC_BLACKSPOTS] <- ListToArray(::trafficBlackSpots); 
 	
 	// Store the schemas
-	data[PathZilla.SRLZ_SCHEMAS] <- {};
+	data[SRLZ_SCHEMAS] <- {};
 	foreach(idx, schema in this.schemas) {
-		data[PathZilla.SRLZ_SCHEMAS][idx] <- schema.Serialize();
+		data[SRLZ_SCHEMAS][idx] <- schema.Serialize();
 	}
 
 	if(this.serviceManager != null) {
-		data[PathZilla.SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
+		data[SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
 	}
 
 	return data;

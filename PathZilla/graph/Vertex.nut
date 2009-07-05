@@ -91,5 +91,5 @@ function Vertex::ToTile() {
  * Static method to create a vertex based on a tile index in the current map.
  */
 function Vertex::FromTile(tile) {
-	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), null);
+	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), tile);
 }

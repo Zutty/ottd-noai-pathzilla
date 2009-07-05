@@ -28,6 +28,7 @@
 class Graph {
 	// Serialization constants
 	CLASS_NAME = "Graph";
+	SRLZ_EDGE_DATA = 0;
 	
 	// Member variables
 	data = null;
@@ -275,13 +276,22 @@ function Graph::FindPath(aVertex, bVertex) {
  * Saves data to a table.
  */
 function Graph::Serialize() {
-	local saveData = [];
+	local saveData = {};
 	
-	// Serialise a list of edges from the graph
-	foreach(e in this.edges) {
-		saveData.append(e.a.ToTile());
-		saveData.append(e.b.ToTile());
+	/* TODO - If non-standard targets are ever used, uncomment this
+	// Serialise the targets linked to the graph
+	foreach(v in this.vertices) {
+		saveData[v.ToTile()+1] <- v.GetTargetId();
 	}
+	*/
+
+	// Serialise a list of edges from the graph
+	local edgeData = [];
+	foreach(e in this.edges) {
+		edgeData.append(e.a.ToTile());
+		edgeData.append(e.b.ToTile());
+	}
+	saveData[SRLZ_EDGE_DATA] <- edgeData;
 	
 	return saveData;
 }
@@ -290,11 +300,25 @@ function Graph::Serialize() {
  * Loads data from a table.
  */
 function Graph::Unserialize(saveData) {
+	/* TODO - If non-standard targets are ever used, uncomment this
+	// Build a list of vertices and their targets
+	local vtxMap = {};
+	foreach(idx, targetId in saveData) {
+		if(idx < 1) continue;
+		local vTile = idx - 1;
+		local v = Vertex.FromTile(vTile);
+		v.targetId = targetId;
+		this.vertices.RawInsert(v);
+		vtxMap[vTile] <- v;
+	}
+	*/
+
 	// Build a graph from a serialised list of edges		
-	for(local i = 0; i < saveData.len(); i += 2) {
+	local edgeData = saveData[SRLZ_EDGE_DATA];
+	for(local i = 0; i < edgeData.len(); i += 2) {
 		// Get the raw data
-		local aTile = saveData[i];
-		local bTile = saveData[i + 1];
+		local aTile = edgeData[i];
+		local bTile = edgeData[i + 1];
 
 		// Build vertices and an edge
 		local a = Vertex.FromTile(aTile);
