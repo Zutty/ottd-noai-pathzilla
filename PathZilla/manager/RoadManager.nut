@@ -360,7 +360,7 @@ function RoadManager::BuildIndustryStation(target, cargo, roadType) {
 	if(stations.IsEmpty()) {
 		station = RoadManager.BuildStation(target, cargo, roadType);
 	} else {
-		station = stations.Begin()
+		station = stations.Begin();
 	}
 
 	if(!target.IsTileFixed() && station != null && station >= 0) {
