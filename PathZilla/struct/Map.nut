@@ -195,7 +195,7 @@ function Map::Serialize() {
 	local saveData = {};
 	
 	if(this.data.len() > 0) {
-		saveData[CLASS_NAME] <- this.data.top().getclass().CLASS_NAME;
+		saveData[CLASS_NAME] <- this.data[this.keys.top()].getclass().CLASS_NAME;
 
 		foreach(key, item in this.data) {
 			saveData[key] <- item.Serialize();
