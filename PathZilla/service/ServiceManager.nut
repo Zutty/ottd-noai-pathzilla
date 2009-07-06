@@ -304,6 +304,7 @@ function ServiceManager::SelectEngine(targets, cargo, transportType, subType, ch
 			if(AIEngine.GetRoadType(engine) != subType) return -1;
 		}
 		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
+		if(AIEngine.GetPrice(engine) == 0) return -1;
 		if(AIEngine.GetPrice(engine) > availableFunds) return -1;
 		if(AIEngine.GetCapacity(engine) <= 0) return -1;
 		return 1;
