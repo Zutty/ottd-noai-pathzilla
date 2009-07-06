@@ -32,6 +32,7 @@ class Road
 	cost = null;                   ///< Used to change the costs.
 	_cost_callbacks = null;        ///< Stores [callback, args] tuples for additional cost.
 	_running = null;
+	_no_bridge_over = null;
 
 	constructor()
 	{
@@ -54,6 +55,7 @@ class Road
 		this.cost = this.Cost(this);
 		_cost_callbacks = [];
 		this._running = false;
+		_no_bridge_over = [];
 	}
 
 	/**
@@ -64,7 +66,7 @@ class Road
 	 * @param max_length_offset The minimum value of the maximum length.
 	 * @see AyStar::InitializePath()
 	 */
-	function InitializePath(sources, goals, max_length_multiplier = 0, max_length_offset = 10000, ignored_tiles = []);
+	function InitializePath(sources, goals, max_length_multiplier = 0, max_length_offset = 10000, ignored_tiles = [], no_bridge_over = []);
 
 	/**
 	 * Register a new cost callback function that will be called with all args specified.
@@ -144,7 +146,7 @@ class Road.Cost
 	}
 };
 
-function Road::InitializePath(sources, goals, max_length_multiplier = 0, max_length_offset = 10000, ignored_tiles = [])
+function Road::InitializePath(sources, goals, max_length_multiplier = 0, max_length_offset = 10000, ignored_tiles = [], no_bridge_over = [])
 {
 	local nsources = [];
 
@@ -161,7 +163,9 @@ function Road::InitializePath(sources, goals, max_length_multiplier = 0, max_len
 	}
 
 	this._max_path_length = max_length_offset + max_length_multiplier * AIMap.DistanceManhattan(sources[0], this._goal_estimate_tile);
-
+	
+	this._no_bridge_over = no_bridge_over;
+	
 	this._pathfinder.InitializePath(nsources, goals, ignored_tiles);
 }
 
@@ -330,7 +334,7 @@ function Road::_Neighbours(path, cur_node)
 				tiles.push([next_tile, this._GetDirection(cur_node, next_tile, false)]);
 			} else if ((AITile.IsBuildable(next_tile) || AIRoad.IsRoadTile(next_tile) || can_demolish) &&
 					(path.GetParent() == null || AIRoad.CanBuildConnectedRoadPartsHere(cur_node, path.GetParent().GetTile(), next_tile) > 0) &&
-					(AIRoad.BuildRoad(cur_node, next_tile) || can_demolish)) {
+					((AIRoad.BuildRoad(cur_node, next_tile) || (AIError.GetLastError() == AIError.ERR_VEHICLE_IN_THE_WAY && (path.GetParent() == null || AIRoad.CanBuildConnectedRoadPartsHere(cur_node, path.GetParent().GetTile(), next_tile) > 0))) || can_demolish)) {
 				tiles.push([next_tile, this._GetDirection(cur_node, next_tile, false)]);
 			} else if (this._CheckTunnelBridge(cur_node, next_tile)) {
 				tiles.push([next_tile, this._GetDirection(cur_node, next_tile, false)]);
@@ -374,10 +378,19 @@ function Road::_GetTunnelsBridges(last_node, cur_node, bridge_dir)
 	local tiles = [];
 
 	for (local i = 2; i < this._max_bridge_length; i++) {
+		local target = cur_node + i * (cur_node - last_node);
+		local violation = false;
+		foreach(nbo in this._no_bridge_over) {
+			if(target == nbo) {
+				violation = true;
+				break;
+			}
+		}
+		if(violation) break;
+	
 		local bridge_list = AIBridgeList_Length(i + 1);
 		bridge_list.Valuate(AIBridge.GetPrice, i + 1);
 		bridge_list.Sort(AIAbstractList.SORT_BY_VALUE, true);
-		local target = cur_node + i * (cur_node - last_node);
 		if (!bridge_list.IsEmpty() && AIBridge.BuildBridge(AIVehicle.VT_ROAD, bridge_list.Begin(), cur_node, target)) {
 			tiles.push([target, bridge_dir]);
 		}
