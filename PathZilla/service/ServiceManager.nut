@@ -155,7 +155,7 @@ function ServiceManager::FindNewServices() {
 						continue;
 					}
 					
-					if(netDist[bTile] < 0) {
+					if(!(bTile in netDist) || netDist[bTile] < 0) {
 						AILog.Error("    There is no possible path between " + aTarget.GetName() + " and " + bTarget.GetName());
 						continue;
 					}
