@@ -47,6 +47,7 @@ class PathZilla extends AIController {
 	SRLZ_SCHEMAS = 5;
 	SRLZ_SRVC_MANAGER = 6;
 	SRLZ_TRAFFIC_BLACKSPOTS = 7;
+	SRLZ_VEHICLES_TO_SELL = 8;
 			
 	// Configurable constants
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
@@ -67,6 +68,8 @@ class PathZilla extends AIController {
 	INDUSTRY_FLEET_MULTI = 4;	   // Fleet size multiplier for industrial services
 	TARGET_FIX_RADIUS = 4;		   // Radius around a target we should look to fix a tile
 	MAX_INITIAL_STATIONS = 3;	   // Maximum number of stations to start a service with
+	PAX_SERVICE_CAP_BASE = 100;	   // Base level for limit on number of passengers AI will aim to transport
+	SERVICE_PROFIT_THRESHOLD = 0;  // Threshold at which to declare a service profitable
 	
 	// Member variables
 	stop = false;
@@ -126,6 +129,7 @@ function PathZilla::Start() {
 	
 	// Set some global variables
 	::trafficBlackSpots <- AIList();
+	::vehiclesToSell <- AIList();
 	
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
@@ -263,6 +267,7 @@ function PathZilla::Load(version, data) {
 	this.homeTown = data[SRLZ_HOME_TOWN];
 	this.schemaIndex = data[SRLZ_SCHEMA_IDX];
 	::trafficBlackSpots <- ArrayToList(data[SRLZ_TRAFFIC_BLACKSPOTS]); 
+	::vehiclesToSell <- ArrayToList(data[SRLZ_VEHICLES_TO_SELL]); 
 	
 	// Load the schemas
 	foreach(idx, schemaData in data[SRLZ_SCHEMAS]) {
@@ -294,7 +299,8 @@ function PathZilla::Save() {
 	data[SRLZ_COMPANY_NAME] <- this.companyName;
 	data[SRLZ_HOME_TOWN] <- this.homeTown;
 	data[SRLZ_SCHEMA_IDX] <- this.schemaIndex;
-	data[SRLZ_TRAFFIC_BLACKSPOTS] <- ListToArray(::trafficBlackSpots); 
+	data[SRLZ_TRAFFIC_BLACKSPOTS] <- ListToArray(::trafficBlackSpots);
+	data[SRLZ_VEHICLES_TO_SELL] <- ListToArray(::vehiclesToSell); 
 	
 	// Store the schemas
 	data[SRLZ_SCHEMAS] <- {};
@@ -376,6 +382,17 @@ function PathZilla::HandleEvents() {
 			case AIEvent.AI_ET_ENGINE_PREVIEW:
 				local evt = AIEventEnginePreview.Convert(event);
 				evt.AcceptPreview();
+			break;
+			case AIEvent.AI_ET_VEHICLE_WAITING_IN_DEPOT:
+				local evt = AIEventVehicleWaitingInDepot.Convert(event);
+				local vehicle = evt.GetVehicleID();
+				
+				// If the vehicle exists and need to be sold, sell it
+				if(AIVehicle.IsValidVehicle(vehicle) && ::vehiclesToSell.HasItem(vehicle)) {
+					AIVehicle.SellVehicle(vehicle);
+					FinanceManager.MaintainFunds(PathZilla.FLOAT);
+					::vehiclesToSell.RemoveItem(vehicle);
+				}
 			break;
 		}
 	}

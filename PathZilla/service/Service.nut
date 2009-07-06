@@ -211,6 +211,16 @@ function Service::GetVehicles() {
 }
 
 /*
+ * Check if the service turned an overall profit last year
+ */
+function Service::IsProfitable() {
+	local vlist = this.vehicles;
+	vlist.Valuate(AIVehicle.GetProfitLastYear);
+	local total = ListSum(vlist);
+	return (total >= PathZilla.SERVICE_PROFIT_THRESHOLD);
+}
+
+/*
  * Get the number of vehicles that are currently operating this service.
  */
 function Service::GetActualFleetSize() {

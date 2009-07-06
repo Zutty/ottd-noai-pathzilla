@@ -467,7 +467,9 @@ function ServiceManager::CreateFleet(service, update = false) {
 		// Prime the station lists with waiting cargo values
 		foreach(target in service.GetTargets()) {
 			stations[target.GetId()].Valuate(function(station, cargo) {
-				return AIStation.GetCargoWaiting(station, cargo);
+				local waiting = AIStation.GetCargoWaiting(station, cargo);
+				local cap = PathZilla.PAX_SERVICE_CAP_BASE * PathZilla.GetSetting("traffic");
+				return min(cap, waiting);
 			}, cargo);
 			
 			waitingCargo += ListSum(stations[target.GetId()]);
@@ -476,10 +478,10 @@ function ServiceManager::CreateFleet(service, update = false) {
 		// Estimate the number of additional vechiles required based on waiting cargo
 		local year = AIDate.GetYear(AIDate.GetCurrentDate());
 		year = min(max(year, 1915), 1950);
-		local multiplier = (65 - (year - 1900)) / 2;
+		local multiplier = (70 - (year - 1900)) / 2;
 		multiplier /= PathZilla.GetSetting("traffic");
 		
-		fleetSize = (waitingCargo / (capacity * multiplier)) * ((distance * 3) / speed)
+		fleetSize = (waitingCargo / (capacity * multiplier)) * ((distance * 2) / speed)
 	}
 
 	// Find the minimum acceptance level
@@ -527,7 +529,17 @@ function ServiceManager::CreateFleet(service, update = false) {
 	fleetSize = min(fleetSize, PathZilla.MAX_VEHICLES_PER_SVC);
 	
 	// If were updating, account for vehicles already built
-	if(update) fleetSize = max(0, fleetSize - service.GetActualFleetSize());
+	if(update) {
+		local updateSize = fleetSize - service.GetActualFleetSize();
+		
+		if(!service.IsProfitable()) {
+			AILog.Warning("Service for " + service + " did not turn a profit last year");
+			if(updateSize < 0) SellVehicles(service, -updateSize);
+			return;
+		} else {
+			fleetSize = max(0, updateSize);
+		}
+	}
 	
 	// Do not attempt to build more than we can actually afford
 	local funds = max(0, FinanceManager.GetAvailableFunds() - PathZilla.FLOAT);
@@ -581,6 +593,34 @@ function ServiceManager::CreateFleet(service, update = false) {
 
 		// Start the vehicle
 		AIVehicle.StartStopVehicle(v);
+	}
+}
+
+/*
+ * Sell the specified number of vehicles from the specified service, selected 
+ * at random. This will permanently reduce the service's fleet size.
+ */
+function ServiceManager::SellVehicles(service, number) {
+	AILog.Info("  Selling " + number + " vehicles...");
+
+	local vlist = service.GetVehicles();
+	vlist.Valuate(AIBase.RandItem);
+	vlist.Valuate(function (vehicle, cargo) {
+		return (AIVehicle.GetCargoLoad(vehicle, cargo) == 0);
+	}, service.GetCargo());
+	
+	// Clone a fleet from the prototype vehicle
+	local i = 1;
+	for(local vehicle = vlist.Begin(); vlist.HasNext() && i++ <= number; vehicle = vlist.Next()) {
+		// Wait some time to spread the vechiles out a bit.
+		PathZilla.Sleep(PathZilla.NEW_VEHICLE_SPREAD_DELAY);
+
+		// Turn the vehcile around (to help clear jams) and send it to a depot
+		AIVehicle.SendVehicleToDepot(vehicle);
+		AIVehicle.ReverseVehicle(vehicle);
+		
+		// Remember to sell the vehcile when it stops in a depot
+		::vehiclesToSell.AddItem(vehicle, 0);
 	}
 }
 
