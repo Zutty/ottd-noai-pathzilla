@@ -37,8 +37,8 @@ class PathZilla extends AIInfo {
 		AddSetting({name = "latency", description = "Planning speed of competitor", min_value = 0, max_value = 5, easy_value = 1, medium_value = 3, hard_value = 5, custom_value = 4, flags = 0});
 		AddLabels("latency", {_0="Very Slow", _1="Slow", _2="Medium", _3="Fast", _4="Very Fast", _5="Super Fast"});
 		AddSetting({name = "aggressive", description = "Compete aggressively with other players", easy_value = 0, medium_value = 0, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
-		AddSetting({name = "traffic", description = "Amount of traffic competitor should generate", min_value = 1, max_value = 4, easy_value = 1, medium_value = 2, hard_value = 3, custom_value = 2, flags = 0});
-		AddLabels("traffic", {_1="Low", _2="Medium", _3="High", _4="Very High"});
+		AddSetting({name = "traffic", description = "Level of traffic competitor should generate", min_value = 1, max_value = 4, easy_value = 1, medium_value = 2, hard_value = 3, custom_value = 2, flags = 0});
+		AddLabels("traffic", {_1="Light", _2="Normal", _3="Heavy", _4="Very Heavy"});
 		AddSetting({name = "rt_cargo_towns", description = "Route all cargo through towns", easy_value = 1, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
 		AddSetting({name = "country_lanes", description = "Build windy country lanes in rural towns", easy_value = 1, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
 	}
