@@ -259,21 +259,34 @@ function abs(val) {
 	return (val < 0) ? -val : val;
 }
 
+/*
+ * A dummy class used by the load_class() function
+ */
 class dummy {
 	function load(idx) {
 		return this[idx];
 	}
 }
+
+/*
+ * Load the class with the given name from the root table
+ */
 function load_class(classname) {
 	return ::dummy.instance().load(classname);
 }
 
+/*
+ * Log the values of a structured variable like an array array or table
+ */
 function show(var) {
 	foreach(line in split(_show(var, 0), "|")) {
 		if(line != "") AILog.Info(line);
 	}
 }
-	
+
+/*
+ * Callback used for the show() function
+ */
 function _show(var, depth) {
 	if(var == null) {
 		return "null";
@@ -304,6 +317,10 @@ function _show(var, depth) {
 	}
 }
 
+/*
+ * Split a string by the specified delimiter into tokens which will be 
+ * returned in an array
+ */
 function split(str, delim) {
 	if(str == null) return [];
 	if(delim == null) return [str];
@@ -315,6 +332,13 @@ function split(str, delim) {
 	return ret;
 }
 
+/*
+ * Return the minimum length whole-word substring of str to be at least len 
+ * characters long. For instance...
+ *   chopstr("Sentfingley Market", 7) = "Sentfingley"
+ *   chopstr("Fort Sunningbury", 7) = "Fort Sunningbury"
+ *   chopstr("Little Fradinghead Cross", 7) = "Little Fradinghead"
+ */
 function chopstr(str, len) {
 	local tokens = split(str, " ");
 	local newStr = "";
