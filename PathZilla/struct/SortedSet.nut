@@ -161,9 +161,10 @@ function SortedSet::Filter(filterFn, ...) {
 
 	local toRemove = [];
 	foreach(idx, i in this.data) {
-		local args = [this, i];
+		local args = [i];
 		args.extend(argv);
-		if(filterFn.acall(args)) {
+
+		if(::arr_call(filterFn, args)) {
 			toRemove.append(idx);
 		}
 	}

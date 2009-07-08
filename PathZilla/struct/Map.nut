@@ -113,7 +113,7 @@ function Map::SortBy(comparator) {
 	// comparator that sorts items instead.
 	local me = this;
 	this.keys.sort(function (a, b):(me, comparator) {
-		return comparator.call(me, me.data[a], me.data[b]);
+		return comparator(me.data[a], me.data[b]);
 	});
 }
 
@@ -174,10 +174,10 @@ function Map::Filter(filterFn, ...) {
 	// Select the keys for items to be removed
 	local toRemove = [];
 	foreach(key, item in this.data) {
-		local args = [this, item];
+		local args = [item];
 		args.extend(argv);
 
-		if(filterFn.acall(args)) {
+		if(::arr_call(filterFn, args)) {
 			toRemove.append(key);
 		}
 	}

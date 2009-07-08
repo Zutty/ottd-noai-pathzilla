@@ -277,9 +277,9 @@ function Road::_Cost(self, path, new_tile, new_direction)
 
 	/* Call all extra cost callbacks. */
 	foreach(item in this._cost_callbacks) {
-		local args = [this, new_tile, prev_tile];
+		local args = [new_tile, prev_tile];
 		args.extend(item[1]);
-		local extra_cost = item[0].acall(args);
+		local extra_cost = ::arr_call(item[0], args);
 		
 		if (typeof(extra_cost) != "integer") throw("Cost callback didn't return an integer.");
 		

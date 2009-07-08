@@ -277,11 +277,11 @@ function Target::SortByPotential(homeTown, cargo) {
 		
 		if(a.type == b.type) {
 			if(a.type == ::Target.TYPE_TOWN) {
-				aval = (a.id == homeTown) ? 1000000 : ::AITown.GetPopulation.call(a, a.id);
-				bval = (b.id == homeTown) ? 1000000 : ::AITown.GetPopulation.call(b, b.id);
+				aval = (a.id == homeTown) ? 1000000 : ::AITown.GetPopulation(a.id);
+				bval = (b.id == homeTown) ? 1000000 : ::AITown.GetPopulation(b.id);
 			} else {
-				aval = ::AIIndustry.GetLastMonthProduction.call(a, a.id, cargo);
-				bval = ::AIIndustry.GetLastMonthProduction.call(b, b.id, cargo);
+				aval = ::AIIndustry.GetLastMonthProduction(a.id, cargo);
+				bval = ::AIIndustry.GetLastMonthProduction(b.id, cargo);
 			}
 		} else {
 			// TODO - Heterogenous services
