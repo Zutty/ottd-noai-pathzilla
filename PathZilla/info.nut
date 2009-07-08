@@ -29,8 +29,8 @@ class PathZilla extends AIInfo {
 	function GetAuthor()      { return "George Weller"; }
 	function GetName()        { return "PathZilla"; }
 	function GetDescription() { return "A networking AI. The focus of this AI is on high level planning and neat, realistic construction. Supports buses/trams and mail trucks only."; }
-	function GetVersion()     { return 5; }
-	function GetDate()        { return "2009-01-24"; }
+	function GetVersion()     { return 6; }
+	function GetDate()        { return "2009-07-08"; }
 	function CreateInstance() { return "PathZilla"; }
 	function GetShortName()   { return "PZLA"; }
 	function GetSettings() {

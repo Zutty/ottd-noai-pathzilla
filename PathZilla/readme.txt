@@ -1,6 +1,6 @@
 PathZilla - © George Weller 2009
 ================================
-Version 5 (r154), 24/01/2009 - tested against r15235
+Version 6 (r279), 08/07/2009 - tested against 0.7.1
 
 
 PathZilla is a networking AI. The focus of this AI is on high level planning 
@@ -10,24 +10,65 @@ To get the best results from PathZilla you are *strongly* advised to activate
 the advanced setting "Stations" > "Allow drive-through road stops on town owned
  roads". PathZilla will still function correctly but will need to perform more 
  demolition in towns.
+ 
+The AI has a number of settings which the user should change to their personal 
+preference. If desired, the player will find a less challenging opponent if  
+setting planning speed to very slow, turning aggression off, and setting 
+traffic to low. Regardless of these settings though, the AI will always attempt
+to build a complete network and turn a profit.
 
+Settings
+--------
+	* Planning speed - Governs how much time the AI will wait between actions. 
+	  If set to 'Fastest', the AI will not wait at all.
+	* Compete aggressively - If set off, the AI will consider competitors 
+	  stations and services when judging how well serviced a town or industry
+	  is, and will not attempt to build close to their stations
+	* Level of traffic - Governs the fleet size estimates and limits. A higher
+	  setting will allow the AI to build more vehicles
+	* Route cargo through towns - If set on, the AI will link industries to 
+	  their nearest towns if applicable, otherwise it will link industries 
+	  directly together
+	* Build windy lanes - If set on, the AI will makes its roads follow the 
+	  terrain, giving them a more natural "windy" appearance. This is applied
+	  to all roads before 1950, and to roads between small towns without 
+	  2x2/3x3 grids before 1990 
+	  
 
 Features
 --------
 	* High-level network planning using graph theory
 	* Uses two tiers of pathfinding to improve line re-use
-	* Aesthetic pathfinding builds tram lines alongside roads and honours town 
-	  grid layouts where applicable
+	* Aesthetic pathfinding builds tram lines alongside roads, honours town 
+	  grid layouts, and build windy country lanes where applicable
 	* Full support for articulated vehicles and trams, where available
 	* Builds "green belt" around towns to improve local authority rating
 	* Supports NewGRF vehicles (tested with Zephyris' eGRVTS, George's Long 
 	  Vehicles v4, and PikkaBird's HOVS)
+	* Supports NewGRF house and industry sets (tested with TTRS, George's ECS
+	  Vectors and PikkaBird's PBI)
 	* Builds multiple road stations per town and maintains fleet sizes
 	* Supports save/load and difficulty settings
-	* Supports passengers and mail
+	* Supports all primary industries
 
 Changelog
 ---------
+v6 - 08/07/2009
+	* Added support for primary industries
+	* Added support for NewGRF house sets
+	* Improved 2x2/3x3 town grid handling
+	* Construction of windy "country lanes" at early dates and in small towns
+	* Improved station and fleet size management
+	* Added configuration option for amount of traffic to generate
+	* Limits on fleet sizes to reduce incidence of grid-lock
+	* Allow AI to sell vehicles from unprofitable services
+	* Better handling of construction in traffic
+	* Improved accuracy of triangulation graph
+	* Reduce initial processing steps to allow AI to start faster
+	* Build fewer stations initially
+	* Better handling of failure and error conditions when creating services
+	* Fixed bug: Crash when there are too few towns for a tram route
+	* Many other bug fixes
 v5 - 24/01/2009
 	* Changed to library pathfinder (with modifications)
 	* Updated to latest API changes
@@ -93,11 +134,10 @@ Known Issues
 	* Has a tendency to "wipe-out" towns when the game runs multiple instances
 	  of PathZilla, if 'aggressive' is set on
 	* Does not include airports in competitor check for aggression setting 
+	* May tourists incorrectly where towns are directly adjacent 
 
 To Do
 -----
-	* Support for other industries
-	* Add support for ECS Vectors and PBI (not tested)
 	* Expand and upgrade busy stations
 	* Upgrade and replace old vehicles
 
