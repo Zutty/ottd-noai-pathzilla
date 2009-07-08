@@ -304,7 +304,9 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 		}
 	}
 
-	coveredTiles.Valuate(AITile.GetCargoAcceptance, cargo, 1, 1, 0);
+	// Reinstate the following after OpenTTD 0.7.2 si released
+	//coveredTiles.Valuate(AITile.GetCargoAcceptance, cargo, 1, 1, 0);
+	coveredTiles.Valuate(LandManager.CargoAcceptanceOnTile, cargo);
 	coveredTiles.RemoveBelowValue(1);
 
 	//AILog.Info(AITown.GetName(town) + " has " + AITown.GetHouseCount(town) + " houses");

@@ -408,3 +408,16 @@ function LandManager::InferOtherEndTile(aTile, exitTile) {
 	
 	return otherEnd;
 }
+
+/*
+ * Get the cargo acceptance on a single tile. This will be obsolete once 
+ * OpenTTD 0.7.2 is released.
+ */
+function LandManager::CargoAcceptanceOnTile(tile, cargo) {
+	local outer = AITile.GetCargoAcceptance(tile, cargo, 1, 1, 3);
+	local a = AITile.GetCargoAcceptance(tile - AIMap.GetTileIndex(2,2), cargo, 2, 1, 1);
+	local b = AITile.GetCargoAcceptance(tile - AIMap.GetTileIndex(-2,2), cargo, 1, 2, 1);
+	local c = AITile.GetCargoAcceptance(tile - AIMap.GetTileIndex(2,-1), cargo, 1, 2, 1);
+	local d = AITile.GetCargoAcceptance(tile - AIMap.GetTileIndex(-1,-2), cargo, 2, 1, 1);
+	return outer - (a + b + c + d);
+}
