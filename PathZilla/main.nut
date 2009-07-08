@@ -106,11 +106,8 @@ class PathZilla extends AIController {
 		require("Settings.nut");
 		require("common.nut");
 
-		this.stop = false;
+		// Some presets that must go here
 		this.loaded = false;
-		this.companyName = null;
-		this.serviceManager = ServiceManager();
-		this.schemaIndex = -1;
 		this.schemas = {};
 		
 		// Set this as the singleton instance
@@ -127,79 +124,12 @@ class PathZilla extends AIController {
 function PathZilla::Start() {
 	AILog.Info("Starting PathZilla.... RAWR!");
 	
-	// Set some global variables
-	::trafficBlackSpots <- AIList();
-	::vehiclesToSell <- AIList();
+	// Initialise the AI
+	this.Initialise();
 	
-	// Enable auto-renew
-	AICompany.SetAutoRenewStatus(true);
-
-	// Select a home town from which all construction will be based
-	if(!this.loaded) {
-		this.homeTown = this.SelectHomeTown();
-	}
 	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
 
-	// Choose a company name if we have not loaded one
-	if(!this.loaded) {
-		this.companyName = this.ChooseName();
-	}
-	
-	// Set the company name
-	AICompany.SetName(trnc(this.companyName));
-
-	// Initialse other data, based on load status
-	if(!this.loaded) {
-		// Add passenger schemas by road and tram
-		local townList = AIList();
-		local tramList = AIList();
-
-		foreach(cargo, _ in AICargoList()) {
-			local townprod = 0;
-			foreach(town, _ in AITownList()) {
-				townprod += AITown.GetMaxProduction(town, cargo);
-			}
-	
-			local tramable = false;
-			foreach(engine, _ in AIEngineList(AIVehicle.VT_ROAD)) {
-				if(AIEngine.GetRoadType(engine) == AIRoad.ROADTYPE_TRAM && AIEngine.CanRefitCargo(engine, cargo)) {
-					tramable = true;
-					break;
-				}
-			}
-			
-			if(townprod > 0 && AICargo.GetTownEffect(cargo) != AICargo.TE_NONE) {
-				townList.AddItem(cargo, 0);
-			}
-	
-			if(tramable && AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS)) {
-				tramList.AddItem(cargo, 0);
-			}
-		}
-	
-
-		// Add the town schema
-		this.AddSchema(Schema(this.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-		
-		// Add the tram schema, if they are supported
-		if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
-
-		// Add raw industry cargos
-		foreach(type, _ in AIIndustryTypeList()) {
-			if(AIIndustryType.IsRawIndustry(type)) {
-				local cargos = AIIndustryType.GetProducedCargo(type);
-				cargos.Valuate(AICargo.GetTownEffect);
-				cargos.KeepValue(AICargo.TE_NONE);
-				
-				this.AddSchema(Schema(this.homeTown, cargos, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-			}
-		}
-	} else {
-		// Load the vehicles into their groups
-		this.serviceManager.PostLoad();
-	}
-	
-	// Initialise
+	// Initialise the main loop
 	local ticker = 0;
 	local noServices = true;
 	
@@ -261,26 +191,8 @@ function PathZilla::Load(version, data) {
 		return false;
 	}
 
-	// Load the basic data	
-	this.stop = data[SRLZ_STOP];
-	this.companyName = data[SRLZ_COMPANY_NAME];
-	this.homeTown = data[SRLZ_HOME_TOWN];
-	this.schemaIndex = data[SRLZ_SCHEMA_IDX];
-	::trafficBlackSpots <- ArrayToList(data[SRLZ_TRAFFIC_BLACKSPOTS]); 
-	::vehiclesToSell <- ArrayToList(data[SRLZ_VEHICLES_TO_SELL]); 
-	
-	// Load the schemas
-	foreach(idx, schemaData in data[SRLZ_SCHEMAS]) {
-		this.schemas[idx] <- Schema.instance();
-		this.schemas[idx].Unserialize(schemaData);
-	}
-	
-	// Load the service manager if it was saved
-	if(SRLZ_SRVC_MANAGER in data) {
-		this.serviceManager.Unserialize(data[SRLZ_SRVC_MANAGER]);
-	}
-	
 	this.loaded = true;
+	::loadData <- data;
 }
 
 /*
@@ -293,26 +205,144 @@ function PathZilla::Save() {
 	
 	// Store the ident
 	data[SRLZ_IDENT] <- PZ_IDENT;
+	
+	// Store the global variables
+	data[SRLZ_TRAFFIC_BLACKSPOTS] <- ListToArray(::trafficBlackSpots);
+	data[SRLZ_VEHICLES_TO_SELL] <- ListToArray(::vehiclesToSell); 
 
 	// Store the basic data
 	data[SRLZ_STOP] <- this.stop;
 	data[SRLZ_COMPANY_NAME] <- this.companyName;
 	data[SRLZ_HOME_TOWN] <- this.homeTown;
-	data[SRLZ_SCHEMA_IDX] <- this.schemaIndex;
-	data[SRLZ_TRAFFIC_BLACKSPOTS] <- ListToArray(::trafficBlackSpots);
-	data[SRLZ_VEHICLES_TO_SELL] <- ListToArray(::vehiclesToSell); 
 	
 	// Store the schemas
+	data[SRLZ_SCHEMA_IDX] <- this.schemaIndex;
 	data[SRLZ_SCHEMAS] <- {};
 	foreach(idx, schema in this.schemas) {
 		data[SRLZ_SCHEMAS][idx] <- schema.Serialize();
 	}
 
+	// Store the service manager, if it has been set
 	if(this.serviceManager != null) {
 		data[SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
 	}
 
 	return data;
+}
+
+/*
+ * Initialise the state of the AI, either from saved state or from scratch.
+ */
+function PathZilla::Initialise() {
+	// Enable auto-renew
+	AICompany.SetAutoRenewStatus(true);
+	
+	// Set the service manager
+	this.serviceManager = ServiceManager();
+
+	// If there is data to load then use it, otherwise start from scratch
+	if(this.loaded) {
+		// Load some global variables
+		::trafficBlackSpots <- ArrayToList(::loadData[SRLZ_TRAFFIC_BLACKSPOTS]); 
+		::vehiclesToSell <- ArrayToList(::loadData[SRLZ_VEHICLES_TO_SELL]); 
+
+		// Load the basic data
+		this.stop = ::loadData[SRLZ_STOP];
+		this.homeTown = ::loadData[SRLZ_HOME_TOWN];
+		this.companyName = ::loadData[SRLZ_COMPANY_NAME];
+
+		// Load the schemas
+		this.schemaIndex = ::loadData[SRLZ_SCHEMA_IDX];
+		foreach(idx, schemaData in ::loadData[SRLZ_SCHEMAS]) {
+			this.schemas[idx] <- Schema.instance();
+			this.schemas[idx].Unserialize(schemaData);
+		}
+
+		// Load the service manager, if it was saved
+		if(SRLZ_SRVC_MANAGER in ::loadData) {
+			this.serviceManager.Unserialize(::loadData[SRLZ_SRVC_MANAGER]);
+		}
+
+		// Load the vehicles into their groups
+		this.serviceManager.PostLoad();
+	} else {
+		// Initialise some global variables
+		::trafficBlackSpots <- AIList();
+		::vehiclesToSell <- AIList();
+
+		// Set the basic data
+		this.stop = false;
+		this.homeTown = this.SelectHomeTown();
+		this.companyName = this.ChooseName();
+
+		// Build the schemas
+		this.schemaIndex = -1;
+		this.BuildSchemas();
+	}
+	
+	// Set the company name
+	AICompany.SetName(trnc(this.companyName));
+}
+
+/*
+ * Build a series of schemas based on the cargos, towns, and industries 
+ * available in the map.
+ */
+function PathZilla::BuildSchemas() {
+	// Add passenger schemas by road and tram
+	local townList = AIList();
+	local tramList = AIList();
+	
+	// Check each available cargo
+	foreach(cargo, _ in AICargoList()) {
+		// Get the amount of this cargo produced in towns
+		local townprod = 0;
+		foreach(town, _ in AITownList()) {
+			townprod += AITown.GetMaxProduction(town, cargo);
+		}
+		
+		// Check if there are any trams that can carry the cargo
+		local tramable = false;
+		foreach(engine, _ in AIEngineList(AIVehicle.VT_ROAD)) {
+			if(AIEngine.GetRoadType(engine) == AIRoad.ROADTYPE_TRAM && AIEngine.CanRefitCargo(engine, cargo)) {
+				tramable = true;
+				break;
+			}
+		}
+		
+		// If the cargo is produced in towns and has a town effect, use it in 
+		// the town schema
+		if(townprod > 0 && AICargo.GetTownEffect(cargo) != AICargo.TE_NONE) {
+			townList.AddItem(cargo, 0);
+		}
+		
+		// If a cargo can be carried by tram and has is of the passenger class,
+		// add it to the tram schema
+		if(tramable && AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS)) {
+			tramList.AddItem(cargo, 0);
+		}
+	}
+	
+	// Add the town schema
+	this.AddSchema(Schema(this.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+	
+	// Add the tram schema, if they are supported
+	if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
+	
+	// Check each available industry type
+	foreach(type, _ in AIIndustryTypeList()) {
+		// Only add support raw industries taht are not on water
+		if(AIIndustryType.IsRawIndustry(type) && AIIndustryType.IsBuiltOnWater(type)) {
+			// Only transport those cargos from this industry that have no town
+			// effect, i.e. dont carry passengers from oil rigs, etc...
+			local cargos = AIIndustryType.GetProducedCargo(type);
+			cargos.Valuate(AICargo.GetTownEffect);
+			cargos.KeepValue(AICargo.TE_NONE);
+			
+			// Add the schema
+			this.AddSchema(Schema(this.homeTown, cargos, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+		}
+	}
 }
 
 /*
