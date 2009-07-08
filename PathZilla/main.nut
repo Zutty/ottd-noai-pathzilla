@@ -332,7 +332,7 @@ function PathZilla::BuildSchemas() {
 	// Check each available industry type
 	foreach(type, _ in AIIndustryTypeList()) {
 		// Only add support raw industries taht are not on water
-		if(AIIndustryType.IsRawIndustry(type) && AIIndustryType.IsBuiltOnWater(type)) {
+		if(AIIndustryType.IsRawIndustry(type) && !AIIndustryType.IsBuiltOnWater(type)) {
 			// Only transport those cargos from this industry that have no town
 			// effect, i.e. dont carry passengers from oil rigs, etc...
 			local cargos = AIIndustryType.GetProducedCargo(type);
