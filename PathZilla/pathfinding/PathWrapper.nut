@@ -65,7 +65,7 @@ function PathWrapper::BuildRoad(fromTile, toTile, roadType, ignoreTiles = [], de
 		return false;
 	}
 	
-	return PathWrapper.TryBuildPath(path, roadType);
+	return PathWrapper.TryBuildPath(path, fromTile, toTile, roadType, ignoreTiles , demolish, features);
 }
 	
 /*
