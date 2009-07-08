@@ -350,3 +350,23 @@ function chopstr(str, len) {
 	}
 	return newStr;
 }
+
+/*
+ * Call the spcified function with an array of arguments, without using acall
+ */
+function arr_call(func, args) {
+	switch (args.len()) {
+		case 0: return func();
+		case 1: return func(args[0]);
+		case 2: return func(args[0], args[1]);
+		case 3: return func(args[0], args[1], args[2]);
+		case 4: return func(args[0], args[1], args[2], args[3]);
+		case 5: return func(args[0], args[1], args[2], args[3], args[4]);
+		case 6: return func(args[0], args[1], args[2], args[3], args[4], args[5]);
+		case 7: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+		case 8: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+		case 9: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+		case 10: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
+		default: throw "Too many arguments to CallFunction";
+	}
+}
