@@ -166,13 +166,16 @@ function Target::ProducesCargo(cargo) {
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
 		tileList.AddRectangle(this.tile - offset, this.tile + offset);
-		tileList.Valuate(function(tile, id) {
-			return AITown.IsWithinTownInfluence(id, tile);
-		}, this.id);
+		foreach(tile, _ in tileList) {
+			local inTown = AITown.IsWithinTownInfluence(this.id, tile);
+			tileList.SetValue(tile, (inTown) ? 1 : 0);
+		}
 		tileList.KeepValue(1);
-		tileList.Valuate(function(tile, cargo) {
-			return AITile.GetCargoProduction(tile, cargo, 1, 1, 0);
-		}, cargo);
+		foreach(tile, _ in tileList) {
+			// TODO - Change the last 1 to 0 after OpenTTD 0.7.2 is released
+			local production = AITile.GetCargoProduction(tile, cargo, 1, 1, 1);
+			tileList.SetValue(tile, production);
+		}
 
 		return ListSum(tileList) > 0;
 	}
@@ -198,13 +201,16 @@ function Target::AcceptsCargo(cargo) {
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
 		local tileList = AITileList();
 		tileList.AddRectangle(this.tile - offset, this.tile + offset);
-		tileList.Valuate(function(tile, id) {
-			return AITown.IsWithinTownInfluence(id, tile);
-		}, this.id);
+		foreach(tile, _ in tileList) {
+			local inTown = AITown.IsWithinTownInfluence(this.id, tile);
+			tileList.SetValue(tile, (tile) ? 1 : 0);
+		}
 		tileList.KeepValue(1);
-		tileList.Valuate(function(tile, cargo) {
-			return AITile.GetCargoAcceptance(tile, cargo, 1, 1, 0);
-		}, cargo);
+		foreach(tile, _ in tileList) {
+			// TODO - Change the last 1 to 0 after OpenTTD 0.7.2 is released
+			local acceptance = AITile.GetCargoAcceptance(tile, cargo, 1, 1, 1);
+			tileList.SetValue(tile, acceptance);
+		}
 		
 		return ListSum(tileList) > 0;
 	}

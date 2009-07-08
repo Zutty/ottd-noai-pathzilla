@@ -347,7 +347,7 @@ function PathZilla::SelectHomeTown() {
 	towns.RemoveBelowValue(lowerLimit);
 	
 	// Find towns that have no competitors in them
-	towns.Valuate(function (town) {
+	foreach(town, _ in towns) {
 		// Get a list of tiles to search in
 		local townTile = AITown.GetLocation(town);
 		local searchRadius = min(AIMap.DistanceFromEdge(townTile) - 1, PathZilla.MAX_TOWN_RADIUS);
@@ -356,8 +356,8 @@ function PathZilla::SelectHomeTown() {
 		tileList.AddRectangle(townTile - offset, townTile + offset);
 		tileList.Valuate(AITile.IsStationTile);
 		tileList.RemoveValue(0);
-		return tileList.IsEmpty();
-	});
+		towns.SetValue(town, (tileList.IsEmpty()) ? 1 : 0);
+	}
 	towns.RemoveValue(0);
 	
 	// If there are no empty towns, just reset the list

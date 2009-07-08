@@ -299,19 +299,20 @@ function ServiceManager::SelectEngine(targets, cargo, transportType, subType, ch
 	vtTypeMap[AITile.TRANSPORT_ROAD] <- AIVehicle.VT_ROAD;
 	
 	local engineList = AIEngineList(vtTypeMap[transportType]);
-	engineList.Valuate(function (engine, cargo, availableFunds, transportType, subType) {
+	foreach(engine, _ in engineList) {
+		local ok = true; 
 		if(transportType == AITile.TRANSPORT_ROAD) {
-			if(AIEngine.GetRoadType(engine) != subType) return -1;
+			if(AIEngine.GetRoadType(engine) != subType) ok = false;
 		}
-		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) return -1;
-		if(AIEngine.GetPrice(engine) == 0) return -1;
-		if(AIEngine.GetPrice(engine) > availableFunds) return -1;
-		if(AIEngine.GetCapacity(engine) <= 0) return -1;
-		return 1;
-	}, cargo, availableFunds, transportType, subType);
+		if(!(AIEngine.GetCargoType(engine) == cargo || AIEngine.CanRefitCargo(engine, cargo))) ok = false;
+		if(AIEngine.GetPrice(engine) == 0) ok = false;
+		if(AIEngine.GetPrice(engine) > availableFunds) ok = false;
+		if(AIEngine.GetCapacity(engine) <= 0) ok = false;
+		engineList.SetValue(engine, (ok) ? 1 : 0);
+	}
 	
-	// Discount vehciles that are invalid or that can't be built
-	engineList.RemoveValue(-1);
+	// Discount vehicles that are invalid or that can't be built
+	engineList.RemoveValue(0);
 
 	// If none are left, then return with nothing	
 	if(engineList.Count() == 0) {
@@ -369,14 +370,16 @@ function ServiceManager::SelectEngine(targets, cargo, transportType, subType, ch
 	}
 	
 	// Rank the remaining engines by their score
-	engineList.Valuate(function (engine, profitValuator, cargo, distance, maxProfit, maxCapactiy, minAcceptance) {
+	foreach(engine, _ in engineList) {
 		local profitTerm = (max(0, profitValuator(engine, cargo, distance)) * 100) / maxProfit;
 		local reliabilityTerm = AIEngine.GetReliability(engine);
 		local normCapacity = (AIEngine.GetCapacity(engine) * 100) / maxCapactiy;
 		local accUpper = 250;
 		local overkillTerm = 100 - abs(normCapacity - (min(minAcceptance, accUpper) * 100 / accUpper));
-		return (profitTerm + reliabilityTerm + overkillTerm) / 3;
-	}, profitValuator, cargo, distance, maxProfit, maxCapactiy, minAcceptance);
+		local score = (profitTerm + reliabilityTerm + overkillTerm) / 3;
+		engineList.SetValue(engine, score);
+	}
+	engineList.Sort(AIAbstractList.SORT_BY_VALUE, false);
 	
 	// If the engines are good enough then choose randomly from the best ones 
 	if(engineList.GetValue(engineList.Begin()) >= PathZilla.ENGINE_SCORE_THRESHOLD) {
@@ -418,9 +421,10 @@ function ServiceManager::CreateFleet(service, update = false) {
 
 		// If the engine type is articulated, forbid the vehicle from visiting regular stations
 		if(AIEngine.IsArticulated(engine)) {
-			stations[target.GetId()].Valuate(function (station) {
-				return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
-			});
+			foreach(station, _ in stations[target.GetId()]) {
+				local driveThru = AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
+				stations[target.GetId()].SetValue(station, (driveThru) ? 1 : 0);
+			}
 			stations[target.GetId()].RemoveValue(0);
 		}
 
@@ -467,11 +471,11 @@ function ServiceManager::CreateFleet(service, update = false) {
 
 		// Prime the station lists with waiting cargo values
 		foreach(target in service.GetTargets()) {
-			stations[target.GetId()].Valuate(function(station, cargo) {
+			foreach(station, _ in stations[target.GetId()]) {
 				local waiting = AIStation.GetCargoWaiting(station, cargo);
 				local cap = PathZilla.PAX_SERVICE_CAP_BASE * PathZilla.GetSetting("traffic");
-				return min(cap, waiting);
-			}, cargo);
+				stations[target.GetId()].SetValue(station, min(cap, waiting));
+			}
 			
 			waitingCargo += ListSum(stations[target.GetId()]);
 		}
@@ -490,9 +494,10 @@ function ServiceManager::CreateFleet(service, update = false) {
 	local accSum = {};
 	
 	foreach(target in service.GetTargets()) {
-		stations[target.GetId()].Valuate(function(station, cargo, radius) {
-			return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
-		}, cargo, radius);
+		foreach(station, _ in stations[target.GetId()]) {
+			local acceptance = AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
+			stations[target.GetId()].SetValue(station, acceptance);
+		}
 
 		// Get the minimum acceptance of all targets
 		accSum[target.GetId()] <- ListSum(stations[target.GetId()]);
@@ -606,9 +611,11 @@ function ServiceManager::SellVehicles(service, number) {
 
 	local vlist = service.GetVehicles();
 	vlist.Valuate(AIBase.RandItem);
-	vlist.Valuate(function (vehicle, cargo) {
-		return (AIVehicle.GetCargoLoad(vehicle, cargo) == 0);
-	}, service.GetCargo());
+	foreach(vehicle, _ in vlist) {
+		local empty = (AIVehicle.GetCargoLoad(vehicle, service.GetCargo()) == 0);
+		vlist.SetValue(vehicle, (empty) ? 1 : 0);
+	}
+	vlist.Sort(AIAbstractList.SORT_BY_VALUE, false);
 	
 	// Clone a fleet from the prototype vehicle
 	local i = 1;
@@ -637,9 +644,10 @@ function ServiceManager::UpdateOrders(service) {
 
 		// If the engine type is articulated, forbid the vehicle from visiting regular stations
 		if(AIEngine.IsArticulated(engine)) {
-			stations[target.GetId()].Valuate(function (station) {
-				return AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
-			});
+			foreach(station, _ in stations[target.GetId()]) {
+				local driveThru = AIRoad.IsDriveThroughRoadStationTile(AIStation.GetLocation(station));
+				stations[target.GetId()].SetValue(station, (driveThru) ? 1 : 0);
+			}
 			stations[target.GetId()].RemoveValue(0);
 		}
 
@@ -660,9 +668,10 @@ function ServiceManager::UpdateOrders(service) {
 	local accSum = {};
 	
 	foreach(target in service.GetTargets()) {
-		stations[target.GetId()].Valuate(function(station, cargo, radius) {
-			return AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
-		}, cargo, radius);
+		foreach(station, _ in stations[target.GetId()]) {
+			local acceptance = AITile.GetCargoAcceptance(AIStation.GetLocation(station), cargo, 1, 1, radius) + 1;
+			stations[target.GetId()].SetValue(station, acceptance);
+		}
 
 		// Get the minimum acceptance of all targets
 		accSum[target.GetId()] <- ListSum(stations[target.GetId()]);

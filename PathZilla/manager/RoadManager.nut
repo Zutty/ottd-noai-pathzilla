@@ -150,12 +150,14 @@ function RoadManager::PreFixTarget(aTarget, bTarget, walk, schema) {
 
 	// Find a tile that is roughly equidistant from the other 
 	// targets and has the most buildable tiles around it
-	tileList.Valuate(function (tile, sqDist, cTile) {
+	local sqDist = sqrt(AITile.GetDistanceSquareToTile(aTile, cTile));
+	foreach(tile, _ in tileList) {
 		local cDist = AITile.GetDistanceSquareToTile(cTile, tile);
 		local score = sqDist - sqrt(cDist);
 		
-		return (AITile.IsBuildable(tile)) ? score.tointeger() : 0;
-	}, sqrt(AITile.GetDistanceSquareToTile(aTile, cTile)), cTile);
+		tileList.SetValue(tile, (AITile.IsBuildable(tile)) ? score.tointeger() : 0);
+	}
+	tileList.Sort(AIAbstractList.SORT_BY_VALUE, false);
 	
 	bTarget.FixTile(tileList.Begin());
 }
@@ -223,9 +225,10 @@ function RoadManager::GetStations(target, cargo, roadType) {
 	}
 	
 	// Ensure the stations have the correct road type
-	stationList.Valuate(function (station, roadType) {
-		return (AIRoad.HasRoadType(AIStation.GetLocation(station), roadType)) ? 1 : 0;
-	}, roadType);
+	foreach(station, _ in stationList) {
+		local correctRt = (AIRoad.HasRoadType(AIStation.GetLocation(station), roadType));
+		stationList.SetValue(station, (correctRt) ? 1 : 0);
+	}
 	stationList.RemoveValue(0);
 	
 	return stationList;
@@ -250,9 +253,9 @@ function RoadManager::GetTownCoverage(town, cargo, roadType) {
 	stationList.RemoveValue(0);
 	
 	// Ensure the stations have the correct road type
-	stationList.Valuate(function (station, roadType) {
-		return (AIRoad.HasRoadType(AIStation.GetLocation(station), roadType)) ? 1 : 0;
-	}, roadType);
+	foreach(station, _ in stationList) {
+		stationList.SetValue(station, (AIRoad.HasRoadType(AIStation.GetLocation(station), roadType)) ? 1 : 0);
+	}
 	stationList.RemoveValue(0);
 	
 	
@@ -493,9 +496,10 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 
 		// Find the roads that would run parallel to a DTRS in this spot
 		local parlRoadList = LandManager.GetAdjacentTileList(tile);
-		parlRoadList.Valuate(function (_tile, tile) {
-			return AIRoad.IsRoadTile(_tile) && !AIRoad.AreRoadTilesConnected(tile, _tile);
-		}, tile);
+		foreach(_tile, _ in parlRoadList) {
+			local parl = AIRoad.IsRoadTile(_tile) && !AIRoad.AreRoadTilesConnected(tile, _tile);
+			parlRoadList.SetValue(_tile, (parl) ? 1 : 0);
+		}
 		parlRoadList.KeepValue(1);
 		local parlRoads = ListToArray(parlRoadList);
 		local inCorner = false;
@@ -584,11 +588,12 @@ function RoadManager::BuildStation(target, cargo, roadType) {
 		} else {
 			// Choose an orientation for the station
 			local adj = LandManager.GetAdjacentTileList(stTile);
-			adj.Valuate(function (rtile, stTile) {
+			foreach(rtile, _ in adj) {
 				local otile = LandManager.GetApproachTile(stTile, rtile);
 				local acc = LandManager.IsRoadable(rtile) && LandManager.IsRoadable(otile) && AIRoad.CanBuildConnectedRoadPartsHere(stTile, rtile, otile);
-				return ((acc) ? 1 : 0) + ((AIRoad.IsRoadTile(rtile)) ? 1 : 0) + ((AIRoad.IsRoadTile(otile)) ? 1 : 0);
-			}, stTile);
+				local score = ((acc) ? 1 : 0) + ((AIRoad.IsRoadTile(rtile)) ? 1 : 0) + ((AIRoad.IsRoadTile(otile)) ? 1 : 0);
+				adj.SetValue(rtile, score);
+			}
 			adj.RemoveValue(0);
 			
 			// If it doesn't fit either way around, try another tile
@@ -780,9 +785,10 @@ function RoadManager::BuildDepot(target, roadType) {
 	depots.Valuate(AIRoad.HasRoadType, roadType);
 	depots.KeepValue(1);
 	if(target.IsTown()) {
-		depots.Valuate(function (depot, town, roadType) {
-			return AITown.IsWithinTownInfluence(town, depot);
-		}, target.GetId(), roadType);
+		foreach(depot, _ in depots) {
+			local inTown = AITown.IsWithinTownInfluence(target.GetId(), depot);
+			depots.SetValue(depot, (inTown) ? 1 : 0);
+		}
 		depots.KeepValue(1);
 	} else {
 		depots.Valuate(AITile.GetDistanceManhattanToTile, targetTile);
@@ -820,12 +826,13 @@ function RoadManager::BuildDepot(target, roadType) {
 		tileList.AddRectangle(targetTile - offset, targetTile + offset);
 
 		// Rank those tiles by their suitability for a depot
-		tileList.Valuate(function(tile, roadType, target, searchRadius, tlayout, tx, ty) {
+		foreach(tile, _ in tileList) {
 			// Find suitable roads adjacent to the tile
 			local adjRoads = LandManager.GetAdjacentTileList(tile);
-			adjRoads.Valuate(function (_tile, roadType) {
-				return (AITile.GetSlope(_tile) == AITile.SLOPE_FLAT && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType)) ? 1 : 0;
-			}, roadType);
+			foreach(_tile, _ in adjRoads) {
+				local adj = (AITile.GetSlope(_tile) == AITile.SLOPE_FLAT && AIRoad.IsRoadTile(_tile) && AIRoad.HasRoadType(_tile, roadType));
+				adjRoads.SetValue(_tile, (adj) ? 1 : 0);
+			}
 			adjRoads.KeepValue(1);
 			
 			local score = 0;
@@ -847,11 +854,14 @@ function RoadManager::BuildDepot(target, roadType) {
 				}				
 			}
 			
-			return score;
-		}, roadType, target, searchRadius, tlayout, tx, ty);
-		
+			tileList.SetValue(tile, score);
+		}
+		tileList.Sort(AIAbstractList.SORT_BY_VALUE, false);
+	
+		// Remove tiles that are unsuitable 	
 		tileList.RemoveValue(0);
 		
+		// Try each location
 		foreach(depotTile, _ in tileList) {
 			local path = PathWrapper.FindPath(targetTile, depotTile, roadType, [], true, [PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_DEPOT_ALIGN, PathWrapper.FEAT_SHORT_SCOPE, PathWrapper.FEAT_NO_WORMHOLES]);
 			if(path != null) {

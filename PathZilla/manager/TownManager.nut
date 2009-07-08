@@ -76,13 +76,15 @@ function TownManager::HandleRating(town) {
 		// After that, find places we can build trees
 		local tileList = AITileList();
 		tileList.AddRectangle(townLocation - offset, townLocation + offset);
-		tileList.Valuate(function (tile, town) {
-			return (!AITile.IsWithinTownInfluence(tile, town) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile)) ? 1 : 0;
-		}, town);
+		foreach(tile, _ in tileList) {
+			local suitable = (!AITile.IsWithinTownInfluence(tile, town) && AITile.IsBuildable(tile) && !AITile.HasTreeOnTile(tile));
+			tileList.SetValue(tile, (suitable) ? 1 : 0);
+		}
 		tileList.RemoveValue(0);
-		tileList.Valuate(function (tile, townLocation) {
-			return AITile.GetDistanceManhattanToTile(tile, townLocation) + AIBase.RandRange(6) - 3;
-		}, townLocation);
+		foreach(tile, _ in tileList) {
+			local r = AITile.GetDistanceManhattanToTile(tile, townLocation) + AIBase.RandRange(6) - 3;
+			tileList.SetValue(tile, r);
+		}
 		tileList.Sort(AIAbstractList.SORT_BY_VALUE, true);
 		
 		// For the places that are available, build a "green belt" around the town
