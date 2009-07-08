@@ -10,7 +10,7 @@
  */
 class Road
 {
-	_aystar_class = import("graph.aystar", "", 5);
+	_aystar_class = import("graph.aystar", "", 6);
 	_max_cost = null;              ///< The maximum cost for a route.
 	_cost_tile = null;             ///< The cost for a single tile.
 	_cost_no_existing_road = null; ///< The cost that is added to _cost_tile if no road exists yet.
@@ -207,8 +207,10 @@ function Road::_GetBridgeNumSlopes(end_a, end_b)
 	return slopes;
 }
 
-function Road::_Cost(path, new_tile, new_direction)
+function Road::_Cost(self, path, new_tile, new_direction)
 {
+	this = self;
+	
 	/* path == null means this is the first node of a path, so the cost is 0. */
 	if (path == null) return 0;
 
@@ -287,15 +289,19 @@ function Road::_Cost(path, new_tile, new_direction)
 	return path.GetCost() + cost;
 }
 
-function Road::_Estimate(cur_tile, cur_direction, goal_tiles)
+function Road::_Estimate(self, cur_tile, cur_direction, goal_tiles)
 {
+	this = self;
+	
 	/* As estimate we multiply the lowest possible cost for a single tile with
 	 * with the minimum number of tiles we need to traverse. */
 	return AIMap.DistanceManhattan(cur_tile, this._goal_estimate_tile) * this._cost_tile * this._estimate_multiplier;
 }
 
-function Road::_Neighbours(path, cur_node)
+function Road::_Neighbours(self, path, cur_node)
 {
+	this = self;
+	
 	/* this._max_cost is the maximum path cost, if we go over it, the path isn't valid. */
 	if (path.GetCost() >= this._max_cost) return [];
 	if (path.GetLength() + AIMap.DistanceManhattan(cur_node, this._goal_estimate_tile) > this._max_path_length) return [];
@@ -350,7 +356,7 @@ function Road::_Neighbours(path, cur_node)
 	return tiles;
 }
 
-function Road::_CheckDirection(tile, existing_direction, new_direction)
+function Road::_CheckDirection(self, tile, existing_direction, new_direction)
 {
 	return false;
 }
