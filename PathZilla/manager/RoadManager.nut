@@ -93,7 +93,7 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	
 				// Try to build a link between the towns
 				AILog.Info(" Building a road between " + aTarget.GetName() + " and " + bTarget.GetName() + "...");
-				local feat = [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT];
+				local feat = [PathWrapper.FEAT_SEPARATE_ROAD_TYPES, PathWrapper.FEAT_GRID_LAYOUT, PathWrapper.FEAT_COUNTRY_LANE];
 				local path = PathWrapper.FindPath(aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);
 	
 				success = PathWrapper.TryBuildPath(path, aTarget.GetTile(), bTarget.GetTile(), service.GetSubType(), [], false, feat);

@@ -45,7 +45,7 @@ class PathWrapper {
 	COST_PARALLEL_BONUS = 100;
 	COST_GRID_LAYOUT = 1000;
 	COST_DEPOT_ALIGN = 3000;
-	COST_COUNTRY_LANE = 1250;
+	COST_COUNTRY_LANE = 1750;
 	
 	constructor() {
 	}
@@ -356,7 +356,7 @@ function PathWrapper::FindPath(fromTile, toTile, roadType, ignoreTiles = [], dem
 					local LATE_YEAR = 1990;
 					local EARLY_YEAR = 1950;
 					
-					// If the towns are small and simple eough, add cost for trees and rough terrain, to make the road "windy"
+					// If the towns are small and simple enough, add cost for trees and rough terrain, to make the road "windy"
 					if(year < LATE_YEAR && ((year >= EARLY_YEAR && !fGrid && !tGrid) || year < EARLY_YEAR) && fSize < 1000 && tSize < 1000) {
 						pathfinder.RegisterCostCallback(function (tile, prevTile) {
 							local len = AIMap.DistanceManhattan(tile, prevTile);
