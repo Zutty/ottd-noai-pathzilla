@@ -41,6 +41,9 @@ class PathZilla extends AIInfo {
 		AddLabels("traffic", {_1="Light", _2="Normal", _3="Heavy", _4="Very Heavy"});
 		AddSetting({name = "rt_cargo_towns", description = "Route all cargo through towns", easy_value = 1, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
 		AddSetting({name = "country_lanes", description = "Build windy country lanes in rural towns", easy_value = 1, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
+		AddSetting({name = "bribe", description = "Attempt to bribe local authority when rating is poor", easy_value = 0, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
+		AddSetting({name = "green_belt", description = "Density of green belt to improve local authority rating", min_value = 0, max_value = 4, easy_value = 3, medium_value = 3, hard_value = 3, custom_value = 3, flags = 0});
+		AddLabels("green_belt", {_0="None", _1="Sparse", _2="Medium", _3="Dense", _4="Very Dense"});
 	}
 	function CanLoadFromVersion(version) {
 		return (version == 5);

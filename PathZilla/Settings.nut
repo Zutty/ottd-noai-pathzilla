@@ -56,3 +56,15 @@ function Settings::RouteCargoThroughTowns() {
 function Settings::EnableCountryLanes() {
 	return (PathZilla.GetSetting("country_lanes") == 1);
 }
+
+function Settings::EnableBribes() {
+	return (PathZilla.GetSetting("bribe") == 1);
+}
+
+function Settings::EnableGreenBelt() {
+	return (PathZilla.GetSetting("green_belt") > 0);
+}
+
+function Settings::GreenBeltThickness() {
+	return PathZilla.GetSetting("green_belt");
+}

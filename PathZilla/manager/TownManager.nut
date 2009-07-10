@@ -58,7 +58,7 @@ function TownManager::HandleRating(town) {
 	// If the rating is low, take steps to improve it
 	if(rating < AITown.TOWN_RATING_GOOD) {
 		// See if we can bribe the town
-		local canBribe = (AIGameSettings.GetValue("economy.bribe") == 1);
+		local canBribe = Settings.EnableBribes() && (AIGameSettings.GetValue("economy.bribe") == 1);
 		if(canBribe && rating < AITown.TOWN_RATING_POOR && FinanceManager.CanAfford(PathZilla.BRIBE_THRESHOLD)) {
 			AITown.PerformTownAction(town, AITown.TOWN_ACTION_BRIBE);
 		}
@@ -67,8 +67,8 @@ function TownManager::HandleRating(town) {
 	// Update the rating	
 	rating = AITown.GetRating(town, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF));
 
-	// If the rating is still low, take steps to improve it
-	if(rating < AITown.TOWN_RATING_GOOD) {
+	// If the rating is still low, take steps to improve it by building a green belt
+	if(Settings.EnableGreenBelt() && rating < AITown.TOWN_RATING_GOOD) {
 		// Get a list of tiles to search in
 		local searchRadius = min(AIMap.DistanceFromEdge(townLocation) - 1, PathZilla.MAX_TOWN_RADIUS);
 		local offset = AIMap.GetTileIndex(searchRadius, searchRadius);
@@ -82,20 +82,24 @@ function TownManager::HandleRating(town) {
 		}
 		tileList.RemoveValue(0);
 		foreach(tile, _ in tileList) {
-			local r = AITile.GetDistanceManhattanToTile(tile, townLocation) + AIBase.RandRange(6) - 3;
-			tileList.SetValue(tile, r);
+			local score = sqrt(AITile.GetDistanceSquareToTile(tile, townLocation)).tointeger();
+			score += AIBase.RandRange(6) - 3;
+			if(AITile.IsFarmTile(tile)) score += 10;
+			tileList.SetValue(tile, score);
 		}
 		tileList.Sort(AIAbstractList.SORT_BY_VALUE, true);
 		
 		// For the places that are available, build a "green belt" around the town
 		if(!tileList.IsEmpty()) {
 			local expenditure = 0;
+			local thickness = Settings.GreenBeltThickness();
+			local maxExpenditure = PathZilla.MAX_TREE_SPEND / (5-thickness);
 			local tile = tileList.Begin();
 			
 			while(AITown.GetRating(town, AICompany.ResolveCompanyID(AICompany.COMPANY_SELF)) < AITown.TOWN_RATING_GOOD
-					 && expenditure < PathZilla.MAX_TREE_SPEND && tileList.HasNext()) {
+					 && expenditure < maxExpenditure && tileList.HasNext()) {
 				local acc = AIAccounting();
-				for(local i = 0; i < 4; i++) {
+				for(local i = 0; i < thickness; i++) {
 					AITile.PlantTree(tile);
 				}
 				expenditure += acc.GetCosts();
