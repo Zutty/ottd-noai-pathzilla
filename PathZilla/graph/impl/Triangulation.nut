@@ -132,53 +132,38 @@ class Triangulation extends Graph {
 			
 			local vertex = target.GetVertex();
 			this.edgeSet = [];
-			local toRemove = [];
 
 			// Sort the triangles so that we can cut off when we find the
 			// first live triangle.			
 			liveTriangles.sort();
 				
 			// Find triangles that have been completed
-			foreach(i, tri in liveTriangles) {
-				local s = tri.IsSouthOf(vertex);
-				if(s) {
-					completedTriangles.append(tri);
-					toRemove.append(i);
+			while(liveTriangles.len() > 0) {
+				if(liveTriangles[0].IsSouthOf(vertex)) {
+					completedTriangles.append(liveTriangles[0]);
+					liveTriangles.remove(0);
 				} else {
 					break;
 				}
-			}			
-			
-			// Remove the completed triangles
-			local offset = 0;
-			foreach(r in toRemove) {
-				liveTriangles.remove(r - offset);
-				offset++;
 			}
 
-			// Reset the remove list
-			toRemove = [];
-
 			// Check for non-empty circumcircles
-			foreach(i, tri in liveTriangles) {
-				// If the circumcircle is non-empty, mark the triangle for removal 
-				// and add the edges to the edge buffer.
+			local i = 0;
+			while(i < liveTriangles.len()) {
+				local tri = liveTriangles[i];
+				// If the circumcircle is non-empty, remove the triangle and 
+				// add the edges to the edge buffer.
 				if(tri.u.GetDistance(vertex) <= tri.r) {
 					this.HandleEdge(tri.a, tri.b);
 					this.HandleEdge(tri.b, tri.c);
 					this.HandleEdge(tri.c, tri.a);
-	
-					toRemove.append(i);
+					
+					liveTriangles.remove(i);
+				} else {
+					i++;
 				}
 			}
-	
-			// Remove the triangles that were marked earlier		
-			offset = 0;
-			foreach(r in toRemove) {
-				liveTriangles.remove(r - offset);
-				offset++;
-			}
-	
+
 			// Build new triangles from the remaining edges in the buffer
 			foreach(e in this.edgeSet) {
 				liveTriangles.append(Triangle(e.a, e.b, vertex));
@@ -189,7 +174,6 @@ class Triangulation extends Graph {
 		local triangles = [];
 		triangles.extend(liveTriangles);
 		triangles.extend(completedTriangles);
-		triangles.sort();
 
 		// Accumulate a list of edges
 		local edgeAcc = SortedSet();
