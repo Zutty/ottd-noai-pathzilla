@@ -114,6 +114,13 @@ function arrayfind(arr, item) {
 }
 
 /*
+ * Checks if the specified string starts with the specified pattern
+ */
+function starts_with(string, pattern) {
+	return (string.slice(0, pattern.len()) == pattern);
+}
+
+/*
  * Checks if the specified string ends with the specified pattern
  */
 function ends_with(string, pattern) {
@@ -333,6 +340,19 @@ function split(str, delim) {
 }
 
 /*
+ * Returns a string composed of the elements of the supplied array with the
+ * glue string concatenated between them.
+ */
+function join(tokens, glue) {
+	local str = "";
+	for(local i = 0; i<tokens.len(); i++) {
+		str += tokens[i];
+		if(i < tokens.len()) str += glue;
+	}
+	return str;
+}
+
+/*
  * Return the minimum length whole-word substring of str to be at least len 
  * characters long. For instance...
  *   chopstr("Sentfingley Market", 7) = "Sentfingley"
@@ -349,6 +369,39 @@ function chopstr(str, len) {
 		newStr += tokens[i++];
 	}
 	return newStr;
+}
+
+/*
+ * Reverse the supplied string.
+ */
+function rev(str) {
+	local revstr = "";
+	for(local i = str.len(); i>0; i--) {
+		revstr += str.slice(i-1, i);
+	}
+	return revstr;
+}
+
+/*
+ * Convert the specified string to title case, i.e. where the first letter is
+ * upper and all others are lower.
+ */
+function totitlecase(str) {
+	return str.slice(0,1).toupper() + str.slice(1).tolower();
+}
+
+/*
+ * Remove each element from the array which satisfies the supplied callback.
+ */
+function filter_array(arr, callback) {
+	local i = 0;
+	while(i < arr.len()) {
+		if(callback(arr[i])) {
+			arr.remove(i);
+		} else {
+			i++;
+		}
+	}
 }
 
 /*
