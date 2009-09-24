@@ -587,7 +587,13 @@ function ServiceManager::CreateFleet(service, update = false) {
 		foreach(target in service.GetTargets()) {
 			local tile = AIStation.GetLocation(RandomItemByWeight(stations[target.GetId()], accSum[target.GetId()]));
 			local flags = AIOrder.AIOF_NON_STOP_INTERMEDIATE;
-			if(!target.IsTown() && target.ProducesCargo(cargo)) flags = flags | AIOrder.AIOF_FULL_LOAD;
+			if(!target.IsTown()) {
+				if(target.ProducesCargo(cargo)) flags = flags | AIOrder.AIOF_FULL_LOAD;
+				if(target.AcceptsCargo(cargo)) {
+					flags = flags | AIOrder.AIOF_UNLOAD;
+					flags = flags | AIOrder.AIOF_NO_LOAD;
+				}
+			}
 			AIOrder.AppendOrder(v, tile, flags);
 		}
 		
@@ -691,7 +697,13 @@ function ServiceManager::UpdateOrders(service) {
 		foreach(target in service.GetTargets()) {
 			local tile = AIStation.GetLocation(RandomItemByWeight(stations[target.GetId()], accSum[target.GetId()]));
 			local flags = AIOrder.AIOF_NON_STOP_INTERMEDIATE;
-			if(!target.IsTown() && target.ProducesCargo(cargo)) flags = flags & AIOrder.AIOF_FULL_LOAD;
+			if(!target.IsTown()) {
+				if(target.ProducesCargo(cargo)) flags = flags | AIOrder.AIOF_FULL_LOAD;
+				if(target.AcceptsCargo(cargo)) {
+					flags = flags | AIOrder.AIOF_UNLOAD;
+					flags = flags | AIOrder.AIOF_NO_LOAD;
+				}
+			}
 			AIOrder.AppendOrder(v, tile, flags);
 		}
 
