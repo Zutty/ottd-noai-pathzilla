@@ -341,6 +341,10 @@ function ServiceManager::SelectEngine(targets, cargo, transportType, subType, ch
 	// Find the highest profit level
 	engineList.Valuate(profitValuator, cargo, distance);
 	local maxProfit = engineList.GetValue(engineList.Begin());
+	if(maxProfit <= 0) {
+		AILog.Warning("There are no engines that could operate a profit for this route!");
+		return null;
+	}
 	
 	// Findthe highest capacity
 	engineList.Valuate(AIEngine.GetCapacity);
