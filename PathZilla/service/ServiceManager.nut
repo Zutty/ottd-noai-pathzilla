@@ -403,12 +403,14 @@ function ServiceManager::CreateFleet(service, update = false) {
 	local cargo = service.GetCargo();
 	local isIndustry = false;
 	
-	// Select an engine type
-	local engine = null;
-	if(update) {
-		engine = service.GetEngine();
-	} else {
+	// Select an engine type if one has not already been set
+	local engine = service.GetEngine();
+	if(!update || engine == null) {
 		engine = this.SelectEngine(service.GetTargets(), cargo, service.GetTransportType(), service.GetSubType(), true);
+		if(engine == null) {
+			AILog.Error("There are no suitable vehicles for this service");
+			return;
+		}
 		service.SetEngine(engine);
 	}
 
