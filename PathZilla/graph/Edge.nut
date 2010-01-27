@@ -48,6 +48,24 @@ function Edge::GetLength() {
 }
 
 /*
+ * Test if the edge visits the specified vertex.
+ */
+function Edge::Visits(vertex) {
+	return (this.a.equals(vertex) || this.b.equals(vertex));
+}
+
+/*
+ * Test if the edge visits any of the specified vertices.
+ */
+function Edge::VisitsAny(vertices) {
+	foreach(vertex in vertices) {
+		if(this.Visits(vertex)) return true;
+	}
+	
+	return false;
+}
+
+/*
  * Checks to see if another edge is the same as another.
  */
 function Edge::equals(edge) {

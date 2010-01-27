@@ -129,6 +129,13 @@ function Triangle::IsSouthOf(vertex) {
 }
 
 /*
+ * Get the three edges that make up this triangle as an array.
+ */
+function Triangle::GetEdges() {
+	return [Edge(this.a, this.b), Edge(this.b, this.c), Edge(this.c, this.a)];
+}
+
+/*
  * Compare this triangle to another. This method sorts the triangles in south
  * to north order, to enable to sweepline optimisation. 
  */
