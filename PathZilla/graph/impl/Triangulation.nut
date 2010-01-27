@@ -37,202 +37,211 @@
  * 
  * Author:  George Weller (Zutty)
  * Created: 05/06/2008
- * Version: 1.1
+ * Version: 1.2
  */
-
+ 
 class Triangulation extends Graph {
-	edgeSet = null;
 	
+	static SUPER_VERTICES = [
+		Vertex(1, 1),
+		Vertex(AIMap.GetMapSizeX() - 2, 1),
+		Vertex(1, AIMap.GetMapSizeY() - 2),
+		Vertex(AIMap.GetMapSizeX() - 2, AIMap.GetMapSizeY() - 2)
+	];
+	
+	// Member varibles
+	triangles = null;
+
 	constructor(targets) {
 		Graph.constructor();
 		
-		targets.SortBy(function (a, b) {
-			local al = a.GetLocation();
-			local bl = b.GetLocation();
-			if(al == bl) return 0;
-			return (al < bl) ? 1 : -1;
-		});
-		
 		AILog.Info("  Computing triangulation over " + targets.Len() + " targets...");
-
-		// If there are fewer than three targets then use a special case
-		if(targets.Len() == 1) {
-			this.vertices.RawInsert(targets.GetI(0).GetVertex());
-
-			AILog.Info("     Done.");
-			return;
-		} else if(targets.Len() == 2) {
-			local a = targets.GetI(0).GetVertex();
-			local b = targets.GetI(1).GetVertex();
-			
-			this.vertices.RawInsert(a);
-			this.vertices.RawInsert(b);
-
-			this.edges.RawInsert(Edge(a, b));
-
-			this.data[a.ToTile()] <- SortedSet(); 
-			this.data[a.ToTile()].RawInsert(b);
-
-			this.data[b.ToTile()] <- SortedSet(); 
-			this.data[b.ToTile()].RawInsert(a);
-			
-			AILog.Info("     Done.");
-			return;
-		} else if(targets.Len() == 3) {
-			local a = targets.GetI(0).GetVertex();
-			local b = targets.GetI(1).GetVertex();
-			local c = targets.GetI(2).GetVertex();
-			
-			this.vertices.RawInsert(a);
-			this.vertices.RawInsert(b);
-			this.vertices.RawInsert(c);
-
-			this.edges.RawInsert(Edge(a, b));
-			this.edges.RawInsert(Edge(b, c));
-			this.edges.RawInsert(Edge(c, a));
-
-			this.data[a.ToTile()] <- SortedSet(); 
-			this.data[a.ToTile()].RawInsert(b);
-			this.data[a.ToTile()].RawInsert(c);
-
-			this.data[b.ToTile()] <- SortedSet(); 
-			this.data[b.ToTile()].RawInsert(a);
-			this.data[b.ToTile()].RawInsert(c);
-			
-			this.data[c.ToTile()] <- SortedSet(); 
-			this.data[c.ToTile()].RawInsert(a);
-			this.data[c.ToTile()].RawInsert(b);
-
-			AILog.Info("     Done.");
-			return;
-		}
 		
-		// Get the corners of the map
-		local superVertices = [
-				Vertex(1, 1),
-				Vertex(AIMap.GetMapSizeX() - 2, 1),
-				Vertex(1, AIMap.GetMapSizeY() - 2),
-				Vertex(AIMap.GetMapSizeX() - 2, AIMap.GetMapSizeY() - 2)
-			];
-	
 		// Seed the trianglation with two triangles forming a square over the entire map
-		local liveTriangles = [
-				Triangle(superVertices[0], superVertices[1], superVertices[2]),
-				Triangle(superVertices[1], superVertices[2], superVertices[3]) 
+		this.triangles = [
+				Triangle(SUPER_VERTICES[0], SUPER_VERTICES[1], SUPER_VERTICES[2]),
+				Triangle(SUPER_VERTICES[1], SUPER_VERTICES[2], SUPER_VERTICES[3]) 
 			];
-		local completedTriangles = [];
-	
-		// Compute the trianglation
-		local steps = 0;
-		foreach(target in targets) {
-			// Only sleep once every PROCESSING_PRIORITY iterations
-			if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
-				PathZilla.Sleep(1);
-			}
-			
-			local vertex = target.GetVertex();
-			this.edgeSet = [];
 
-			// Sort the triangles so that we can cut off when we find the
-			// first live triangle.			
-			liveTriangles.sort();
-				
-			// Find triangles that have been completed
-			while(liveTriangles.len() > 0) {
-				if(liveTriangles[0].IsSouthOf(vertex)) {
-					completedTriangles.append(liveTriangles[0]);
-					liveTriangles.remove(0);
-				} else {
-					break;
-				}
-			}
+		// Get an appropriately sorted set of vertices from the list of targets			
+		local vertices = this.GetTargetVertices(targets);
 
-			// Check for non-empty circumcircles
-			local i = 0;
-			while(i < liveTriangles.len()) {
-				local tri = liveTriangles[i];
-				// If the circumcircle is non-empty, remove the triangle and 
-				// add the edges to the edge buffer.
-				if(tri.u.GetDistance(vertex) <= tri.r) {
-					this.HandleEdge(tri.a, tri.b);
-					this.HandleEdge(tri.b, tri.c);
-					this.HandleEdge(tri.c, tri.a);
-					
-					liveTriangles.remove(i);
-				} else {
-					i++;
-				}
-			}
-
-			// Build new triangles from the remaining edges in the buffer
-			foreach(e in this.edgeSet) {
-				liveTriangles.append(Triangle(e.a, e.b, vertex));
-			}
-		}
+		// Perform the sweepline alogrithm to construct a set of delaunay 
+		// triangles from the vertices
+		this.SweepLine(vertices);
 		
-		// Combine the two lists of triangles and sort them
-		local triangles = [];
-		triangles.extend(liveTriangles);
-		triangles.extend(completedTriangles);
-
-		// Accumulate a list of edges
-		local edgeAcc = SortedSet();
-		foreach(tri in triangles) {
-			local notSuper = !arraycontains(superVertices, tri.a) && !arraycontains(superVertices, tri.b) && !arraycontains(superVertices, tri.c);
-	
-			// If the triangle does not stem from any of the original super-vertices
-			// (i.e. the corners of the map) then add it to the graph.
-			if(notSuper) {
-				edgeAcc.RawInsert(Edge(tri.a, tri.b));
-				edgeAcc.RawInsert(Edge(tri.b, tri.c));
-				edgeAcc.RawInsert(Edge(tri.c, tri.a));
-			}
-		}
+		// Convert the triangles into a standard graph representation
+		this.BakeTriangles(vertices, true);
 		
-		// Remove duplicate edges
-		edgeAcc.RemoveDuplicates();
-
-		// Build a graph from the accumulated triangles
-		foreach(edge in edgeAcc) {
-			this.edges.RawInsert(edge);
-
-			this.vertices.RawInsert(edge.a);
-			this.vertices.RawInsert(edge.b);
-
-			if(!this.data.rawin(edge.a.ToTile())) {
-				this.data[edge.a.ToTile()] <- SortedSet(); 
-			}
-			this.data[edge.a.ToTile()].RawInsert(edge.b);
-
-			if(!this.data.rawin(edge.b.ToTile())) {
-				this.data[edge.b.ToTile()] <- SortedSet(); 
-			}
-			this.data[edge.b.ToTile()].RawInsert(edge.a);
-		}
-
-		// Remove duplicate vertices
-		this.vertices.RemoveDuplicates();
-		
+		// Check that we haven't missed anything
 		if(this.vertices.Len() < targets.Len()) {
 			AILog.Warning("Some targets were not captured in triangulation.");
 			// TODO - Handle this in a way that wont break adding vertices at a later time
 		}
-
+		
 		AILog.Info("     Done.");
+	}		
+}	
+
+/*
+ * Sort the targets by location and return the vertex for each one. 
+ */
+function Triangulation::GetTargetVertices(targets) {
+	local vertices = [];
+	
+	// Sort the targets to make the sweepline work
+	targets.SortBy(function (a, b) {
+		local al = a.GetLocation();
+		local bl = b.GetLocation();
+		if(al == bl) return 0;
+		return (al < bl) ? 1 : -1;
+	});
+		
+	// Get the vertex for each target
+	foreach(target in targets) {
+		vertices.append(target.GetVertex());
 	}
+	
+	return vertices;
+}	
+
+/*
+ * Convert a set of vertices to a set of delaunay triangles. This uses the 
+ * algorithm described at the top of this file. The input list of vertices is 
+ * expected to be sorted. The method returns a list of all the edges that were
+ * invalidated during the process, i.e. those that should no longer exist in
+ * the graph. The triangles themselves are kept in the triangles member 
+ * variable. This includes triangles formed form the four super vertices.
+ */
+function Triangulation::SweepLine(vertices) {
+	local completedTriangles = [];
+	local liveTriangles = this.triangles;
+	local invalidatedEdges = [];
+
+	// Compute the trianglation
+	local steps = 0;
+	foreach(vertex in vertices) {
+		// Only sleep once every PROCESSING_PRIORITY iterations
+		if(steps++ % PathZilla.PROCESSING_PRIORITY == 0) {
+			PathZilla.Sleep(1);
+		}
+		
+		// Sort the triangles so that we can cut off when we find the
+		// first live triangle.			
+		liveTriangles.sort();
+			
+		// Find triangles that have been completed
+		while(liveTriangles.len() > 0) {
+			if(liveTriangles[0].IsSouthOf(vertex)) {
+				completedTriangles.append(liveTriangles[0]);
+				liveTriangles.remove(0);
+			} else {
+				break;
+			}
+		}
+
+		// Initialise for the loop		
+		local edgeBuffer = [];
+		local i = 0;
+
+		// Check for non-empty circumcircles
+		while(i < liveTriangles.len()) {
+			local tri = liveTriangles[i];
+			// If the circumcircle is non-empty, remove the triangle and 
+			// add the edges to the edge buffer.
+			if(tri.u.GetDistance(vertex) <= tri.r) {
+				edgeBuffer.append(Edge(tri.a, tri.b));
+				edgeBuffer.append(Edge(tri.b, tri.c));
+				edgeBuffer.append(Edge(tri.c, tri.a));
+				
+				liveTriangles.remove(i);
+			} else {
+				i++;
+			}
+		}
+
+		// Sort the edge buffer to group double edges together		
+		edgeBuffer.sort();
+
+		// Find double edges in the buffer and mark them for removal
+		local toRemove = [];
+		for(local idx = 1; idx < edgeBuffer.len(); idx++) {
+			// An edge is 'double' if there are two copies of it in the buffer
+			if(edgeBuffer[idx].equals(edgeBuffer[idx-1])) {
+				// If the edge is double, mark it for removal from the buffer
+				toRemove.append(idx-1);
+				toRemove.append(idx);
+				
+				// Then invalidate the edge
+				invalidatedEdges.append(edgeBuffer[idx])
+				
+				// An finally skip over the next in the buffer, as there cannot
+				// be triple edges
+				idx++;
+			}
+		}
+	
+		// Remove the double edges from the buffer
+		local offset = 0;
+		foreach(r in toRemove) {
+			edgeBuffer.remove(r - offset);
+			offset++;
+		}
+		
+		// Build new triangles from the remaining edges in the buffer
+		foreach(e in edgeBuffer) {
+			liveTriangles.append(Triangle(e.a, e.b, vertex));
+		}
+	}
+	
+	// Combine the two lists of triangles and sort them
+	this.triangles.extend(completedTriangles);
+	
+	// Return the edges that were invalidated
+	return invalidatedEdges;
 }
 
 /*
- * Process a new edge in mid triangulation. If the edge already exists then
- * the dupicate is deleted, otherwise it is added to the list.
+ * Convert the set of triangles generated by the sweep-line algorithm into a
+ * graph in the standard format. This method accepts an array containing the
+ * vertices that were added in the preceding triangulation step, and a flag
+ * specifying if these were ALL the vertices in the entire graph. If this is
+ * false then only edges attached to any of these new vertices will be added
+ * to the graph. Otherwise, all edges will be added. In both cases, however, 
+ * edges connected to any of the four super vertices at the corners of the map
+ * will not be added.
  */
-function Triangulation::HandleEdge(a, b) {
-	local edge = Edge(a, b);
-	local idx = arrayfind(this.edgeSet, edge);
-	
-	if(idx > 0) {
-		this.edgeSet.remove(idx);
-	} else {
-		this.edgeSet.append(edge);
+function Triangulation::BakeTriangles(newVertices, visitsAll) {
+	// Accumulate a list of edges
+	local edgeAcc = SortedSet();
+
+	// Inspect each edge in each triangle of the graph
+	foreach(tri in this.triangles) {
+		// If an edge does not stem from any of the original super-vertices
+		// (i.e. the corners of the map) then add it to the graph.
+		foreach(edge in tri.GetEdges()) {
+			if(!edge.VisitsAny(SUPER_VERTICES) && (visitsAll || edge.VisitsAny(newVertices))) edgeAcc.RawInsert(edge);
+		}
 	}
+	
+	// Remove duplicate edges
+	edgeAcc.RemoveDuplicates();
+	
+	// Build a graph from the accumulated triangles
+	foreach(edge in edgeAcc) {
+		this.edges.RawInsert(edge);
+				
+		if(!this.data.rawin(edge.a.ToTile())) {
+			this.data[edge.a.ToTile()] <- SortedSet(); 
+		}
+		this.data[edge.a.ToTile()].RawInsert(edge.b);
+		
+		if(!this.data.rawin(edge.b.ToTile())) {
+			this.data[edge.b.ToTile()] <- SortedSet(); 
+		}
+		this.data[edge.b.ToTile()].RawInsert(edge.a);
+	}
+	
+	// Remove duplicate vertices
+	this.vertices.RawMerge(newVertices);
 }
