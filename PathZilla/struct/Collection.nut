@@ -50,6 +50,13 @@ function Collection::Len() {
 }
 
 /*
+ * Test if the collection is empty.
+ */
+function Collection::IsEmpty() {
+	return this.data.len() == 0;
+}
+
+/*
  * Saves an array to a table.
  */
 function Collection::SerializeArray(arr) {

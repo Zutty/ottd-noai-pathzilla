@@ -57,6 +57,10 @@ function SortedSet::RawInsert(item) {
 	this.data.append(item);
 }
 
+function SortedSet::RawMerge(arr) {
+	this.data.extend(arr);
+}
+
 /*
  * Re-sort the set.
  */
