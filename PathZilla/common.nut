@@ -146,9 +146,9 @@ function GetTown(tile) {
  * Delete the sign at the specified tile, if any.
  */
 function RemoveSign(tile) {
-	for(local i = 0; i < AISign.GetMaxSignID(); i++) {
-		if(AISign.GetLocation(i) == tile) {
-			AISign.RemoveSign(i);
+	foreach(sign in AISignList()) {
+		if(AISign.GetLocation(sign) == tile) {
+			AISign.RemoveSign(sign);
 		}
 	}
 }

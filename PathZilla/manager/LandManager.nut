@@ -71,22 +71,6 @@ function LandManager::GetAdjacentTileList(tile) {
 }
 
 /*
- * Get the true height of the specified tile, as the highest of the tile's 
- * four corners
- */
-function LandManager::GetTrueHeight(tile) {
-	local heights = [
-			AITile.GetHeight(tile),
-			AITile.GetHeight(tile + AIMap.GetTileIndex(1,1)),
-			AITile.GetHeight(tile + AIMap.GetTileIndex(1,0)),
-			AITile.GetHeight(tile + AIMap.GetTileIndex(0,1))
-		];
-	heights.sort();
-
-	return heights[3];
-}
-
-/*
  * Get the tile that must be started from to approach a sloped tile from below.
  */
 function LandManager::GetSlopeApproachTile(tile) {

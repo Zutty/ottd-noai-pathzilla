@@ -601,7 +601,7 @@ function ServiceManager::CreateFleet(service, update = false) {
 		}
 		
 		// Send the vehicle to the destination nearest the depot we built it at
-		AIVehicle.SkipToVehicleOrder(v, idx);
+		AIOrder.SkipToOrder(v, idx);
 		
 		// Add the vehicle to the service
 		service.AddVehicle(v);
@@ -711,7 +711,7 @@ function ServiceManager::UpdateOrders(service) {
 		}
 
 		// Ensure the vehicle is still heading to the same town it was before
-		AIVehicle.SkipToVehicleOrder(v, currentOrder);
+		AIOrder.SkipToOrder(v, currentOrder);
 	}
 }
 

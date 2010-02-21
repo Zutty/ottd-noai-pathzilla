@@ -33,6 +33,7 @@ class PathZilla extends AIInfo {
 	function GetDate()        { return "2009-07-08"; }
 	function CreateInstance() { return "PathZilla"; }
 	function GetShortName()   { return "PZLA"; }
+	function GetAPIVersion()  { return "1.0"; }
 	function GetSettings() {
 		AddSetting({name = "latency", description = "Planning speed of AI", min_value = 0, max_value = 5, easy_value = 1, medium_value = 3, hard_value = 5, custom_value = 4, flags = 0});
 		AddLabels("latency", {_0="Very Slow", _1="Slow", _2="Medium", _3="Fast", _4="Very Fast", _5="Fastest"});
