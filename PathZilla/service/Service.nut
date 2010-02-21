@@ -72,10 +72,10 @@ function Service::Create() {
 	this.group = AIGroup.CreateGroup(AIVehicle.VT_ROAD);
 	
 	// Name the group
-	local schema = ::pz.GetSchema(this.schemaId);
+	local schema = ::pz.schemaManager.GetSchema(this.schemaId);
 	local last = this.targetIds.len() - 1;
-	local fstr = chopstr(schema.GetTarget(this.targetIds[0]).GetName(), 7);
-	local tstr = chopstr(schema.GetTarget(this.targetIds[last]).GetName(), 7);
+	local fstr = chopstr(schema.GetTargets()[this.targetIds[0]].GetName(), 7);
+	local tstr = chopstr(schema.GetTargets()[this.targetIds[last]].GetName(), 7);
 	local strName = AICargo.GetCargoLabel(this.cargo) + " " + fstr + " to " + tstr;
 	AIGroup.SetName(this.group, trnc(strName));
 }
@@ -98,11 +98,11 @@ function Service::GetTargetIds() {
  * Get the targets this service visits.
  */
 function Service::GetTargets() {
-	local schema = ::pz.GetSchema(this.schemaId);
+	local schema = ::pz.schemaManager.GetSchema(this.schemaId);
 	local targets = [];
 
 	foreach(id in this.targetIds) {
-		targets.append(schema.GetTarget(id));
+		targets.append(schema.GetTargets()[id]);
 	}
 	
 	return targets;
@@ -189,7 +189,7 @@ function Service::GoesToAll(tgtIds) {
  */
 function Service::IsValid() {
 	foreach(targetId in this.targetIds) {
-		local target = ::pz.GetSchema(this.schemaId).GetTarget(targetId);
+		local target = ::pz.schemaManager.GetSchema(this.schemaId).GetTargets()[targetId];
 		if(!target.IsValid()) return false;
 	}
 	return true;
@@ -238,9 +238,9 @@ function Service::_tostring() {
 		strType = "air";
 	}
 
-	local schema = ::pz.GetSchema(this.schemaId);
+	local schema = ::pz.schemaManager.GetSchema(this.schemaId);
 	local last = this.targetIds.len() - 1;
-	local strTgts = schema.GetTarget(this.targetIds[0]).GetName() + " to " + schema.GetTarget(this.targetIds[last]).GetName();
+	local strTgts = schema.GetTargets()[this.targetIds[0]].GetName() + " to " + schema.GetTargets()[this.targetIds[last]].GetName();
 
 	local str = "";
 	if(this.targetIds.len() == 2) {

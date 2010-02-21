@@ -91,6 +91,13 @@ function Schema::SetId(schemaId) {
 }
 
 /*
+ * Get the source node of the schema's graph.
+ */
+function Schema::GetSourceNode() {
+	return this.sourceNode;
+}
+
+/*
  * Get the list of cargo IDs.
  */
 function Schema::GetCargos() {
@@ -115,18 +122,28 @@ function Schema::GetSubType() {
  * Get a graph showing which links we plan to build.
  */
 function Schema::GetPlanGraph() {
-	if(this.planGraph == null) this.Initialise();
-	
 	return this.planGraph;
+}
+
+/*
+ * Set the graph showing which links we plan to build. 
+ */
+function Schema::SetPlanGraph(graph) {
+	this.planGraph = graph;
 }
 
 /*
  * Get a graph showing which links we have already built.
  */
 function Schema::GetActualGraph() {
-	if(this.actualGraph == null) this.Initialise();
-
 	return this.actualGraph;
+}
+
+/*
+ * Set the graph showing which links have already been built.
+ */
+function Schema::SetActualGraph(graph) {
+	this.actualGraph = graph;
 }
 
 /*
@@ -137,105 +154,18 @@ function Schema::IsIndustrial() {
 	return this.industrial;
 }
 
+/*
+ * Get the list of targets included in this schema. 
+ */
 function Schema::GetTargets() {
-	if(this.targets == null) this.InitialiseTargets();
-
 	return this.targets;
 }
 
-function Schema::GetTarget(id) {
-	if(this.targets == null) this.InitialiseTargets();
-
-	return this.targets[id];
-}
-
 /*
- * Create an array of targets from all towns (up to a maximum of MAX_TARGETS)  
- * on the map.
+ * Set the list of targets included in this schema.
  */
-function Schema::GetTownTargets() {
-	// Prime a list of the closest MAX_TARGETS targets to the home town
-	local allTowns = AITownList();
-	allTowns.Valuate(AITown.GetDistanceManhattanToTile, AITown.GetLocation(this.sourceNode));
-	allTowns.KeepTop(PathZilla.MAX_TARGETS);
-	
-	// HACK: If using trams, only consider large towns
-	if(this.GetSubType() == AIRoad.ROADTYPE_TRAM) {
-		allTowns.Valuate(AITown.GetPopulation);
-		allTowns.RemoveBelowValue(1000);
-	}
-	
-	// Build a list of targets
-	local targets = Map();
-	foreach(town, _ in allTowns) {
-		targets.Insert(Target(Target.TYPE_TOWN, town));
-	}
-	
-	return targets;
-}
-
-/*
- * Create an array of targets from industries on the map that accept or produce 
- * the predefined cargo for this schema. 
- */
-function Schema::GetIndustryTargets() {
-	// Get a list of all industries that handle the appropriate cargo
-	local indList = AIList();
-	
-	foreach(cargo, _ in this.cargos) {
-		indList.AddList(AIIndustryList_CargoAccepting(cargo));
-		indList.AddList(AIIndustryList_CargoProducing(cargo));
-	}
-	
-	// The source node is currently a town, which is no good!
-	indList.Valuate(AIIndustry.GetDistanceManhattanToTile, AITown.GetLocation(this.sourceNode));
-	indList.Sort(AIAbstractList.SORT_BY_VALUE, true);
-	this.sourceNode = indList.Begin();
-	
-	// Build a list of targets
-	local targets = Map();
-	foreach(industry, _ in indList) {
-		targets.Insert(Target(Target.TYPE_INDUSTRY, industry));
-	}
-
-	return targets;
-}
-
-/*
- * Create the list of targets that can be serviced in this schema.
- */
-function Schema::InitialiseTargets() {
-	// Start with either industries or towns
-	if(this.industrial) {
-		this.targets = this.GetIndustryTargets();
-
-		// Add towns if we need to route cargo through them
-		if(Settings.RouteCargoThroughTowns()) {
-			this.targets.Extend(this.GetTownTargets());
-		}
-	} else {
-		this.targets = this.GetTownTargets();
-	}
-}
-
-/*
- * Create the plan and actual graphs based on a triangulation over a list of
- * targets, chosen based on the type of schema and global settings.
- */
-function Schema::Initialise() {
-	// Ensure the list of targets has been initialised
-	if(this.targets == null) this.InitialiseTargets();
-
-	// Get the master graph for the whole map
-	local masterGraph = Triangulation(this.targets);
-
-	// For the plan graph use a combination of the shortest path from the home 
-	// town and the minimum spanning tree.
-	this.planGraph = ShortestPathTree(masterGraph, AITown.GetLocation(this.sourceNode));
-	this.planGraph.Merge(MinimumSpanTree(masterGraph));
-	
-	// Create a blank graph to represent what has actually been built
-	this.actualGraph = Graph();
+function Schema::SetTargets(tgts) {
+	this.targets = tgts;
 }
 
 /*

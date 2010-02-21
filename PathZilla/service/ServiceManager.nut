@@ -92,7 +92,7 @@ function ServiceManager::MaintainServices() {
  * profit, and ranks them by their profitability.
  */
 function ServiceManager::FindNewServices() {
-	local schema = ::pz.GetNextSchema();
+	local schema = ::pz.schemaManager.GetNextSchema();
 	local transportType = schema.GetTransportType();
 	local subType = schema.GetSubType();
 
@@ -254,7 +254,7 @@ function ServiceManager::ImplementService() {
 	// Only proceed if there are any services left to implement
 	if(bestService != null) {
 		local success = false;
-		local schema = ::pz.GetSchema(bestService.GetSchemaId());
+		local schema = ::pz.schemaManager.GetSchema(bestService.GetSchemaId());
 		
 		AILog.Info("Best service takes " + bestService);
 		

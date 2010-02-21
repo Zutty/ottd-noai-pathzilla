@@ -82,8 +82,8 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 			// If the nodes are not connected in the actual graph a road needs to be built
 			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
 				// Get the towns on this edges
-				local aTarget = schema.GetTarget(a.GetTargetId());
-				local bTarget = schema.GetTarget(b.GetTargetId());
+				local aTarget = schema.GetTargets()[a.GetTargetId()];
+				local bTarget = schema.GetTargets()[b.GetTargetId()];
 				
 				// If the tile is not yet fixed, find one				
 				if(bTarget.IsTileUnfixed()) RoadManager.PreFixTarget(aTarget, bTarget, walk, schema);
@@ -139,7 +139,7 @@ function RoadManager::PreFixTarget(aTarget, bTarget, walk, schema) {
 	local cTile = bTile;
 	if (walk.GetParent().GetParent() != null) {
 		local tid = walk.GetParent().GetParent().GetVertex().GetTargetId(); 
-		cTile = schema.GetTarget(tid).GetLocation();
+		cTile = schema.GetTargets()[tid].GetLocation();
 	}
 	
 	// Get a list of tiles around the target

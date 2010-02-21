@@ -46,6 +46,8 @@ class PathZilla extends AIController {
 	SRLZ_SCHEMA_IDX = 4;
 	SRLZ_SCHEMAS = 5;
 	SRLZ_SRVC_MANAGER = 6;
+	SRLZ_SCMA_MANAGER = 9;
+	SRLZ_TRGT_MANAGER = 10;
 	SRLZ_TRAFFIC_BLACKSPOTS = 7;
 	SRLZ_VEHICLES_TO_SELL = 8;
 			
@@ -76,11 +78,12 @@ class PathZilla extends AIController {
 	loaded = false;
 	companyName = null;
 	homeTown = null;
-	schemaIndex = 0;
-	schemas = null;
 	serviceManager = null;
+	schemaManager = null;
+	targetManager = null;
 	
 	constructor() {
+		require("aop/ProxyFactory.nut");
 		require("graph/Edge.nut");
 		require("graph/Graph.nut");
 		require("graph/GraphPathNode.nut");
@@ -92,6 +95,8 @@ class PathZilla extends AIController {
 		require("manager/FinanceManager.nut");
 		require("manager/LandManager.nut");
 		require("manager/RoadManager.nut");
+		require("manager/SchemaManager.nut");
+		require("manager/TargetManager.nut");
 		require("manager/TownManager.nut");
 		require("pathfinding/PathWrapper.nut");
 		require("pathfinding/Road.nut");
@@ -108,7 +113,6 @@ class PathZilla extends AIController {
 
 		// Some presets that must go here
 		this.loaded = false;
-		this.schemas = {};
 		
 		// Set this as the singleton instance
 		::pz <- this;
@@ -216,16 +220,9 @@ function PathZilla::Save() {
 	data[SRLZ_HOME_TOWN] <- this.homeTown;
 	
 	// Store the schemas
-	data[SRLZ_SCHEMA_IDX] <- this.schemaIndex;
-	data[SRLZ_SCHEMAS] <- {};
-	foreach(idx, schema in this.schemas) {
-		data[SRLZ_SCHEMAS][idx] <- schema.Serialize();
-	}
-
-	// Store the service manager, if it has been set
-	if(this.serviceManager != null) {
-		data[SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
-	}
+	data[SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
+	data[SRLZ_SCMA_MANAGER] <- this.schemaManager.Serialize();
+	data[SRLZ_TRGT_MANAGER] <- this.targetManager.Serialize();
 
 	return data;
 }
@@ -237,8 +234,10 @@ function PathZilla::Initialise() {
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
 	
-	// Set the service manager
+	// Set the managers
 	this.serviceManager = ServiceManager();
+	this.schemaManager = SchemaManager();
+	this.targetManager = TargetManager();
 
 	// If there is data to load then use it, otherwise start from scratch
 	if(this.loaded) {
@@ -251,17 +250,10 @@ function PathZilla::Initialise() {
 		this.homeTown = ::loadData[SRLZ_HOME_TOWN];
 		this.companyName = ::loadData[SRLZ_COMPANY_NAME];
 
-		// Load the schemas
-		this.schemaIndex = ::loadData[SRLZ_SCHEMA_IDX];
-		foreach(idx, schemaData in ::loadData[SRLZ_SCHEMAS]) {
-			this.schemas[idx] <- Schema.instance();
-			this.schemas[idx].Unserialize(schemaData);
-		}
-
-		// Load the service manager, if it was saved
-		if(SRLZ_SRVC_MANAGER in ::loadData) {
-			this.serviceManager.Unserialize(::loadData[SRLZ_SRVC_MANAGER]);
-		}
+		// Load the managers
+		this.serviceManager.Unserialize(::loadData[SRLZ_SRVC_MANAGER]);
+		this.schemaManager.Unserialize(::loadData[SRLZ_SCMA_MANAGER]);
+		this.targetManager.Unserialize(::loadData[SRLZ_TRGT_MANAGER]);
 
 		// Load the vehicles into their groups
 		this.serviceManager.PostLoad();
@@ -276,73 +268,11 @@ function PathZilla::Initialise() {
 		this.companyName = this.ChooseName();
 
 		// Build the schemas
-		this.schemaIndex = -1;
-		this.BuildSchemas();
+		this.schemaManager.BuildSchemas();
 	}
 	
 	// Set the company name
 	AICompany.SetName(trnc(this.companyName));
-}
-
-/*
- * Build a series of schemas based on the cargos, towns, and industries 
- * available in the map.
- */
-function PathZilla::BuildSchemas() {
-	// Add passenger schemas by road and tram
-	local townList = AIList();
-	local tramList = AIList();
-	
-	// Check each available cargo
-	foreach(cargo, _ in AICargoList()) {
-		// Get the amount of this cargo produced in towns
-		local townprod = 0;
-		foreach(town, _ in AITownList()) {
-			townprod += AITown.GetMaxProduction(town, cargo);
-		}
-		
-		// Check if there are any trams that can carry the cargo
-		local tramable = false;
-		foreach(engine, _ in AIEngineList(AIVehicle.VT_ROAD)) {
-			if(AIEngine.GetRoadType(engine) == AIRoad.ROADTYPE_TRAM && AIEngine.CanRefitCargo(engine, cargo)) {
-				tramable = true;
-				break;
-			}
-		}
-		
-		// If the cargo is produced in towns and has a town effect, use it in 
-		// the town schema
-		if(townprod > 0 && AICargo.GetTownEffect(cargo) != AICargo.TE_NONE) {
-			townList.AddItem(cargo, 0);
-		}
-		
-		// If a cargo can be carried by tram and has is of the passenger class,
-		// add it to the tram schema
-		if(tramable && AICargo.HasCargoClass(cargo, AICargo.CC_PASSENGERS)) {
-			tramList.AddItem(cargo, 0);
-		}
-	}
-	
-	// Add the town schema
-	this.AddSchema(Schema(this.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-	
-	// Add the tram schema, if they are supported
-	if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(this.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
-	
-	// Check each available industry type
-	foreach(type, _ in AIIndustryTypeList()) {
-		// Only add support raw industries taht are not on water
-		if(AIIndustryType.IsRawIndustry(type) && !AIIndustryType.IsBuiltOnWater(type)) {
-			// Only transport those cargos from this industry that have no town
-			// effect, i.e. dont carry passengers from oil rigs, etc...
-			local cargos = AIIndustryType.GetProducedCargo(type);
-			cargos.Valuate(AICargo.GetTownEffect);
-			cargos.KeepValue(AICargo.TE_NONE);
-			
-			// Add the schema
-			this.AddSchema(Schema(this.homeTown, cargos, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
-		}
-	}
 }
 
 /*
@@ -426,30 +356,4 @@ function PathZilla::HandleEvents() {
 			break;
 		}
 	}
-}
-
-/*
- * Get the netwrok schema with the specified id.
- */
-function PathZilla::GetSchema(schemaId) {
-	return this.schemas[schemaId];
-}
-
-/*
- * Increment the internal schema counter and return the schema with that
- * index. This is used to cycle through schemas in a stateless fashion.
- */
-function PathZilla::GetNextSchema() {
-	if(++this.schemaIndex >= this.schemas.len()) this.schemaIndex = 0; 
-	return this.schemas[this.schemaIndex];
-}
-
-/*
- * Add a new network schema to them main table and give it an id.
- */
-function PathZilla::AddSchema(schema) {
-	local schemaId = this.schemas.len();
-	schema.SetId(schemaId);
-	return this.schemas[schemaId] <- schema;
-	return schemaId;
 }
