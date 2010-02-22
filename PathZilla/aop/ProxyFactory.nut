@@ -48,17 +48,17 @@ function ProxyFactory::CreateProxy(instance) {
 		function _invoke(methodName, args) {
 			// Call the advice at pointcuts before the method invocation
 			local pointcut = ::ProxyFactory.CUT_BEFORE + methodName;
-			if(pointcut in _aspects) _aspects[pointcut]()
+			if(pointcut in _aspects) _aspects[pointcut]();
 
 			// Perform the requsted invocation
-			local result = ::ProxyFactory.Call(_real[methodName].bindenv(_real), args)
+			local result = ::ProxyFactory.Call(_real[methodName].bindenv(_real), args);
 
 			// Call the advice at pointcuts before the method invocation
 			pointcut = ::ProxyFactory.CUT_AFTER + methodName;
-			if(pointcut in _aspects) _aspects[pointcut]()
+			if(pointcut in _aspects) _aspects[pointcut]();
 			
 			// Return the invocation result
-			return result
+			return result;
 		}
 		
 		function _get(x) {
@@ -81,17 +81,17 @@ function ProxyFactory::CreateProxy(instance) {
 			proxyClass[m] <- function (...):(m) {
 				local args = [];
 				for(local c = 0; c < vargc; c++) args.append(vargv[c]);
-				return _invoke(m, args)
+				return _invoke(m, args);
 			}
 		}
 	}
 	
 	// Build the proxy form the constructed class
-	local proxy = proxyClass.instance()
-	proxy._real = instance
-	proxy._aspects = {}
+	local proxy = proxyClass.instance();
+	proxy._real = instance;
+	proxy._aspects = {};
 	
-	return proxy
+	return proxy;
 }
 
 /*
@@ -102,10 +102,10 @@ function ProxyFactory::CreateProxy(instance) {
  */
 function ProxyFactory::AddAspect(proxy, cutAt, pointcut, advice) {
 	if(cutAt != ProxyFactory.CUT_BEFORE && cutAt != ProxyFactory.CUT_AFTER) {
-		throw "Must cut either before or after the specified method"
+		throw "Must cut either before or after the specified method";
 	}
 	if(!pointcut in proxy) {
-		throw pointcut + " is not a valid pointcut"
+		throw pointcut + " is not a valid pointcut";
 	}
 	proxy._aspects[cutAt + pointcut] <- advice.bindenv(proxy._real);
 }
@@ -117,7 +117,7 @@ function ProxyFactory::AddAspect(proxy, cutAt, pointcut, advice) {
  */
 function ProxyFactory::DisposeAfter(proxy, pointcut, table, idx) {
 	proxy._aspects[ProxyFactory.CUT_AFTER + pointcut] <- function ():(table, idx) {
-		table[idx] <- _real 
+		table[idx] <- _real;
 	}.bindenv(proxy)
 }
 
@@ -129,11 +129,17 @@ function ProxyFactory::DisposeAfter(proxy, pointcut, table, idx) {
 function ProxyFactory::Call(f, a) {
 	switch(a.len()) {
 		case 0:
-			return f()
+			return f();
 		case 1:
-			return f(a[0])
+			return f(a[0]);
 		case 2:
-			return f(a[0], a[1])
+			return f(a[0], a[1]);
+		case 3:
+			return f(a[0], a[1], a[2]);
+		case 4:
+			return f(a[0], a[1], a[2], a[3]);
+		case 5:
+			return f(a[0], a[1], a[2], a[3], a[4]);
 		default:
 			throw "Not supported"
 	}
