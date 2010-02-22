@@ -387,6 +387,7 @@ function rev(str) {
  * upper and all others are lower.
  */
 function totitlecase(str) {
+	if(str.len() == 1) return str.toupper(); 
 	return str.slice(0,1).toupper() + str.slice(1).tolower();
 }
 
