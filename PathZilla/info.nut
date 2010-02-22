@@ -45,6 +45,8 @@ class PathZilla extends AIInfo {
 		AddSetting({name = "bribe", description = "Attempt to bribe local authority when rating is poor", easy_value = 0, medium_value = 1, hard_value = 1, custom_value = 1, flags = AICONFIG_BOOLEAN});
 		AddSetting({name = "green_belt", description = "Density of green belt to improve local authority rating", min_value = 0, max_value = 4, easy_value = 3, medium_value = 3, hard_value = 3, custom_value = 3, flags = 0});
 		AddLabels("green_belt", {_0="None", _1="Sparse", _2="Medium", _3="Dense", _4="Very Dense"});
+		AddSetting({name = "naming_scheme", description = "Naming scheme", min_value = 0, max_value = 2, easy_value = 1, medium_value = 1, hard_value = 1, custom_value = 1, flags = 0});
+		AddLabels("naming_scheme", {_0="Classic", _1="British", _2="American", _3="English (Intl)"});
 	}
 	function CanLoadFromVersion(version) {
 		return (version == 5);

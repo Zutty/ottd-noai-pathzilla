@@ -57,14 +57,36 @@ function Settings::EnableCountryLanes() {
 	return (PathZilla.GetSetting("country_lanes") == 1);
 }
 
+/*
+ * Get whether we can bribe town authorities.
+ */
 function Settings::EnableBribes() {
 	return (PathZilla.GetSetting("bribe") == 1);
 }
 
+/*
+ * Get whether to build a green belt around towns to improve the local  
+ * authority rating.
+ */
 function Settings::EnableGreenBelt() {
 	return (PathZilla.GetSetting("green_belt") > 0);
 }
 
+/*
+ * Get the thickness of the green belt that we should build.
+ */
 function Settings::GreenBeltThickness() {
 	return PathZilla.GetSetting("green_belt");
+}
+
+/*
+ * Get the naming scheme to use.
+ */
+function Settings::GetNamingScheme() {
+	local ns = {};
+	ns[0] <- "Simple";
+	ns[1] <- "British";
+	ns[2] <- "American";
+	ns[2] <- "English";
+	return ns[PathZilla.GetSetting("naming_scheme")];
 }

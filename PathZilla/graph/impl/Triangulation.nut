@@ -245,3 +245,19 @@ function Triangulation::BakeTriangles(newVertices, visitsAll) {
 	// Remove duplicate vertices
 	this.vertices.RawMerge(newVertices);
 }
+
+/*
+ * 
+ */
+function Triangulation::AddTargets(targets) {
+	//DrawGraph(this)
+	local vertices = this.GetTargetVertices(targets);
+	
+	local invalidatedEdges = this.SweepLine(vertices);
+	
+	foreach(edge in invalidatedEdges) {
+		this.edges.Remove(edge);
+	}
+
+	this.BakeTriangles(vertices, false);
+}

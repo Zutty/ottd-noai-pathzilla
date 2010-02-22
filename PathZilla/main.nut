@@ -50,6 +50,7 @@ class PathZilla extends AIController {
 	SRLZ_TRGT_MANAGER = 10;
 	SRLZ_TRAFFIC_BLACKSPOTS = 7;
 	SRLZ_VEHICLES_TO_SELL = 8;
+	SRLZ_PRESIDENT_NAME = 11;
 			
 	// Configurable constants
 	PROCESSING_PRIORITY = 100;     // Governs how often intensive procesisng tasks should wait
@@ -77,6 +78,8 @@ class PathZilla extends AIController {
 	stop = false;
 	loaded = false;
 	companyName = null;
+	namingScheme = null;
+	presidentName = null;
 	homeTown = null;
 	serviceManager = null;
 	schemaManager = null;
@@ -98,6 +101,13 @@ class PathZilla extends AIController {
 		require("manager/SchemaManager.nut");
 		require("manager/TargetManager.nut");
 		require("manager/TownManager.nut");
+		require("naming/NamingScheme.nut");
+		require("naming/Pattern.nut");
+		require("naming/schemes/AbstractEnglish.nut");
+		require("naming/schemes/American.nut");
+		require("naming/schemes/British.nut");
+		require("naming/schemes/English.nut");
+		require("naming/schemes/Simple.nut");
 		require("pathfinding/PathWrapper.nut");
 		require("pathfinding/Road.nut");
 		require("schema/Schema.nut");
@@ -131,6 +141,7 @@ function PathZilla::Start() {
 	// Initialise the AI
 	this.Initialise();
 	
+	AILog.Info("  My company name is " + this.companyName);
 	AILog.Info("  My home town is " + AITown.GetName(this.homeTown));
 
 	// Initialise the main loop
@@ -217,6 +228,7 @@ function PathZilla::Save() {
 	// Store the basic data
 	data[SRLZ_STOP] <- this.stop;
 	data[SRLZ_COMPANY_NAME] <- this.companyName;
+	data[SRLZ_PRESIDENT_NAME] <- this.presidentName;
 	data[SRLZ_HOME_TOWN] <- this.homeTown;
 	
 	// Store the schemas
@@ -231,6 +243,10 @@ function PathZilla::Save() {
  * Initialise the state of the AI, either from saved state or from scratch.
  */
 function PathZilla::Initialise() {
+	// Initialise the naming scheme
+	this.namingScheme = ::load_class(Settings.GetNamingScheme()).instance()
+	this.namingScheme.constructor();
+
 	// Enable auto-renew
 	AICompany.SetAutoRenewStatus(true);
 	
@@ -249,6 +265,7 @@ function PathZilla::Initialise() {
 		this.stop = ::loadData[SRLZ_STOP];
 		this.homeTown = ::loadData[SRLZ_HOME_TOWN];
 		this.companyName = ::loadData[SRLZ_COMPANY_NAME];
+		this.presidentName = ::loadData[SRLZ_PRESIDENT_NAME];
 
 		// Load the managers
 		this.serviceManager.Unserialize(::loadData[SRLZ_SRVC_MANAGER]);
@@ -265,28 +282,38 @@ function PathZilla::Initialise() {
 		// Set the basic data
 		this.stop = false;
 		this.homeTown = this.SelectHomeTown();
-		this.companyName = this.ChooseName();
+		this.companyName = this.ChooseCompanyName();
+		this.presidentName = this.ChoosePresidentName();
 
 		// Build the schemas
 		this.schemaManager.BuildSchemas();
 	}
 	
-	// Set the company name
+	// Set the president and company names
 	AICompany.SetName(trnc(this.companyName));
+	AICompany.SetPresidentName(trnc(this.presidentName));
+}
+
+/*
+ * Choose a name for the company president. The name must be applied separately.
+ */
+function PathZilla::ChoosePresidentName() {
+	// For now, just return the default name 
+	return AICompany.GetPresidentName(AICompany.ResolveCompanyID(AICompany.COMPANY_SELF)); 
 }
 
 /*
  * Chooses a company name that does not already exist and returns it. The name
  * must be applied in exec mode separately.
  */
-function PathZilla::ChooseName() {
+function PathZilla::ChooseCompanyName() {
 	{
 		local _ = AITestMode();
 		local i = 1;
 		local name = "";
 		
 		do {
-			name = "PathZilla #" + i++;
+			name = this.namingScheme.NameEntity(NamingScheme.TYPE_COMPANY);
 		} while(!AICompany.SetName(trnc(name)));
 		
 		return name;
@@ -356,4 +383,32 @@ function PathZilla::HandleEvents() {
 			break;
 		}
 	}
+}
+
+/*
+ * Get the naming scheme.
+ */
+function PathZilla::GetNamingScheme() {
+	return this.namingScheme;
+}
+
+/*
+ * Get the president name.
+ */
+function PathZilla::GetPresidentName() {
+	return this.presidentName;
+}
+
+/*
+ * Get the company name.
+ */
+function PathZilla::GetCompanyName() {
+	return this.companyName;
+}
+
+/*
+ * Get the home town.
+ */
+function PathZilla::GetHomeTown() {
+	return this.homeTown;
 }

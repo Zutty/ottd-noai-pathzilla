@@ -76,7 +76,7 @@ function Service::Create() {
 	local last = this.targetIds.len() - 1;
 	local fstr = chopstr(schema.GetTargets()[this.targetIds[0]].GetName(), 7);
 	local tstr = chopstr(schema.GetTargets()[this.targetIds[last]].GetName(), 7);
-	local strName = AICargo.GetCargoLabel(this.cargo) + " " + fstr + " to " + tstr;
+	local strName = ::pz.namingScheme.NameCargo(this.cargo) + " " + fstr + " to " + tstr;
 	AIGroup.SetName(this.group, trnc(strName));
 }
 
@@ -244,7 +244,7 @@ function Service::_tostring() {
 
 	local str = "";
 	if(this.targetIds.len() == 2) {
-		str = AICargo.GetCargoLabel(this.cargo) + " from " + strTgts + " by " + strType;
+		str = ::pz.namingScheme.NameCargo(this.cargo) + " from " + strTgts + " by " + strType;
 	}
 	return str;
 }
