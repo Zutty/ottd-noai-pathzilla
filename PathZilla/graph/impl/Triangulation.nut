@@ -242,15 +242,15 @@ function Triangulation::BakeTriangles(newVertices, visitsAll) {
 		this.data[edge.b.ToTile()].RawInsert(edge.a);
 	}
 	
-	// Remove duplicate vertices
+	// Resolve the vertices
 	this.vertices.RawMerge(newVertices);
 }
 
 /*
- * 
+ * Add the specified targets to the triangulation. This re-runs the sweepline
+ * and then bakes the triangles again. 
  */
 function Triangulation::AddTargets(targets) {
-	//DrawGraph(this)
 	local vertices = this.GetTargetVertices(targets);
 	
 	local invalidatedEdges = this.SweepLine(vertices);
@@ -260,4 +260,14 @@ function Triangulation::AddTargets(targets) {
 	}
 
 	this.BakeTriangles(vertices, false);
+}
+
+/*
+ * Makes this a deep copy of the specified graph.
+ */
+function Triangulation::_cloned(original) {
+	data = clone_table(original.data);
+	vertices = clone original.vertices;
+	edges = clone original.edges;
+	triangles = clone_array(original.triangles);
 }

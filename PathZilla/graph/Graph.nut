@@ -347,12 +347,10 @@ function Graph::Unserialize(saveData) {
 }
 
 /*
- * Makes a deep copy of this graph.
+ * Makes this a deep copy of the specified graph.
  */
 function Graph::_cloned(original) {
-	local new = Graph();
-	new.data = clone original.data;
-	new.vertices = clone original.vertices;
-	new.edges = clone original.edges;
-	return new;
+	data = clone original.data;
+	vertices = clone original.vertices;
+	edges = clone original.edges;
 }

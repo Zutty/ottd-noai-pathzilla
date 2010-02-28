@@ -94,3 +94,11 @@ function Edge::_cmp(edge) {
 function Edge::_tostring() {
 	return "{" + a + " -> " + b + "}";
 }
+
+/*
+ * Makes this a deep copy of the specified edge.
+ */
+function Edge::_cloned(original) {
+	a = clone original.a;
+	b = clone original.b;
+}

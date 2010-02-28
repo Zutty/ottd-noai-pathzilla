@@ -84,3 +84,11 @@ function Vertex::ToTile() {
 function Vertex::FromTile(tile) {
 	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile));
 }
+
+/*
+ * Makes this a deep copy of the specified vertex.
+ */
+function Vertex::_cloned(original) {
+	x = original.x;
+	y = original.y;
+}

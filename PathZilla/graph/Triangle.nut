@@ -144,3 +144,14 @@ function Triangle::_cmp(tri) {
 	local b = tri.u.y - tri.r;
 	return ((a < b) ? 1 : -1);
 }
+
+/*
+ * Makes this a deep copy of the specified triangle.
+ */
+function Triangle::_cloned(original) {
+	a = clone original.a;
+	b = clone original.b;
+	c = clone original.c;
+	u = clone original.u;
+	r = original.r;
+}
