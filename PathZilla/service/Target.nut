@@ -115,14 +115,6 @@ function Target::GetLocation() {
 }
 
 /*
- * Returns this target as a vertex that preserves the underlying state.
- */
-function Target::GetVertex() {
-	local tile = this.GetLocation();
-	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), this._hashkey());
-}
-
-/*
  * Get the type of this target.
  */
 function Target::GetType() {
@@ -239,11 +231,20 @@ function Target::GetName() {
 }
 
 /*
- * Get a unique key for this instance.
+ * Get the profit making potential of this target.
  */
-function Target::_hashkey() {
-	return this.GetLocation();
+function Target::GetPotential(homeTown, cargo) {
+	local potential = 0;
+	
+	if(type == TYPE_TOWN) {
+		potential = (id == homeTown) ? 1000000 : AITown.GetPopulation(id);
+	} else {
+		potential = ::AIIndustry.GetLastMonthProduction(id, cargo);
+	}
+	
+	return potential;
 }
+
 
 /*
  * Saves data to a table.
@@ -265,30 +266,4 @@ function Target::Unserialize(data) {
 	this.type = data[SRLZ_TYPE];
 	this.id = data[SRLZ_ID];
 	this.tile = data[SRLZ_TILE];
-}
-
-/*
- * A static method to be used to sort Targets by their profit making potential.
- */
-function Target::SortByPotential(homeTown, cargo) {
-	return function (a,b):(homeTown, cargo) {
-		local aval = 0;
-		local bval = 0;
-		
-		if(a.type == b.type) {
-			if(a.type == ::Target.TYPE_TOWN) {
-				aval = (a.id == homeTown) ? 1000000 : ::AITown.GetPopulation(a.id);
-				bval = (b.id == homeTown) ? 1000000 : ::AITown.GetPopulation(b.id);
-			} else {
-				aval = ::AIIndustry.GetLastMonthProduction(a.id, cargo);
-				bval = ::AIIndustry.GetLastMonthProduction(b.id, cargo);
-			}
-		} else {
-			// TODO - Heterogenous services
-		}
-		
-		if(aval < bval) return 1;
-		else if(aval > bval) return -1;
-		return 0;
-	}
 }

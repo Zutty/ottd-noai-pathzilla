@@ -117,10 +117,10 @@ function SchemaManager::BuildSchemas() {
 	}
 	
 	// Add the town schema
-	this.AddSchema(Schema(::pz.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+	//this.AddSchema(Schema(::pz.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
 	
 	// Add the tram schema, if they are supported
-	if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(::pz.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
+	//if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(::pz.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
 	
 	// Check each available industry type
 	foreach(type, _ in AIIndustryTypeList()) {
@@ -146,11 +146,8 @@ function SchemaManager::InitialiseTargets(schema) {
 	if(schema.IsIndustrial()) {
 		schema.SetTargets(::pz.targetManager.GetIndustryTargets(schema.GetCargos()));
 
-		// Add towns if we need to route cargo through them
-		if(Settings.RouteCargoThroughTowns()) {
-			schema.GetTargets().Extend(::pz.targetManager.GetTownTargets(schema));
-		} else {
-			// The source node is currently a town, which is no good!
+		// The source node can't be a town if we don't route through them
+		if(!Settings.RouteCargoThroughTowns()) {
 			schema.SetSourceNode(this.ChooseSourceNode(schema));
 		}
 	} else {
@@ -182,7 +179,8 @@ function SchemaManager::ChooseSourceNode(schema) {
 function SchemaManager::InitialiseGraphs(schema) {
 	// Ensure the list of targets has been initialised
 	if(schema.GetTargets() == null) this.InitialiseTargets(schema);
-	 
+
+	// Build the master graph covering all targets	 
 	local masterGraph = Triangulation(schema.GetTargets());
 
 	// For the plan graph use a combination of the shortest path from the home 

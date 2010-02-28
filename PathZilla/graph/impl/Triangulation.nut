@@ -55,7 +55,7 @@ class Triangulation extends Graph {
 	constructor(targets) {
 		Graph.constructor();
 		
-		AILog.Info("  Computing triangulation over " + targets.Len() + " targets...");
+		AILog.Info("  Computing triangulation over " + targets.len() + " targets...");
 		
 		// Seed the trianglation with two triangles forming a square over the entire map
 		this.triangles = [
@@ -74,7 +74,7 @@ class Triangulation extends Graph {
 		this.BakeTriangles(vertices, true);
 		
 		// Check that we haven't missed anything
-		if(this.vertices.Len() < targets.Len()) {
+		if(this.vertices.Len() < targets.len()) {
 			AILog.Warning("Some targets were not captured in triangulation.");
 			// TODO - Handle this in a way that wont break adding vertices at a later time
 		}
@@ -89,18 +89,18 @@ class Triangulation extends Graph {
 function Triangulation::GetTargetVertices(targets) {
 	local vertices = [];
 	
-	// Sort the targets to make the sweepline work
-	targets.SortBy(function (a, b) {
-		local al = a.GetLocation();
-		local bl = b.GetLocation();
+	// Get the vertex for each target
+	foreach(target in targets) {
+		vertices.append(Vertex.FromTile(target.GetLocation()));
+	}
+
+	// Sort the vertices to make the sweepline work
+	vertices.sort(function (a, b) {
+		local al = a.ToTile();
+		local bl = b.ToTile();
 		if(al == bl) return 0;
 		return (al < bl) ? 1 : -1;
 	});
-		
-	// Get the vertex for each target
-	foreach(target in targets) {
-		vertices.append(target.GetVertex());
-	}
 	
 	return vertices;
 }	

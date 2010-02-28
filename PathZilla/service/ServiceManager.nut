@@ -40,8 +40,8 @@ class ServiceManager {
 	targetsUpdated = null;
 	
 	constructor() {
-		this.targetsConsidered = Map();
-		this.targetsUpdated = Map();
+		this.targetsConsidered = [];
+		this.targetsUpdated = [];
 		
 		this.serviceList = SortedSet();		
 		this.potentialServices = BinaryHeap();
@@ -74,8 +74,8 @@ function ServiceManager::MaintainServices() {
 		}
 		
 		local needUpdate = false;
-		foreach(target in service.GetTargets()) {
-			needUpdate = needUpdate && this.targetsUpdated.Contains(target);
+		foreach(idx, _ in service.GetTargets()) {
+			needUpdate = needUpdate && ::arraycontains(targetsUpdated, idx);
 		}
 		if(needUpdate) {
 			AILog.Info("  Updating service - " + service);
@@ -83,7 +83,7 @@ function ServiceManager::MaintainServices() {
 		}
 	}
 
-	this.targetsUpdated = Map();
+	targetsUpdated = [];
 }
 
 /*
@@ -97,38 +97,37 @@ function ServiceManager::FindNewServices() {
 	local subType = schema.GetSubType();
 
 	// If there are no targets then just move on
-	if(schema.GetTargets().Len() == 0) return;
+	if(schema.GetTargets().len() == 0) return;
 
 	// Discard the targets that we have already been to, or that can't be reached
 	local targetList = clone schema.GetTargets();
-	targetList.RemoveAll(this.targetsConsidered);
+	foreach(targetId in targetsConsidered) {
+		if(targetId in targetList) delete targetList[targetId];
+	}
 	
 	// If all targets have already been considered then just move on
-	if(targetList.Len() == 0) return;
+	if(targetList.len() == 0) return;
 
 	// Look for possible services for each cargo type in the current schema
 	foreach(cargo, _ in schema.GetCargos()) {
 		AILog.Info("  Looking for potential " + AICargo.GetCargoLabel(cargo) + " services...");
 
 		// Discard those targets that don't produce this cargo
-		local targets = clone targetList;
-		targets.Filter(function (target, cargo) {
-			return !target.ProducesCargo(cargo);
-		}, cargo);
+		local producers = clone targetList;
+		foreach(idx, target in producers) {
+			if(!target.ProducesCargo(cargo)) delete producers[idx];
+		}
 		
 		// Check that there are any targets left that we haven't considered
-		if(targets.Len() > 0) {
-			// Order the remaining towns by populations, placing the home town first
-			targets.SortBy(Target.SortByPotential(::pz.homeTown, cargo));
-			
+		if(producers.len() > 0) {
 			// Choose the first town and save it 
-			local aTarget = targets.Begin();
-			this.targetsConsidered.Insert(aTarget);
+			local aTarget = ChooseBestProducer(producers, cargo);
+			targetsConsidered.append(aTarget.GetLocation());
 			
 			AILog.Info("    Looking for potential services from " + aTarget.GetName() + "...");
 	
 			// Get the shortest distances accross the network
-			local netDist = schema.GetPlanGraph().GetShortestDistances(aTarget.GetVertex());
+			local netDist = schema.GetPlanGraph().GetShortestDistances(Vertex.FromTile(aTarget.GetLocation()));
 	
 			// Iterate over each town to test each possible connection
 			local steps = 0;
@@ -140,16 +139,15 @@ function ServiceManager::FindNewServices() {
 				}
 	
 				// Build a list of targets
-				local targetIds = [aTarget._hashkey(), bTarget._hashkey()];
-				local targetList = [aTarget, bTarget];
+				local serviceTargets = [aTarget, bTarget];
 	
 				// Ensure that its possible to connect to the town, and that we 
 				// don't already provide this service
-				if(bTarget != aTarget && !this.ProvidesService(targetIds, cargo, transportType, subType)) {
+				if(bTarget != aTarget && !this.ProvidesService(serviceTargets, cargo, transportType, subType)) {
 					local bTile = bTarget.GetLocation();
 	
 					// Select an engine
-					local engine = this.SelectEngine(targetList, cargo, transportType, subType, false);
+					local engine = this.SelectEngine(serviceTargets, cargo, transportType, subType, false);
 					if(engine == null) {
 						AILog.Error("    There are no suitable vehicles for this route! [" + aTarget.GetName() + " to " + bTarget.GetName()+ "]");
 						continue;
@@ -194,7 +192,7 @@ function ServiceManager::FindNewServices() {
 					
 					// Only consider the service if it is more profitable than it is costly
 					if(annualProfit > (annualCost/factor)) {
-						local svc = Service(schema.GetId(), targetIds, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget);
+						local svc = Service(schema.GetId(), serviceTargets, cargo, transportType, subType, engine, netDist[bTile], annualProfit, coverageTarget);
 						this.potentialServices.Insert(svc);
 					}
 				}
@@ -210,12 +208,30 @@ function ServiceManager::FindNewServices() {
 }
 
 /*
+ * Choose the target with the best production potential.
+ */
+function ServiceManager::ChooseBestProducer(targets, cargo) {
+	local max = -10000000;
+	local best = null;
+	
+	foreach(idx, target in targets) {
+		local potential = target.GetPotential(::pz.homeTown, cargo);
+
+		if(potential > max) {
+			max = potential;
+			best = idx;
+		}
+	}
+	return (best != null) ? targets[best] : null;
+}
+
+/*
  * Checks to see if the company provides a service from a to b for the
  * specified cargo and road type.
  */
-function ServiceManager::ProvidesService(targetIds, cargo, transportType, subType) {
+function ServiceManager::ProvidesService(targets, cargo, transportType, subType) {
 	foreach(service in this.serviceList) {
-		if(service.GetCargo() == cargo && service.GoesToAll(targetIds) && service.GetTransportType() == transportType && service.GetSubType() == subType) {
+		if(service.GetCargo() == cargo && service.GoesToAll(targets) && service.GetTransportType() == transportType && service.GetSubType() == subType) {
 			return true;
 		}
 	}
@@ -227,7 +243,7 @@ function ServiceManager::ProvidesService(targetIds, cargo, transportType, subTyp
  * Checks to see if the company already provides the specified service.
  */
 function ServiceManager::ProvidesThisService(svc) {
-	return this.ProvidesService(svc.GetTargetIds(), svc.GetCargo(), svc.GetTransportType(), svc.GetSubType());
+	return this.ProvidesService(svc.GetTargets(), svc.GetCargo(), svc.GetTransportType(), svc.GetSubType());
 }
 
 /*
@@ -733,10 +749,10 @@ function ServiceManager::Serialize() {
  * Loads data from a table.
  */
 function ServiceManager::Unserialize(data) {
-	this.targetsUpdated = Map();
+	this.targetsUpdated = [];
 	this.targetsUpdated.Unserialize(data[SRLZ_TARGETS_UPDATED]); 
 
-	this.targetsConsidered = Map();
+	this.targetsConsidered = [];
 	this.targetsConsidered.Unserialize(data[SRLZ_TARGETS_CONSIDERED]); 
 	
 	this.potentialServices = BinaryHeap();

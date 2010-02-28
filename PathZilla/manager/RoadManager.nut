@@ -42,12 +42,12 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 	AIRoad.SetCurrentRoadType(schema.GetSubType());
 
 	// Ensure that stations available for each target
-	foreach(target in service.GetTargets()) {
+	foreach(idx, target in service.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
 			// Ensure that the source town has stations
 			local added = RoadManager.BuildTownStations(target, service.GetCargo(), service.GetSubType(), service.GetCoverageTarget(), PathZilla.MAX_INITIAL_STATIONS);
 			if(added > 0) {
-				targetsUpdated.Insert(target);
+				targetsUpdated.append(idx);
 			}
 		} else {
 			// Ensure there is a station at the target
@@ -65,7 +65,7 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 		local to = service.GetTargets()[next];
 
 		// Find a path through the graph
-		local path = schema.GetPlanGraph().FindPath(from.GetVertex(), to.GetVertex());
+		local path = schema.GetPlanGraph().FindPath(Vertex.FromTile(from.GetLocation()), Vertex.FromTile(to.GetLocation()));
 		if(path == null) {
 			AILog.Error("No path could be found");
 			return false;
@@ -82,8 +82,8 @@ function RoadManager::BuildInfrastructure(service, schema, targetsUpdated) {
 			// If the nodes are not connected in the actual graph a road needs to be built
 			if(!schema.GetActualGraph().GetEdges().Contains(edge)) {
 				// Get the towns on this edges
-				local aTarget = schema.GetTargets()[a.GetTargetId()];
-				local bTarget = schema.GetTargets()[b.GetTargetId()];
+				local aTarget = ::pz.targetManager.GetTarget(a.ToTile());
+				local bTarget = ::pz.targetManager.GetTarget(b.ToTile());
 				
 				// If the tile is not yet fixed, find one				
 				if(bTarget.IsTileUnfixed()) RoadManager.PreFixTarget(aTarget, bTarget, walk, schema);
@@ -138,8 +138,7 @@ function RoadManager::PreFixTarget(aTarget, bTarget, walk, schema) {
 	local bTile = bTarget.GetLocation();
 	local cTile = bTile;
 	if (walk.GetParent().GetParent() != null) {
-		local tid = walk.GetParent().GetParent().GetVertex().GetTargetId(); 
-		cTile = schema.GetTargets()[tid].GetLocation();
+		cTile = walk.GetParent().GetParent().GetVertex().ToTile();
 	}
 	
 	// Get a list of tiles around the target
@@ -182,7 +181,7 @@ function RoadManager::PostFixTarget(target, path, rev) {
  * updated with targets that were modified in the operation.
  */
 function RoadManager::MaintainInfrastructure(service, targetsTried, targetsUpdated) {
-	foreach(target in service.GetTargets()) {
+	foreach(idx, target in service.GetTargets()) {
 		if(target.GetType() == Target.TYPE_TOWN) {
 			local completeTram = (service.GetSubType() == AIRoad.ROADTYPE_TRAM) && (RoadManager.GetStations(target, service.GetCargo(), service.GetSubType()).Count() > 0);
 			if(!targetsTried.Contains(target.GetId()) && !completeTram) {
@@ -190,7 +189,7 @@ function RoadManager::MaintainInfrastructure(service, targetsTried, targetsUpdat
 				local added = RoadManager.BuildTownStations(target, service.GetCargo(), service.GetSubType(), service.GetCoverageTarget(), 1);
 				
 				if(added > 0) {
-					targetsUpdated.Insert(target);
+					targetsUpdated.append(idx);
 				}
 			}
 		} else if(target.GetType() == Target.TYPE_INDUSTRY) {

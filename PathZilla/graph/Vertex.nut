@@ -29,20 +29,11 @@
 class Vertex {
 	x = 0;
 	y = 0;
-	targetId = null;
 	
-	constructor(x, y, targetId = null) {
+	constructor(x, y) {
 		this.x = x.tofloat();
 		this.y = y.tofloat();
-		this.targetId = targetId;
 	}
-}
-
-/*
- * Get the underlying target for this vertex
- */
-function Vertex::GetTargetId() {
-	return this.targetId;
 }
 
 /*
@@ -91,5 +82,5 @@ function Vertex::ToTile() {
  * Static method to create a vertex based on a tile index in the current map.
  */
 function Vertex::FromTile(tile) {
-	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile), tile);
+	return Vertex(AIMap.GetTileX(tile), AIMap.GetTileY(tile));
 }

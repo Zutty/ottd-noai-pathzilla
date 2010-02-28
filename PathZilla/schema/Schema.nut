@@ -211,7 +211,7 @@ function Schema::Unserialize(data) {
 	}
 	
 	if(SRLZ_TARGETS in data) {
-		this.targets = Map();
+		this.targets = {};
 		this.targets.Unserialize(data[SRLZ_TARGETS]);
 	}
 }

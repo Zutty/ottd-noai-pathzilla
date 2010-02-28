@@ -29,7 +29,7 @@ class Service {
 	// Serialization constants
 	CLASS_NAME = "Service";
 	SRLZ_SCHEMA_ID = 0;
-	SRLZ_TARGET_IDS = 1;
+	SRLZ_TARGETS = 1;
 	SRLZ_CARGO = 2;
 	SRLZ_TRANSPORT_TYPE = 3;
 	SRLZ_SUB_TYPE = 4;
@@ -41,7 +41,7 @@ class Service {
 	SRLZ_COVERAGE_TARGET = 10;
 	
 	schemaId = null;
-	targetIds = null;
+	targets = null;
 	cargo = 0;
 	transportType = null;
 	subType = null;
@@ -53,9 +53,9 @@ class Service {
 	rawIncome = 0;
 	coverageTarget = 0;
 	
-	constructor(schemaId, targetIds, cargo, transportType, subType, engine, distance, rawIncome, coverageTarget) {
+	constructor(schemaId, targets, cargo, transportType, subType, engine, distance, rawIncome, coverageTarget) {
 		this.schemaId = schemaId;
-		this.targetIds = targetIds;
+		this.targets = targets;
 		this.cargo = cargo;
 		this.transportType = transportType;
 		this.subType = subType;
@@ -72,10 +72,9 @@ function Service::Create() {
 	this.group = AIGroup.CreateGroup(AIVehicle.VT_ROAD);
 	
 	// Name the group
-	local schema = ::pz.schemaManager.GetSchema(this.schemaId);
-	local last = this.targetIds.len() - 1;
-	local fstr = chopstr(schema.GetTargets()[this.targetIds[0]].GetName(), 7);
-	local tstr = chopstr(schema.GetTargets()[this.targetIds[last]].GetName(), 7);
+	local last = this.targets.len() - 1;
+	local fstr = chopstr(this.targets[0].GetName(), 7);
+	local tstr = chopstr(this.targets[last].GetName(), 7);
 	local strName = ::pz.namingScheme.NameCargo(this.cargo) + " " + fstr + " to " + tstr;
 	AIGroup.SetName(this.group, trnc(strName));
 }
@@ -90,22 +89,8 @@ function Service::GetSchemaId() {
 /*
  * Get the ids of the targets this service visits.
  */
-function Service::GetTargetIds() {
-	return this.targetIds;
-}
-
-/*
- * Get the targets this service visits.
- */
 function Service::GetTargets() {
-	local schema = ::pz.schemaManager.GetSchema(this.schemaId);
-	local targets = [];
-
-	foreach(id in this.targetIds) {
-		targets.append(schema.GetTargets()[id]);
-	}
-	
-	return targets;
+	return this.targets;
 }
 
 /*
@@ -167,9 +152,9 @@ function Service::GetCoverageTarget() {
 /*
  * Check if the service visits a target with specified Id.
  */
-function Service::GoesTo(tgtId) {
-	foreach(targetId in this.targetIds) {
-		if(targetId == tgtId) return true;
+function Service::GoesTo(tgt) {
+	foreach(target in this.targets) {
+		if(target.GetId() == tgt.GetId()) return true;
 	}
 	return false;
 }
@@ -177,9 +162,9 @@ function Service::GoesTo(tgtId) {
 /*
  * Check if the service visits all in a list of targets
  */
-function Service::GoesToAll(tgtIds) {
-	foreach(tgtId in tgtIds) {
-		if(!this.GoesTo(tgtId)) return false;
+function Service::GoesToAll(tgts) {
+	foreach(tgt in tgts) {
+		if(!this.GoesTo(tgt)) return false;
 	}
 	return true;
 }
@@ -188,8 +173,7 @@ function Service::GoesToAll(tgtIds) {
  * Checks that all targets in this service are still valid.
  */
 function Service::IsValid() {
-	foreach(targetId in this.targetIds) {
-		local target = ::pz.schemaManager.GetSchema(this.schemaId).GetTargets()[targetId];
+	foreach(target in this.targets) {
 		if(!target.IsValid()) return false;
 	}
 	return true;
@@ -238,12 +222,11 @@ function Service::_tostring() {
 		strType = "air";
 	}
 
-	local schema = ::pz.schemaManager.GetSchema(this.schemaId);
-	local last = this.targetIds.len() - 1;
-	local strTgts = schema.GetTargets()[this.targetIds[0]].GetName() + " to " + schema.GetTargets()[this.targetIds[last]].GetName();
+	local last = this.targets.len() - 1;
+	local strTgts = this.targets[0].GetName() + " to " + this.targets[last].GetName();
 
 	local str = "";
-	if(this.targetIds.len() == 2) {
+	if(this.targets.len() == 2) {
 		str = ::pz.namingScheme.NameCargo(this.cargo) + " from " + strTgts + " by " + strType;
 	}
 	return str;
@@ -256,7 +239,7 @@ function Service::Serialize() {
 	local data = {};
 	
 	data[SRLZ_SCHEMA_ID] <- this.schemaId;
-	data[SRLZ_TARGET_IDS] <- this.targetIds;
+	data[SRLZ_TARGETS] <- this.targets;
 	data[SRLZ_CARGO] <- this.cargo;
 	data[SRLZ_TRANSPORT_TYPE] <- this.transportType;
 	data[SRLZ_SUB_TYPE] <- this.subType;
@@ -275,7 +258,7 @@ function Service::Serialize() {
  */
 function Service::Unserialize(data) {
 	this.schemaId = data[SRLZ_SCHEMA_ID];
-	this.targetIds = data[SRLZ_TARGET_IDS];
+	this.targets = data[SRLZ_TARGETS];
 	this.cargo = data[SRLZ_CARGO];
 	this.transportType = data[SRLZ_TRANSPORT_TYPE];
 	this.subType = data[SRLZ_SUB_TYPE];
@@ -298,8 +281,8 @@ function Service::_cmp(svc) {
 	same = same && this.transportType == svc.transportType;
 	same = same && this.subType == svc.subType;
 	if(same) {
-		foreach(targetId in this.GetTargetIds()) {
-			same = same && svc.GoesTo(targetId);
+		foreach(target in this.targets) {
+			same = same && svc.GoesTo(target);
 		}
 	}
 	if(same) return 0; 
