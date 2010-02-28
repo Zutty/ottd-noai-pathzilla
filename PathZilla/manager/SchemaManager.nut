@@ -29,6 +29,7 @@ class SchemaManager {
 	// Serialisation constants
 	SRLZ_SCHEMA_IDX = 0;
 	SRLZ_SCHEMAS = 1;
+	SRLZ_IS_PROXY = -1;
 	
 	// Member variables
 	schemaIndex = 0;
@@ -117,10 +118,10 @@ function SchemaManager::BuildSchemas() {
 	}
 	
 	// Add the town schema
-	//this.AddSchema(Schema(::pz.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
+	this.AddSchema(Schema(::pz.homeTown, townList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_ROAD));
 	
 	// Add the tram schema, if they are supported
-	//if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(::pz.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
+	if(AIRoad.IsRoadTypeAvailable(AIRoad.ROADTYPE_TRAM)) this.AddSchema(Schema(::pz.homeTown, tramList, AITile.TRANSPORT_ROAD, AIRoad.ROADTYPE_TRAM));
 	
 	// Check each available industry type
 	foreach(type, _ in AIIndustryTypeList()) {
@@ -202,6 +203,9 @@ function SchemaManager::Serialize() {
 	data[SRLZ_SCHEMAS] <- {};
 	foreach(idx, schema in this.schemas) {
 		data[SRLZ_SCHEMAS][idx] <- schema.Serialize();
+		if(!(schema instanceof Schema)) {
+			data[SRLZ_SCHEMAS][idx][SRLZ_IS_PROXY] <- true; 
+		}
 	}
 	
 	return data;
@@ -213,7 +217,24 @@ function SchemaManager::Serialize() {
 function SchemaManager::Unserialize(data) {
 	this.schemaIndex = data[SRLZ_SCHEMA_IDX];
 	foreach(idx, schemaData in data[SRLZ_SCHEMAS]) {
-		this.schemas[idx] <- Schema.instance();
-		this.schemas[idx].Unserialize(schemaData);
+		local schema = Schema.instance();
+		schema.Unserialize(schemaData);
+		if(SRLZ_IS_PROXY in schemaData) {
+			local proxy = ProxyFactory.CreateProxy(schema);
+
+			// TODO - This is just copy'n'paste-d from above. Find a better way.			
+			local self = this;
+			ProxyFactory.AddAspect(proxy, ProxyFactory.CUT_BEFORE, "GetTargets", function ():(self) {
+				if(targets == null) self.InitialiseTargets(this);
+			}); 
+			ProxyFactory.AddAspect(proxy, ProxyFactory.CUT_BEFORE, "GetPlanGraph", function ():(self) {
+				if(planGraph == null) self.InitialiseGraphs(this);
+			}); 
+			ProxyFactory.DisposeAfter(proxy, "GetPlanGraph", ::pz.schemaManager.schemas ,idx);
+			
+			this.schemas[idx] <- proxy;
+		} else {
+			this.schemas[idx] <- schema;
+		}
 	}
 }

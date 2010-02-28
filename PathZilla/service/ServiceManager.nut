@@ -737,9 +737,9 @@ function ServiceManager::UpdateOrders(service) {
 function ServiceManager::Serialize() {
 	local data = {};
 	
-	data[SRLZ_TARGETS_UPDATED] <- this.targetsUpdated.Serialize(); 
+	data[SRLZ_TARGETS_UPDATED] <- this.targetsUpdated; 
 	data[SRLZ_POTENTIAL_SERVICES] <- this.potentialServices.Serialize();
-	data[SRLZ_TARGETS_CONSIDERED] <- this.targetsConsidered.Serialize(); 
+	data[SRLZ_TARGETS_CONSIDERED] <- this.targetsConsidered; 
 	data[SRLZ_SERVICE_LIST] <- this.serviceList.Serialize();
 	
 	return data;
@@ -749,11 +749,9 @@ function ServiceManager::Serialize() {
  * Loads data from a table.
  */
 function ServiceManager::Unserialize(data) {
-	this.targetsUpdated = [];
-	this.targetsUpdated.Unserialize(data[SRLZ_TARGETS_UPDATED]); 
+	this.targetsUpdated = data[SRLZ_TARGETS_UPDATED]; 
 
-	this.targetsConsidered = [];
-	this.targetsConsidered.Unserialize(data[SRLZ_TARGETS_CONSIDERED]); 
+	this.targetsConsidered = data[SRLZ_TARGETS_CONSIDERED]; 
 	
 	this.potentialServices = BinaryHeap();
 	this.potentialServices.Unserialize(data[SRLZ_POTENTIAL_SERVICES]);

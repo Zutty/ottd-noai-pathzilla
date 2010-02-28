@@ -184,7 +184,12 @@ function Schema::Serialize() {
 	if(this.planGraph != null) data[SRLZ_PLAN_GRAPH] <- this.planGraph.Serialize();
 	if(this.actualGraph != null) data[SRLZ_ACTUAL_GRAPH] <- this.actualGraph.Serialize();
 	
-	if(this.targets != null) data[SRLZ_TARGETS] <- this.targets.Serialize();
+	if(this.targets != null) {
+		data[SRLZ_TARGETS] <- [];
+		foreach(tile, _ in targets) {
+			data[SRLZ_TARGETS].append(tile);
+		}
+	}
 	
 	return data;
 }
@@ -212,6 +217,8 @@ function Schema::Unserialize(data) {
 	
 	if(SRLZ_TARGETS in data) {
 		this.targets = {};
-		this.targets.Unserialize(data[SRLZ_TARGETS]);
+		foreach(tile in data[SRLZ_TARGETS]) {
+			targets[tile] <- ::pz.targetManager.GetTarget(tile);
+		}
 	}
 }

@@ -113,10 +113,10 @@ function TargetManager::PickTargets(type, apiList) {
 /*
  * Saves the data to a table.
  */
-function SchemaManager::Serialize() {
+function TargetManager::Serialize() {
 	local data = {};
 	
-	data[SRLZ_SCHEMAS] <- {};
+	data[SRLZ_TARGETS] <- {};
 	foreach(idx, target in this.targets) {
 		data[SRLZ_TARGETS][idx] <- target.Serialize();
 	}
@@ -127,7 +127,7 @@ function SchemaManager::Serialize() {
 /*
  * Loads data from a table.
  */
-function SchemaManager::Unserialize(data) {
+function TargetManager::Unserialize(data) {
 	foreach(idx, targetData in data[SRLZ_TARGETS]) {
 		this.targets[idx] <- Target.instance();
 		this.targets[idx].Unserialize(targetData);

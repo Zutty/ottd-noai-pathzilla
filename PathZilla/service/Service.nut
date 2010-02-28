@@ -239,7 +239,10 @@ function Service::Serialize() {
 	local data = {};
 	
 	data[SRLZ_SCHEMA_ID] <- this.schemaId;
-	data[SRLZ_TARGETS] <- this.targets;
+	data[SRLZ_TARGETS] <- [];
+	foreach(target in this.targets) {
+		data[SRLZ_TARGETS].append(target.GetLocation());
+	}
 	data[SRLZ_CARGO] <- this.cargo;
 	data[SRLZ_TRANSPORT_TYPE] <- this.transportType;
 	data[SRLZ_SUB_TYPE] <- this.subType;
@@ -258,7 +261,10 @@ function Service::Serialize() {
  */
 function Service::Unserialize(data) {
 	this.schemaId = data[SRLZ_SCHEMA_ID];
-	this.targets = data[SRLZ_TARGETS];
+	this.targets = [];
+	foreach(tile in data[SRLZ_TARGETS]) {
+		targets.append(::pz.targetManager.GetTarget(tile));
+	}
 	this.cargo = data[SRLZ_CARGO];
 	this.transportType = data[SRLZ_TRANSPORT_TYPE];
 	this.subType = data[SRLZ_SUB_TYPE];

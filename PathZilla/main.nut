@@ -231,9 +231,9 @@ function PathZilla::Save() {
 	data[SRLZ_HOME_TOWN] <- this.homeTown;
 	
 	// Store the schemas
+	data[SRLZ_TRGT_MANAGER] <- this.targetManager.Serialize();
 	data[SRLZ_SRVC_MANAGER] <- this.serviceManager.Serialize();
 	data[SRLZ_SCMA_MANAGER] <- this.schemaManager.Serialize();
-	data[SRLZ_TRGT_MANAGER] <- this.targetManager.Serialize();
 
 	return data;
 }
@@ -250,9 +250,9 @@ function PathZilla::Initialise() {
 	AICompany.SetAutoRenewStatus(true);
 	
 	// Set the managers
+	this.targetManager = TargetManager();
 	this.serviceManager = ServiceManager();
 	this.schemaManager = SchemaManager();
-	this.targetManager = TargetManager();
 
 	// If there is data to load then use it, otherwise start from scratch
 	if(this.loaded) {
@@ -267,9 +267,9 @@ function PathZilla::Initialise() {
 		this.presidentName = ::loadData[SRLZ_PRESIDENT_NAME];
 
 		// Load the managers
+		this.targetManager.Unserialize(::loadData[SRLZ_TRGT_MANAGER]);
 		this.serviceManager.Unserialize(::loadData[SRLZ_SRVC_MANAGER]);
 		this.schemaManager.Unserialize(::loadData[SRLZ_SCMA_MANAGER]);
-		this.targetManager.Unserialize(::loadData[SRLZ_TRGT_MANAGER]);
 
 		// Load the vehicles into their groups
 		this.serviceManager.PostLoad();
