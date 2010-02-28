@@ -29,11 +29,13 @@ class SchemaManager {
 	// Serialisation constants
 	SRLZ_SCHEMA_IDX = 0;
 	SRLZ_SCHEMAS = 1;
+	SRLZ_TOWN_TRIANG = 2;
 	SRLZ_IS_PROXY = -1;
 	
 	// Member variables
 	schemaIndex = 0;
 	schemas = null;
+	townTriangulation = null;
 	
 	constructor() {
 		this.schemaIndex = -1;
@@ -152,7 +154,16 @@ function SchemaManager::InitialiseTargets(schema) {
 			schema.SetSourceNode(this.ChooseSourceNode(schema));
 		}
 	} else {
-		schema.SetTargets(::pz.targetManager.GetTownTargets(schema));
+		local targets;
+		
+		// Set the targets based on the transport sub-type
+		if(schema.GetSubType() == AIRoad.ROADTYPE_TRAM) {
+			targets = ::pz.targetManager.GetTramTargets();
+		} else {
+			targets = ::pz.targetManager.GetTownTargets();
+		}
+		
+		schema.SetTargets(targets);
 	}
 }
 
@@ -174,15 +185,35 @@ function SchemaManager::ChooseSourceNode(schema) {
 }
 
 /*
+ * Get the global town triangulation.
+ */
+function SchemaManager::GetTownTriangulation() {
+	if(townTriangulation == null) {
+		townTriangulation = Triangulation(::pz.targetManager.GetTownTargets());
+	}
+	return townTriangulation;
+}
+
+/*
  * Create the plan and actual graphs based on a triangulation over a list of
  * targets, chosen based on the type of schema and global settings.
  */
 function SchemaManager::InitialiseGraphs(schema) {
 	// Ensure the list of targets has been initialised
 	if(schema.GetTargets() == null) this.InitialiseTargets(schema);
+	
+	// Build the master graph covering all targets	
+	local masterGraph;
 
-	// Build the master graph covering all targets	 
-	local masterGraph = Triangulation(schema.GetTargets());
+	// There are two special cases, otherwise just triangulate the targets
+	if(!schema.IsIndustrial() && schema.GetSubType() == AIRoad.ROADTYPE_ROAD) {
+		masterGraph = clone GetTownTriangulation();
+	} else if(schema.IsIndustrial() && Settings.RouteCargoThroughTowns()) {
+		masterGraph = clone GetTownTriangulation();
+		masterGraph.AddTargets(schema.GetTargets());
+	} else {
+		masterGraph = Triangulation(schema.GetTargets());
+	}
 
 	// For the plan graph use a combination of the shortest path from the home 
 	// town and the minimum spanning tree.
@@ -207,6 +238,7 @@ function SchemaManager::Serialize() {
 			data[SRLZ_SCHEMAS][idx][SRLZ_IS_PROXY] <- true; 
 		}
 	}
+	data[SRLZ_TOWN_TRIANG] <- townTriangulation.Serialize();
 	
 	return data;
 }
@@ -237,4 +269,6 @@ function SchemaManager::Unserialize(data) {
 			this.schemas[idx] <- schema;
 		}
 	}
+	this.townTriangulation = Triangulation.instance();
+	this.townTriangulation.Unserialize(data[SRLZ_TOWN_TRIANG]);
 }

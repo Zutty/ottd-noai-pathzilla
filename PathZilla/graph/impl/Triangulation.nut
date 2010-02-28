@@ -41,7 +41,10 @@
  */
  
 class Triangulation extends Graph {
-	
+	// Serialisation constants
+	SRLZ_TRIANGLE_DATA = 0;
+
+	// Class constants	
 	static SUPER_VERTICES = [
 		Vertex(1, 1),
 		Vertex(AIMap.GetMapSizeX() - 2, 1),
@@ -240,10 +243,19 @@ function Triangulation::BakeTriangles(newVertices, visitsAll) {
 			this.data[edge.b.ToTile()] <- SortedSet(); 
 		}
 		this.data[edge.b.ToTile()].RawInsert(edge.a);
+		
+		if(newVertices.len() == 0) {
+			this.vertices.RawInsert(edge.a);
+			this.vertices.RawInsert(edge.b);
+		}
 	}
 	
 	// Resolve the vertices
-	this.vertices.RawMerge(newVertices);
+	if(newVertices.len() == 0) {
+		this.vertices.RemoveDuplicates();
+	} else {
+		this.vertices.RawMerge(newVertices);
+	}
 }
 
 /*
@@ -270,4 +282,40 @@ function Triangulation::_cloned(original) {
 	vertices = clone original.vertices;
 	edges = clone original.edges;
 	triangles = clone_array(original.triangles);
+}
+
+/*
+ * Saves data to a table.
+ */
+function Triangulation::Serialize() {
+	local data = {};
+	local triData = []
+	
+	// Save the triangles to an array
+	foreach(triangle in triangles) {
+		triData.append(triangle.a.ToTile());
+		triData.append(triangle.b.ToTile());
+		triData.append(triangle.c.ToTile());
+	}
+	
+	// Set the triangle data
+	data[SRLZ_TRIANGLE_DATA] <- triData;
+	
+	return data;
+}
+
+/*
+ * Loads data from a table.
+ */
+function Triangulation::Unserialize(data) {
+	local triData = data[SRLZ_TRIANGLE_DATA];
+	triangles = [];
+	
+	::Graph.constructor();
+	
+	for(local i = 0; i < triData.len(); i+=3) {
+		triangles.append(Triangle(Vertex.FromTile(triData[i]), Vertex.FromTile(triData[i+1]), Vertex.FromTile(triData[i+2])));
+	}
+	
+	BakeTriangles([], true);
 }

@@ -61,17 +61,28 @@ function TargetManager::InitTarget(type, id) {
  * Create an array of targets from all towns (up to a maximum of MAX_TARGETS)  
  * on the map.
  */
-function TargetManager::GetTownTargets(schema) {
+function TargetManager::GetTownTargets() {
 	// Prime a list of the closest MAX_TARGETS targets to the home town
 	local allTowns = AITownList();
-	allTowns.Valuate(AITown.GetDistanceManhattanToTile, AITown.GetLocation(schema.GetSourceNode()));
+	allTowns.Valuate(AITown.GetDistanceManhattanToTile, ::pz.homeTown);
 	allTowns.KeepTop(PathZilla.MAX_TARGETS);
 	
-	// HACK: If using trams, only consider large towns
-	if(schema.GetSubType() == AIRoad.ROADTYPE_TRAM) {
-		allTowns.Valuate(AITown.GetPopulation);
-		allTowns.RemoveBelowValue(1000);
-	}
+	return PickTargets(Target.TYPE_TOWN, allTowns);
+}
+
+/*
+ * Create an array of targets from all towns (up to a maximum of MAX_TARGETS)  
+ * on the map.
+ */
+function TargetManager::GetTramTargets() {
+	// Prime a list of the closest MAX_TARGETS targets to the home town
+	local allTowns = AITownList();
+	allTowns.Valuate(AITown.GetDistanceManhattanToTile, ::pz.homeTown);
+	allTowns.KeepTop(PathZilla.MAX_TARGETS);
+	
+	// If using trams, only consider large towns
+	allTowns.Valuate(AITown.GetPopulation);
+	allTowns.RemoveBelowValue(1000);
 	
 	return PickTargets(Target.TYPE_TOWN, allTowns);
 }
